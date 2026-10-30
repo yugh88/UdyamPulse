@@ -49,7 +49,7 @@ class Settings:
     policy_dir: Path = ROOT / "policy"
 
     db_url: str = field(default_factory=lambda: _env("UP_DB_URL", f"sqlite:///{ROOT / 'var' / 'udyampulse.db'}"))
-    jwt_secret: str = field(default_factory=lambda: _env("UP_JWT_SECRET", "change-me-local-demo-secret"))
+    jwt_secret: str = field(default_factory=lambda: _env("UP_JWT_SECRET", "change-me-local-demo-secret-please-rotate-0001"))
     jwt_ttl_minutes: int = field(default_factory=lambda: int(_env("UP_JWT_TTL_MINUTES", "480")))
 
     llm_provider: str = field(default_factory=lambda: _env("UP_LLM_PROVIDER", "template"))
