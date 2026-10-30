@@ -6,7 +6,7 @@ import hashlib
 import hmac
 import os
 from collections.abc import Callable
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import jwt
 from fastapi import Depends, HTTPException, status
@@ -39,7 +39,7 @@ def create_token(user: User) -> str:
         "sub": user.username,
         "role": user.role,
         "factory_id": user.factory_id,
-        "exp": datetime.now(timezone.utc) + timedelta(minutes=s.jwt_ttl_minutes),
+        "exp": datetime.now(UTC) + timedelta(minutes=s.jwt_ttl_minutes),
     }
     return jwt.encode(payload, s.jwt_secret, algorithm="HS256")
 

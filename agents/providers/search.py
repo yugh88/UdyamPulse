@@ -80,11 +80,11 @@ class LocalPolicySearch:
         q = self.embedder.encode([query])
         if self.index is not None:
             scores, idx = self.index.search(q, k)
-            pairs = zip(idx[0], scores[0])
+            pairs = zip(idx[0], scores[0], strict=False)
         else:
             sims = self.vectors @ q[0]
             top = np.argsort(-sims)[:k]
-            pairs = zip(top, sims[top])
+            pairs = zip(top, sims[top], strict=False)
         out = []
         for i, sc in pairs:
             if i < 0:

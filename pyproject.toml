@@ -1,0 +1,21 @@
+[project]
+name = "udyampulse"
+version = "0.1.0"
+description = "Decision intelligence for MSME manufacturing credit: underwrite and monitor on live, consented operating data."
+requires-python = ">=3.11"
+
+[tool.ruff]
+line-length = 140
+target-version = "py311"
+extend-exclude = ["web", "lake", "var", "ml/mlruns"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "W"]
+ignore = ["B008"]  # FastAPI Depends() in defaults
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = ["ignore::DeprecationWarning", "ignore::FutureWarning", "ignore::UserWarning"]
+
+[tool.ruff.lint.per-file-ignores]
+"ml/train.py" = ["E501"]  # model-card markdown template

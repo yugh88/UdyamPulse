@@ -63,9 +63,9 @@ def forecast_cashflow(history: pd.DataFrame, periods: int = 3) -> dict:
     points = [
         {"month": ds.strftime("%Y-%m"), "yhat": round(float(r.yhat)), "lo": round(float(r.yhat_lower)),
          "hi": round(float(r.yhat_upper))}
-        for ds, r in zip(future_ds, fc.itertuples())
+        for ds, r in zip(future_ds, fc.itertuples(), strict=False)
     ]
-    hist = [{"month": d.strftime("%Y-%m"), "actual": round(float(v))} for d, v in zip(df["ds"], df["y"])]
+    hist = [{"month": d.strftime("%Y-%m"), "actual": round(float(v))} for d, v in zip(df["ds"], df["y"], strict=False)]
     negative = [p["month"] for p in points if p["yhat"] < 0]
     return {"method": method, "history": hist, "forecast": points, "negative_months": negative,
             "avg_monthly_credits": round(float(df["credits"].tail(3).mean()))}
