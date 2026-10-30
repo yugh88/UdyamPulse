@@ -19,8 +19,8 @@
 
 | Month | Severity | Rules | Action |
 |---|---|---|---|
-| 19 | None | – | nan |
-| 20 | None | – | nan |
+| 19 | None | – | – |
+| 20 | None | – | – |
 | 21 | high | order_loss | visit + limit review |
 | 22 | medium | cash_squeeze | visit |
 | 23 | high | cash_squeeze, compliance_slip | restructure |
