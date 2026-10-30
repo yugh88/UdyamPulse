@@ -1,0 +1,2 @@
+# Optional: dense embeddings for policy RAG (falls back to TF-IDF when absent)
+sentence-transformers>=3.0

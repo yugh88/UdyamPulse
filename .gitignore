@@ -1,0 +1,30 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# Data lake & runtime state (rebuilt by `make demo`)
+lake/bronze/
+lake/silver/
+lake/gold/
+var/
+ml/artifacts/
+ml/mlruns/
+mlruns/
+*.db
+
+# Secrets
+.env
+
+# Web
+web/node_modules/
+web/dist/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+

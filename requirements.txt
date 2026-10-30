@@ -1,0 +1,28 @@
+# Core runtime (local-first; no cloud credentials needed)
+fastapi==0.162.0
+uvicorn[standard]==0.54.0
+pydantic==2.13.5
+SQLAlchemy==2.1.6
+PyJWT==2.15.1
+PyYAML==6.0.3
+httpx==0.28.1
+
+# Data & ML
+duckdb==2.0.0
+pandas==3.1.0
+pyarrow==26.0.0
+numpy==2.4.6
+lightgbm==4.7.0
+scikit-learn==1.9.1
+joblib==1.6.0
+prophet==1.5.0
+mlflow-skinny==3.17.2
+
+# Agents, RAG, documents
+semantic-kernel==1.46.0
+faiss-cpu==1.15.1
+reportlab==5.1.0
+
+# Dev
+pytest==9.2.0
+ruff==0.17.3
