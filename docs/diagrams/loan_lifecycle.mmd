@@ -1,0 +1,23 @@
+flowchart TD
+    A([MSME applies: app / WhatsApp / RM]) --> B[Consent via Account Aggregator + GST]
+    B --> C[Data agent pulls, cleans, reconciles]
+    C --> D[Factory Health Score 300–900 + top-5 reasons]
+    D --> E{Score ≥ 650?}
+    E -- NO --> F[Advisor agent: 90-day fix plan]
+    F -. re-apply .-> A
+    E -- YES --> G[Credit-memo agent: limit, pricing, risks, policy citations]
+    G --> H[Credit officer reviews & approves: human-in-loop]
+    H --> I[Disburse via LOS / core banking stub]
+    I --> J[Early-warning agent: daily monitoring]
+    J --> K{Stress signal?}
+    K -- NO --> J
+    K -- YES --> L[Alert RM + next-best action: call · visit · limit review · restructure]
+
+    classDef decision fill:#FFF1DE,stroke:#F0A040,color:#0B1033
+    classDef human fill:#2FA866,stroke:#2FA866,color:#ffffff
+    classDef alert fill:#E5397A,stroke:#E5397A,color:#ffffff
+    classDef start fill:#0B1033,stroke:#0B1033,color:#ffffff
+    class E,K decision
+    class H human
+    class L alert
+    class A start

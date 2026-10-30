@@ -1,0 +1,53 @@
+block-beta
+  columns 1
+
+  block:L1
+    columns 5
+    H1["① DATA SOURCES (consented)"]:5
+    GST["GST e-invoice<br/>& e-way bills"] AA["Account Aggregator<br/>bank statements"] ERP["Tally / D365<br/>Business Central"] PWR["Electricity bills<br/>(production proxy)"] PO["POs, invoices<br/>(IoT in v2)"]
+  end
+  A1<["consented pull"]>(down)
+
+  block:L2
+    columns 3
+    H2["② INGEST & TRUST"]:3
+    CON["AA + GST connectors<br/>(sandbox mocks · FIU-style consent)"] API["API gateway<br/>(FastAPI · Azure APIM in prod)"] OCR["Doc parser<br/>(Azure AI Document Intelligence)"]
+  end
+  A2<["bronze events"]>(down)
+
+  block:L3
+    columns 7
+    H3["③ DATA & ML · Databricks-style medallion"]:7
+    BR["Bronze<br/>raw events"] SV["Silver<br/>cleaned, reconciled"] GD["Gold<br/>60+ monthly features"] MOD["LightGBM PD<br/>+ SHAP reasons"] EWS["EWS rules<br/>+ Isolation Forest"] FC["Cash-flow forecast<br/>(Prophet)"] REG["MLflow registry<br/>+ drift check"]
+  end
+  A3<["scores · alerts · forecasts"]>(down)
+
+  block:L4
+    columns 5
+    H4["④ AGENTS · Semantic Kernel"]:5
+    ORC["Orchestrator<br/>agent"] DA["Data<br/>agent"] CMA["Credit-memo agent<br/>(RAG over bank policy)"] EWA["Early-warning<br/>agent"] ADV["MSME advisor<br/>agent"]
+  end
+  A4<["recommendations (human decides)"]>(down)
+
+  block:L5
+    columns 4
+    H5["⑤ EXPERIENCE"]:4
+    RM["RM / credit console<br/>(React · D365 CRM in prod)"] DASH["Portfolio risk cockpit<br/>(React · Power BI in prod)"] APP["MSME app (PWA)<br/>+ WhatsApp-style alerts"] LOS["LOS / core banking<br/>REST stubs"]
+  end
+
+  GOV["SECURITY & GOVERNANCE — auth (Entra ID in prod) · secrets (Key Vault) · consent ledger · audit log · RBI FREE-AI · data stays in India region"]
+
+  classDef head fill:#0B1033,stroke:#0B1033,color:#ffffff,font-weight:bold
+  classDef node fill:#EEF0FA,stroke:#7B5CFF,color:#0B1033
+  classDef ml fill:#EAE5FF,stroke:#7B5CFF,color:#0B1033
+  classDef agent fill:#FFF1DE,stroke:#F0A040,color:#0B1033
+  classDef ux fill:#E3F5EA,stroke:#2FA866,color:#0B1033
+  classDef gov fill:#E5397A,stroke:#E5397A,color:#ffffff,font-weight:bold
+  classDef arrow fill:#F6F7FB,stroke:#0B1033,color:#0B1033
+  class H1,H2,H3,H4,H5 head
+  class GST,AA,ERP,PWR,PO,CON,API,OCR,BR,SV,GD,REG node
+  class MOD,EWS,FC ml
+  class ORC,DA,CMA,EWA,ADV agent
+  class RM,DASH,APP,LOS ux
+  class GOV gov
+  class A1,A2,A3,A4 arrow

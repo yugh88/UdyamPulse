@@ -1,0 +1,59 @@
+flowchart TB
+    subgraph SRC["1 · DATA SOURCES (consent-based)"]
+        direction LR
+        GST["GST e-invoice<br/>& e-way bills"]
+        AA["Account Aggregator<br/>bank statements"]
+        ERP["Tally / D365<br/>Business Central"]
+        PWR["Electricity bills<br/>(production proxy)"]
+        PO["POs, invoices<br/>(IoT in v2)"]
+    end
+
+    subgraph ING["2 · INGEST & TRUST"]
+        direction LR
+        CON["AA + GST connectors<br/>(sandbox mocks, FIU-style consent)"]
+        API["API gateway<br/>(FastAPI · Azure APIM in prod)"]
+        OCR["Doc parser<br/>(Azure AI Document Intelligence adapter)"]
+    end
+
+    subgraph DML["3 · DATA & ML (Databricks-style medallion)"]
+        direction LR
+        BR["Bronze: raw events"]
+        SV["Silver: cleaned, reconciled"]
+        GD["Gold: monthly factory features (60+)"]
+        MOD["LightGBM PD model<br/>+ SHAP reasons"]
+        EWS["EWS rules + Isolation Forest"]
+        FC["Cash-flow forecast (Prophet)"]
+        REG["MLflow registry + drift check"]
+    end
+
+    subgraph AGT["4 · AGENT LAYER (Semantic Kernel · Azure OpenAI adapter)"]
+        direction LR
+        ORC["Orchestrator agent"]
+        DA["Data agent"]
+        CMA["Credit-memo agent<br/>(RAG over bank policy)"]
+        EWA["Early-warning agent"]
+        ADV["MSME advisor agent"]
+    end
+
+    subgraph EXP["5 · EXPERIENCE"]
+        direction LR
+        RM["RM / credit console<br/>(React · D365 CRM in prod)"]
+        DASH["Portfolio risk cockpit<br/>(React charts · Power BI in prod)"]
+        APP["MSME app (PWA)<br/>+ WhatsApp-style notifications"]
+        LOS["LOS / core banking<br/>REST stubs"]
+    end
+
+    GOV["SECURITY & GOVERNANCE: auth (Entra ID in prod) · secrets (Key Vault) · consent ledger · audit log · data stays in India region"]
+
+    SRC --> ING --> DML --> AGT --> EXP
+    MOD --> CMA
+    EWS --> EWA
+    FC --> ADV
+    GOV -.-> ING
+    GOV -.-> DML
+    GOV -.-> AGT
+
+    classDef gov fill:#E5397A,stroke:#E5397A,color:#ffffff
+    classDef ml fill:#EAE5FF,stroke:#7B5CFF,color:#0B1033
+    class GOV gov
+    class MOD,EWS,FC ml
