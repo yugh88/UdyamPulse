@@ -1,0 +1,9 @@
+{
+  "name": "UdyamPulse for MSMEs",
+  "short_name": "UdyamPulse",
+  "start_url": "/msme",
+  "display": "standalone",
+  "background_color": "#0B1033",
+  "theme_color": "#0B1033",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}
