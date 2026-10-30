@@ -1,0 +1,26 @@
+services:
+  api:
+    build: .
+    ports: ["8000:8000"]
+    env_file: [.env.example]
+    environment:
+      UP_DB_URL: sqlite:////app/var/udyampulse.db
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      retries: 30
+  web:
+    build: ./web
+    ports: ["5173:5173"]
+    environment:
+      VITE_API_PROXY: http://api:8000
+    depends_on:
+      api:
+        condition: service_healthy
+  # Optional HTTPS front door: `docker compose --profile https up`, then open https://localhost
+  caddy:
+    image: caddy:2-alpine
+    profiles: ["https"]
+    ports: ["443:443"]
+    volumes: ["./Caddyfile:/etc/caddy/Caddyfile:ro"]
+    depends_on: [web]
