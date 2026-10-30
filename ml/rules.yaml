@@ -1,0 +1,43 @@
+# Early-Warning System rules. Signals are monthly; "8-week baseline" = mean of the previous 2 months.
+baseline_months: 2
+
+rules:
+  order_loss:
+    description: E-way bills down >=40% AND kWh down >=30% vs the 8-week baseline
+    eway_drop: 0.40
+    kwh_drop: 0.30
+    weight: 3
+  cash_squeeze:
+    description: 2+ cheque/NACH bounces in the month, OR average balance down >=50% in 30 days
+    bounces_min: 2
+    balance_drop: 0.50
+    weight: 2
+  buyer_risk:
+    description: Top buyer >50% of sales AND days-to-pay up 20+ days vs the 3-month baseline
+    top_share_min: 0.50
+    dtp_increase_days: 20
+    weight: 2
+  diversion:
+    description: GST turnover vs bank credits mismatch >25%
+    mismatch_min: 0.25
+    weight: 2
+  compliance_slip:
+    description: GSTR-3B filed late for 2 consecutive months
+    consecutive_late: 2
+    weight: 1
+
+anomaly:
+  description: IsolationForest on month-over-month signal deltas
+  contamination: 0.02
+  weight: 1
+
+# Sum of weights of the rules that fired -> severity
+severity:
+  high: 3
+  medium: 2
+  low: 1
+
+backtest:
+  min_severity: medium      # alerts that count for lead time / precision
+  lookback_months: 9        # first alert within this window before SMA-2
+  precision_horizon_months: 6
