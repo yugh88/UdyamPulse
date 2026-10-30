@@ -1,0 +1,42 @@
+{
+  "train": {
+    "auc": 0.9952,
+    "ks": 0.9276,
+    "brier": 0.0094,
+    "n": 4479,
+    "positives": 134,
+    "event_rate": 0.0299
+  },
+  "valid": {
+    "auc": 0.9162,
+    "ks": 0.7004,
+    "brier": 0.017,
+    "n": 1475,
+    "positives": 44,
+    "event_rate": 0.0298
+  },
+  "test": {
+    "auc": 0.8105,
+    "ks": 0.4929,
+    "brier": 0.0256,
+    "n": 3855,
+    "positives": 121,
+    "event_rate": 0.0314
+  },
+  "band_distribution_test": {
+    "APPROVE": 0.861,
+    "WATCH": 0.117,
+    "HIGH_RISK": 0.022
+  },
+  "band_default_rate_test": {
+    "APPROVE": 0.0154,
+    "HIGH_RISK": 0.5176,
+    "WATCH": 0.0576
+  },
+  "hero_month20": {
+    "score": 723,
+    "band": "APPROVE",
+    "pd_12m": 0.0067
+  },
+  "target_auc_met": true
+}

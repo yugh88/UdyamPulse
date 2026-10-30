@@ -1,0 +1,270 @@
+[
+  {
+    "feature": "epfo_drop_months_6",
+    "mean_abs_shap": 0.48135
+  },
+  {
+    "feature": "days_to_pay_chg_3v12",
+    "mean_abs_shap": 0.36401
+  },
+  {
+    "feature": "buyer_hhi",
+    "mean_abs_shap": 0.35124
+  },
+  {
+    "feature": "po_cover_chg_1v3",
+    "mean_abs_shap": 0.35059
+  },
+  {
+    "feature": "gst_late_months_6",
+    "mean_abs_shap": 0.31277
+  },
+  {
+    "feature": "loan_to_turnover",
+    "mean_abs_shap": 0.26582
+  },
+  {
+    "feature": "days_to_pay_1",
+    "mean_abs_shap": 0.23921
+  },
+  {
+    "feature": "po_cover_months",
+    "mean_abs_shap": 0.23236
+  },
+  {
+    "feature": "bounces_12",
+    "mean_abs_shap": 0.18217
+  },
+  {
+    "feature": "net_inflow_ratio_1",
+    "mean_abs_shap": 0.17836
+  },
+  {
+    "feature": "balance_to_debits_3",
+    "mean_abs_shap": 0.17543
+  },
+  {
+    "feature": "days_to_pay_3",
+    "mean_abs_shap": 0.17451
+  },
+  {
+    "feature": "gst_late_months_3",
+    "mean_abs_shap": 0.17432
+  },
+  {
+    "feature": "eway_value_chg_3v12",
+    "mean_abs_shap": 0.17405
+  },
+  {
+    "feature": "credits_chg_1v3",
+    "mean_abs_shap": 0.168
+  },
+  {
+    "feature": "gst_late_months_12",
+    "mean_abs_shap": 0.16637
+  },
+  {
+    "feature": "einvoice_value_cv_12",
+    "mean_abs_shap": 0.16606
+  },
+  {
+    "feature": "net_inflow_ratio_6",
+    "mean_abs_shap": 0.16373
+  },
+  {
+    "feature": "einvoice_value_chg_1v3",
+    "mean_abs_shap": 0.15869
+  },
+  {
+    "feature": "vintage_years",
+    "mean_abs_shap": 0.15343
+  },
+  {
+    "feature": "eway_count_chg_3v12",
+    "mean_abs_shap": 0.1492
+  },
+  {
+    "feature": "epfo_chg_3v12",
+    "mean_abs_shap": 0.14686
+  },
+  {
+    "feature": "balance_to_debits_1",
+    "mean_abs_shap": 0.13876
+  },
+  {
+    "feature": "gst_bank_mismatch_3",
+    "mean_abs_shap": 0.13702
+  },
+  {
+    "feature": "rm_ratio_3",
+    "mean_abs_shap": 0.13282
+  },
+  {
+    "feature": "kwh_chg_3v12",
+    "mean_abs_shap": 0.12439
+  },
+  {
+    "feature": "kwh_vs_sector",
+    "mean_abs_shap": 0.10343
+  },
+  {
+    "feature": "top_buyer_share_6",
+    "mean_abs_shap": 0.10142
+  },
+  {
+    "feature": "credits_chg_3v12",
+    "mean_abs_shap": 0.09994
+  },
+  {
+    "feature": "days_to_pay_chg_1v3",
+    "mean_abs_shap": 0.09933
+  },
+  {
+    "feature": "balance_chg_1v3",
+    "mean_abs_shap": 0.09874
+  },
+  {
+    "feature": "einvoice_value_slope_6",
+    "mean_abs_shap": 0.09563
+  },
+  {
+    "feature": "eway_value_chg_1v3",
+    "mean_abs_shap": 0.08766
+  },
+  {
+    "feature": "days_to_pay_slope_6",
+    "mean_abs_shap": 0.07725
+  },
+  {
+    "feature": "rm_ratio_1",
+    "mean_abs_shap": 0.07633
+  },
+  {
+    "feature": "top_buyer_share_1",
+    "mean_abs_shap": 0.07509
+  },
+  {
+    "feature": "kwh_per_lakh_3",
+    "mean_abs_shap": 0.07299
+  },
+  {
+    "feature": "debits_to_credits_3",
+    "mean_abs_shap": 0.06895
+  },
+  {
+    "feature": "top_buyer_share_chg_1v6",
+    "mean_abs_shap": 0.06334
+  },
+  {
+    "feature": "rm_chg_1v3",
+    "mean_abs_shap": 0.05852
+  },
+  {
+    "feature": "gst_delay_3",
+    "mean_abs_shap": 0.05443
+  },
+  {
+    "feature": "net_inflow_ratio_3",
+    "mean_abs_shap": 0.05394
+  },
+  {
+    "feature": "bounces_6",
+    "mean_abs_shap": 0.0492
+  },
+  {
+    "feature": "n_buyers",
+    "mean_abs_shap": 0.04375
+  },
+  {
+    "feature": "rm_chg_3v12",
+    "mean_abs_shap": 0.04354
+  },
+  {
+    "feature": "epfo_chg_1v3",
+    "mean_abs_shap": 0.04104
+  },
+  {
+    "feature": "kwh_cv_6",
+    "mean_abs_shap": 0.03609
+  },
+  {
+    "feature": "bounces_3",
+    "mean_abs_shap": 0.03536
+  },
+  {
+    "feature": "eway_value_cv_6",
+    "mean_abs_shap": 0.03509
+  },
+  {
+    "feature": "eway_value_chg_1v2",
+    "mean_abs_shap": 0.03498
+  },
+  {
+    "feature": "einvoice_value_chg_3v12",
+    "mean_abs_shap": 0.02388
+  },
+  {
+    "feature": "kwh_slope_6",
+    "mean_abs_shap": 0.02146
+  },
+  {
+    "feature": "eway_count_chg_1v3",
+    "mean_abs_shap": 0.0212
+  },
+  {
+    "feature": "einvoice_count_chg_1v3",
+    "mean_abs_shap": 0.02027
+  },
+  {
+    "feature": "gst_consecutive_late",
+    "mean_abs_shap": 0.01767
+  },
+  {
+    "feature": "kwh_chg_1v2",
+    "mean_abs_shap": 0.01677
+  },
+  {
+    "feature": "bounces_1",
+    "mean_abs_shap": 0.01637
+  },
+  {
+    "feature": "gst_bank_mismatch_1",
+    "mean_abs_shap": 0.01619
+  },
+  {
+    "feature": "balance_chg_1v1",
+    "mean_abs_shap": 0.01436
+  },
+  {
+    "feature": "balance_cv_6",
+    "mean_abs_shap": 0.01431
+  },
+  {
+    "feature": "eway_to_einvoice_ratio",
+    "mean_abs_shap": 0.01212
+  },
+  {
+    "feature": "kwh_chg_1v3",
+    "mean_abs_shap": 0.00986
+  },
+  {
+    "feature": "gst_delay_1",
+    "mean_abs_shap": 0.00359
+  },
+  {
+    "feature": "eway_value_yoy",
+    "mean_abs_shap": 0.0
+  },
+  {
+    "feature": "einvoice_value_yoy",
+    "mean_abs_shap": 0.0
+  },
+  {
+    "feature": "credits_yoy",
+    "mean_abs_shap": 0.0
+  },
+  {
+    "feature": "kwh_yoy",
+    "mean_abs_shap": 0.0
+  }
+]

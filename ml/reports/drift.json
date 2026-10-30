@@ -1,0 +1,16 @@
+{
+  "score_psi": 0.0124,
+  "features": {
+    "epfo_drop_months_6": 0.0234,
+    "days_to_pay_chg_3v12": 0.0382,
+    "buyer_hhi": 0.0028,
+    "po_cover_chg_1v3": 0.0052,
+    "gst_late_months_6": 0.0277,
+    "loan_to_turnover": 0.0634,
+    "days_to_pay_1": 0.001,
+    "po_cover_months": 0.007,
+    "bounces_12": 0.0759,
+    "net_inflow_ratio_1": 0.0027
+  },
+  "status": "stable"
+}
