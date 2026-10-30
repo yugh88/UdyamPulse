@@ -176,6 +176,13 @@ def _stress_level(f: Factory, t: int) -> float:
     return level
 
 
+def _precursor(f: Factory, t: int) -> float:
+    """0..0.5 leading-indicator softening in the 5 months before a stress event (order book thins first)."""
+    if f.stress_month is None or not (f.stress_month - 5 <= t < f.stress_month):
+        return 0.0
+    return 0.1 * (t - f.stress_month + 6)
+
+
 def _simulate(f: Factory, rng: np.random.Generator, n_months: int) -> list[dict]:
     sec = SECTORS[f.sector]
     base_monthly = f.annual_turnover_cr * 1e7 / 12
@@ -185,10 +192,11 @@ def _simulate(f: Factory, rng: np.random.Generator, n_months: int) -> list[dict]
     for t in range(1, n_months + 1):
         cal = month_start(t).month
         lvl = _stress_level(f, t)
+        pre = _precursor(f, t)
         k = t - f.stress_month if f.stress_month else -99
         order_hit = f.stress_depth * lvl if f.stress_type == "buyer_loss" else 0.45 * f.stress_depth * lvl
         rev = base_monthly * (1 + f.growth) ** (t / 12) * sec["season"][cal - 1]
-        rev *= (1 + rng.normal(0, 0.05)) * (1 - order_hit)
+        rev *= (1 + rng.normal(0, 0.05)) * (1 - order_hit) * (1 - 0.08 * pre)
         revs.append(rev)
         lag_rev = 0.5 * revs[-2] + 0.5 * revs[-3] if len(revs) >= 3 else rev
 
@@ -203,7 +211,7 @@ def _simulate(f: Factory, rng: np.random.Generator, n_months: int) -> list[dict]
             top = f.top_share * (1 - order_hit) / (1 - f.top_share * order_hit)
         top = float(np.clip(top + rng.normal(0, 0.015), 0.05, 0.95))
 
-        dtp = sec["dtp"] + f.dtp_offset + rng.normal(0, 4)
+        dtp = sec["dtp"] + f.dtp_offset + rng.normal(0, 4) + 12 * pre
         if f.stress_type == "payment_stretch":
             dtp += 35 * lvl
         elif lvl > 0 and k >= 1:
@@ -222,10 +230,10 @@ def _simulate(f: Factory, rng: np.random.Generator, n_months: int) -> list[dict]
             debits = max(debits, 0.95 * credits + fixed * lvl)
 
         cash_stress = min(1.0, max(0.0, (k + 1) / 2)) * min(lvl, 1.0) if lvl > 0 else 0.0
-        balance = balance_ref * (1 + rng.normal(0, 0.12)) * (1 - 0.75 * cash_stress)
+        balance = balance_ref * (1 + rng.normal(0, 0.12)) * (1 - 0.75 * cash_stress) * (1 - 0.4 * pre)
         balance = max(balance, 5e4 * rng.uniform(0.5, 1.5))
 
-        lam = 0.02 + 0.12 * f.fragility + (2.2 * cash_stress if k >= 1 else 0.0)
+        lam = 0.02 + 0.12 * f.fragility + 0.5 * pre + (2.2 * cash_stress if k >= 1 else 0.0)
         bounces = int(rng.poisson(lam))
 
         kwh_hit = order_hit * (0.75 if f.stress_type == "buyer_loss" else 0.6)
@@ -233,10 +241,10 @@ def _simulate(f: Factory, rng: np.random.Generator, n_months: int) -> list[dict]
         kwh *= sec["season"][cal - 1] ** 0.3 * (1 + rng.normal(0, 0.04))
 
         rm = rev * sec["rm_ratio"] * (1 + rng.normal(0, 0.06)) * (1 - 0.5 * order_hit)
-        po_cover = f.po_cover * (1 - 1.2 * order_hit) * (1 + rng.normal(0, 0.08))
+        po_cover = f.po_cover * (1 - 1.2 * order_hit) * (1 - 0.6 * pre) * (1 + rng.normal(0, 0.08))
         open_po = max(rev * po_cover, 0)
 
-        late_p = 0.04 + 0.2 * f.fragility
+        late_p = 0.04 + 0.2 * f.fragility + 0.3 * pre
         if lvl > 0 and k >= 2:
             late_p = 0.75
         gst_delay = int(rng.integers(1, 16)) if rng.random() < late_p else 0
