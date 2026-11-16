@@ -27,6 +27,7 @@ class Actor:
     username: str
     role: str
     factory_id: str | None = None
+    tenant_id: str | None = None
 
 
 SYSTEM = Actor("system", "system")

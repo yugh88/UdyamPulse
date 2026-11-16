@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 
 from api.audit import Actor
 from api.models.db import User, get_db
+from api.tenancy import bind_tenant
 from core.settings import get_settings
 
 ROLES = ("rm", "credit_officer", "risk", "msme")
@@ -39,6 +40,7 @@ def create_token(user: User) -> str:
         "sub": user.username,
         "role": user.role,
         "factory_id": user.factory_id,
+        "tid": user.tenant_id,
         "exp": datetime.now(UTC) + timedelta(minutes=s.jwt_ttl_minutes),
     }
     return jwt.encode(payload, s.jwt_secret, algorithm="HS256")
@@ -56,10 +58,15 @@ def get_current_user(
         payload = jwt.decode(creds.credentials, get_settings().jwt_secret, algorithms=["HS256"])
     except jwt.PyJWTError as exc:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid or expired token") from exc
+    tenant_id = payload.get("tid")
+    if not tenant_id:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid or expired token")
+    # From here on, every query in this request is limited to the caller's bank.
+    bind_tenant(db, tenant_id)
     user = db.query(User).filter_by(username=payload["sub"]).one_or_none()
     if user is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Unknown user")
-    return CurrentUser(user.username, user.role, user.factory_id)
+    return CurrentUser(user.username, user.role, user.factory_id, user.tenant_id)
 
 
 def require_roles(*roles: str) -> Callable[..., CurrentUser]:

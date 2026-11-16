@@ -18,6 +18,8 @@ class LoginResponse(BaseModel):
     role: str
     display_name: str
     factory_id: str | None = None
+    tenant_id: str
+    tenant_name: str
 
 
 class ApplicationCreate(BaseModel):

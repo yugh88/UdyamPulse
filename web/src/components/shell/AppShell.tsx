@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronDown, ChevronRight, ChevronsLeft, ChevronsRight, Clock, Keyboard, LogOut, Moon, PanelLeft, Search, Sun, UserRound } from "lucide-react";
+import { Building2, ChevronDown, ChevronRight, ChevronsLeft, ChevronsRight, Clock, Keyboard, LogOut, Moon, PanelLeft, Search, Sun, UserRound } from "lucide-react";
 import { Suspense, useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -145,6 +145,12 @@ export function AppShell() {
           <div className="flex-1 overflow-y-auto py-3">
             <SideNav collapsed={collapsed} />
           </div>
+          {!collapsed && session.tenant_name && (
+            <p className="truncate px-4 pb-2 text-xs text-fg-muted" title="Your bank. You see only this bank's data.">
+              <Building2 className="mr-1.5 inline h-3.5 w-3.5" aria-hidden />
+              {session.tenant_name}
+            </p>
+          )}
           <div className="border-t border-edge p-2">
             <Button
               variant="ghost"
@@ -235,6 +241,10 @@ export function AppShell() {
                 </Button>
               }
             >
+              <MenuLabel>
+                {session.display_name} · {session.tenant_name}
+              </MenuLabel>
+              <MenuSeparator />
               <MenuLabel>Switch role (demo only)</MenuLabel>
               {PERSONAS.map((p) => (
                 <MenuItem key={p.username} disabled={switching} onSelect={() => switchTo(p.username)}>

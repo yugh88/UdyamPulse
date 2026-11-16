@@ -2034,13 +2034,23 @@
               }
             ],
             "title": "Factory Id"
+          },
+          "tenant_id": {
+            "type": "string",
+            "title": "Tenant Id"
+          },
+          "tenant_name": {
+            "type": "string",
+            "title": "Tenant Name"
           }
         },
         "type": "object",
         "required": [
           "access_token",
           "role",
-          "display_name"
+          "display_name",
+          "tenant_id",
+          "tenant_name"
         ],
         "title": "LoginResponse"
       },

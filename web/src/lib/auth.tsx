@@ -8,6 +8,7 @@ export interface Session {
   role: Role;
   display_name: string;
   factory_id: string | null;
+  tenant_name: string;
 }
 
 export const ROLE_LABEL: Record<Role, string> = { rm: "Relationship Manager", credit_officer: "Credit Officer", risk: "Risk Head", msme: "MSME Owner" };
@@ -54,8 +55,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(
     async (username: string, password: string) => {
-      const r = await post<{ access_token: string; role: Role; display_name: string; factory_id: string | null }>("/auth/login", { username, password });
-      const s: Session = { username, role: r.role, display_name: r.display_name, factory_id: r.factory_id };
+      const r = await post<{ access_token: string; role: Role; display_name: string; factory_id: string | null; tenant_name: string }>("/auth/login", { username, password });
+      const s: Session = { username, role: r.role, display_name: r.display_name, factory_id: r.factory_id, tenant_name: r.tenant_name };
       qc.clear(); // never show one persona's cached data to the next
       localStorage.setItem("up_token", r.access_token);
       localStorage.setItem("up_session", JSON.stringify(s));

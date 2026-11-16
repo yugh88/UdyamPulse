@@ -10,6 +10,7 @@ from agents.ews_agent import EarlyWarningAgent
 from agents.providers.consent import MockAAConsentProvider
 from api.audit import SYSTEM
 from api.models.db import Application, AuditLog, Consent, ConsentEvent, DataSnapshot, SessionLocal
+from api.tenancy import bind_tenant
 from tests.conftest import hero_app_id, login
 
 
@@ -64,6 +65,7 @@ def test_staff_reads_do_not_write(client):
 
 def test_expired_consent_is_inactive_on_read_and_recorded_by_the_batch(client):
     with SessionLocal() as db:
+        bind_tenant(db, "bank-a")
         today = sim_date(db)
         c = db.query(Consent).filter_by(status="ACTIVE").first()
         c.expires_on = today - timedelta(days=1)

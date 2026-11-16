@@ -15,7 +15,8 @@ from agents.providers.consent import MockAAConsentProvider
 from agents.providers.lake import get_lake
 from api.audit import Actor
 from api.auth import hash_password
-from api.models.db import Application, Base, SessionLocal, User, get_engine
+from api.models.db import Application, Base, SessionLocal, Tenant, User, get_engine
+from api.tenancy import bind_tenant
 from core.settings import get_settings
 from core.timeline import month_end
 
@@ -28,6 +29,15 @@ USERS = [
     ("sharma", "Sharma Auto Components", "msme", HERO),
 ]
 PORTFOLIO_SIZE = 140
+# Two banks prove tenant isolation. Bank A carries the demo story; bank B is a small second portfolio.
+BANK_A, BANK_B = "bank-a", "bank-b"
+TENANTS = {BANK_A: "Sample Bank Ltd", BANK_B: "Second Bank Ltd"}
+USERS_B = [
+    ("rm2", "Relationship Manager · Rajkot", "rm", None),
+    ("co2", "Credit Officer · Second Bank", "credit_officer", None),
+    ("risk2", "Risk Office · Second Bank", "risk", None),
+]
+PORTFOLIO_SIZE_B = 20
 
 
 def main() -> None:
@@ -36,6 +46,10 @@ def main() -> None:
     Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
     db = SessionLocal()
+    for tid, name in TENANTS.items():
+        db.add(Tenant(id=tid, name=name))
+    db.commit()
+    bind_tenant(db, BANK_A)
     rng = np.random.default_rng(s.seed)
     seed_actor = Actor("seed", "system")
     lake = get_lake()
@@ -92,9 +106,42 @@ def main() -> None:
     db.commit()
 
     run = EarlyWarningAgent(db, seed_actor).run()
+
+    # ---- Bank B: its own users and accounts, drawn from factories bank A does not hold ----
+    bind_tenant(db, BANK_B)
+    for username, display, role, fid in USERS_B:
+        db.add(User(username=username, display_name=display, role=role, factory_id=fid,
+                    password_hash=hash_password(DEMO_PASSWORD)))
+    taken = set(chosen) | set(pending)
+    free = [f for f in others if f not in taken]
+    chosen_b = list(rng.choice(free, size=PORTFOLIO_SIZE_B, replace=False))
+    consent_b = MockAAConsentProvider(db)
+    for fid in chosen_b:
+        p = profiles.loc[fid]
+        sc = scores[(scores.factory_id == fid) & (scores.month == 15)].iloc[0]
+        hist = lake.history(fid, 15)
+        annual = float(hist.tail(12).gst_turnover.sum() * 12 / len(hist.tail(12)))
+        lim = assess_limit(annual, float(p.loan_requested_inr), int(sc.score), "APPROVE", float(hist.top_buyer_share.iloc[-1]))
+        app = Application(
+            factory_id=fid, state="MONITORING", channel="rm", requested_amount=float(p.loan_requested_inr),
+            score=int(sc.score), band=sc.band, pd_12m=float(sc.pd_12m), score_month=15, decision="APPROVED",
+            decision_comment="Sanctioned under programme (seed data)", decided_by="co2",
+            recommended_limit=lim.recommended_limit, sanctioned_limit=max(lim.recommended_limit, 1e5),
+            pricing_band=lim.pricing_band, disbursed_on=month_end(15) + timedelta(days=10),
+            disbursement_ref=f"LOS-SEEDB{fid[-4:]}", last_ews_month=19,
+        )
+        db.add(app)
+        db.flush()
+        consent_b.request(app.id, fid, month_end(15), "seed")
+    pending_b = str(rng.choice([f for f in free if f not in chosen_b]))
+    db.add(Application(factory_id=pending_b, state="APPLIED", channel="rm",
+                       requested_amount=float(profiles.loc[pending_b, "loan_requested_inr"])))
+    db.commit()
+    EarlyWarningAgent(db, seed_actor).run()
     print(f"seeded users={len(USERS) + 1} portfolio={len(chosen)} (stressed in window: {len(stressed)}) "
           f"pending={pending} initial_alerts={len(run.new_alerts)} sim_date={s.sim_start}")
     print(f"demo logins (password '{DEMO_PASSWORD}'): rm1, co1, risk1, sharma (MSME hero), msme2 (watch-band MSME)")
+    print(f"second bank ({TENANTS[BANK_B]}): rm2, co2, risk2 · {len(chosen_b)} monitored accounts")
     db.close()
 
 

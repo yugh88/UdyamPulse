@@ -9,6 +9,7 @@ from functools import lru_cache
 from sqlalchemy import JSON, Date, DateTime, Float, ForeignKey, Integer, String, Text, create_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
+from api.tenancy import ENFORCE_KEY, TenantScoped
 from core.settings import get_settings
 
 
@@ -20,7 +21,15 @@ class Base(DeclarativeBase):
     pass
 
 
-class User(Base):
+class Tenant(Base):
+    """A bank using the platform. Every business row belongs to exactly one tenant."""
+
+    __tablename__ = "tenants"
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    name: Mapped[str] = mapped_column(String(128))
+
+
+class User(TenantScoped, Base):
     __tablename__ = "users"
     id: Mapped[int] = mapped_column(primary_key=True)
     username: Mapped[str] = mapped_column(String(64), unique=True)
@@ -28,9 +37,10 @@ class User(Base):
     role: Mapped[str] = mapped_column(String(32))  # rm | credit_officer | risk | msme
     password_hash: Mapped[str] = mapped_column(String(256))
     factory_id: Mapped[str | None] = mapped_column(String(16), nullable=True)  # msme users only
+    branch: Mapped[str | None] = mapped_column(String(32), nullable=True)  # RM home cluster, for attribute checks
 
 
-class Application(Base):
+class Application(TenantScoped, Base):
     __tablename__ = "applications"
     id: Mapped[int] = mapped_column(primary_key=True)
     factory_id: Mapped[str] = mapped_column(String(16), index=True)
@@ -63,7 +73,7 @@ class Application(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
 
-class Consent(Base):
+class Consent(TenantScoped, Base):
     """Account Aggregator style consent artefact (one per application)."""
 
     __tablename__ = "consents"
@@ -81,7 +91,7 @@ class Consent(Base):
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
-class ConsentEvent(Base):
+class ConsentEvent(TenantScoped, Base):
     """Append-only consent ledger (DPDP): grant, data pulls, revocation, deletion jobs."""
 
     __tablename__ = "consent_ledger"
@@ -94,7 +104,7 @@ class ConsentEvent(Base):
     ts: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
-class DataSnapshot(Base):
+class DataSnapshot(TenantScoped, Base):
     """Pulled consented data held for an application. Deleted by the revocation deletion job."""
 
     __tablename__ = "data_snapshots"
@@ -106,7 +116,7 @@ class DataSnapshot(Base):
     pulled_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
-class Alert(Base):
+class Alert(TenantScoped, Base):
     __tablename__ = "alerts"
     id: Mapped[int] = mapped_column(primary_key=True)
     application_id: Mapped[int] = mapped_column(ForeignKey("applications.id"), index=True)
@@ -129,7 +139,7 @@ class Alert(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
-class Notification(Base):
+class Notification(TenantScoped, Base):
     """WhatsApp-style messages shown in the MSME app (mock channel)."""
 
     __tablename__ = "notifications"
@@ -142,7 +152,7 @@ class Notification(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
-class AuditLog(Base):
+class AuditLog(TenantScoped, Base):
     __tablename__ = "audit_log"
     id: Mapped[int] = mapped_column(primary_key=True)
     ts: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
@@ -156,7 +166,7 @@ class AuditLog(Base):
     output_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
 
-class AiUsage(Base):
+class AiUsage(TenantScoped, Base):
     """One row per LLM-writer call: which prompt template, which provider, how long, roughly how big."""
 
     __tablename__ = "ai_usage"
@@ -172,7 +182,7 @@ class AiUsage(Base):
     application_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
 
 
-class PlanProgress(Base):
+class PlanProgress(TenantScoped, Base):
     """Steps of the 90-day plan that the MSME owner has ticked off."""
 
     __tablename__ = "plan_progress"
@@ -213,6 +223,7 @@ def init_db() -> None:
 
 def get_db() -> Iterator[Session]:
     db = SessionLocal()
+    db.info[ENFORCE_KEY] = True  # request sessions are fail-closed until the tenant is bound from the JWT
     try:
         yield db
     except Exception:
