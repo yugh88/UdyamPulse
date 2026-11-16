@@ -35,7 +35,6 @@ def readiness(factory_id: str, db: Session = Depends(get_db),
     lake = get_lake()
     app = _latest_app(db, factory_id)
     profile = lake.profile(factory_id)
-    consent = get_consent_provider(db).active(app.id, sim_date(db))
     base = {"factory_id": factory_id, "name": profile["name"], "application_id": app.id, "state": app.state,
             "decision": app.decision, "review_requested": app.review_requested, "ai_label": AI_LABEL,
             "consent": get_consent_provider(db).summary(app.id, sim_date(db))}
