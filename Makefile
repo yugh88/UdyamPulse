@@ -5,7 +5,7 @@ VENV := .venv
 PY := $(VENV)/bin/python
 export MLFLOW_DISABLE_AGENT_HINT := 1
 
-.PHONY: help setup data lake train backtest seed pipeline api web demo test test-web e2e lint openapi clean
+.PHONY: help setup data lake train backtest seed pipeline api web demo demo-lite test test-web test-pg pg-up pg-down e2e lint openapi clean
 
 help:  ## Show targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-10s %s\n", $$1, $$2}'
@@ -55,8 +55,19 @@ demo: setup pipeline  ## Everything: build data/model, seed, start API + web at 
 	  (cd web && npm run dev -- --strictPort) & \
 	  wait
 
-test: $(VENV)/.installed  ## Run pytest
+demo-lite: demo  ## Same as demo: SQLite, no Docker, no services
+
+test: $(VENV)/.installed  ## Run pytest (SQLite)
 	$(PY) -m pytest -q
+
+pg-up:  ## Start a project-local PostgreSQL on :55432 (data in var/pg, non-superuser app role)
+	@bash ops/postgres/local.sh up
+
+pg-down:  ## Stop the project-local PostgreSQL
+	@bash ops/postgres/local.sh down
+
+test-pg: $(VENV)/.installed pg-up  ## Run pytest against PostgreSQL (migrations, partitions, row-level security)
+	UP_TEST_DB_URL=postgresql+psycopg://udyam_app@127.0.0.1:55432/udyampulse_test $(PY) -m pytest -q
 
 lint: $(VENV)/.installed web/node_modules/.installed  ## Ruff, ESLint, Prettier, TypeScript and contrast checks
 	$(VENV)/bin/ruff check .

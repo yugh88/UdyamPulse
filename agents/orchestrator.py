@@ -15,6 +15,7 @@ from agents.data_agent import DataAgent
 from agents.memo_agent import MemoAgent
 from agents.policy_engine import inr
 from agents.providers.lake import get_lake
+from api import serving
 from api.audit import Actor, log_event
 from api.models.db import Application, Notification, utcnow
 from ml.scoring import get_scorer
@@ -155,6 +156,7 @@ class Orchestrator(Agent):
                   output={"ref": app.disbursement_ref}, application_id=app.id)
         self._transition(app, "MONITORING")
         app.last_ews_month = app.score_month
+        serving.write_scores(self.db, app, range(1, (app.score_month or 0) + 1))  # history seen under consent
         self._notify(app.factory_id, f"Your limit of {inr(app.sanctioned_limit or 0)} is now active in your "
                                      f"account (ref {app.disbursement_ref}).",
                      f"आपकी {inr(app.sanctioned_limit or 0)} की लिमिट अब आपके खाते में चालू है "

@@ -7,6 +7,14 @@ on:
 jobs:
   python:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -22,8 +30,15 @@ jobs:
           python -m data_gen.lake
           python -m ml.train
           python -m ml.ews
-      - name: Tests
+      - name: Tests (SQLite)
         run: python -m pytest -q
+      - name: Tests (PostgreSQL: migrations, partitions, row-level security)
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -c "CREATE ROLE udyam_app LOGIN PASSWORD 'udyam_app' NOSUPERUSER NOBYPASSRLS"
+          psql -h localhost -U postgres -c "CREATE DATABASE udyampulse_test OWNER udyam_app"
+          UP_TEST_DB_URL=postgresql+psycopg://udyam_app:udyam_app@localhost:5432/udyampulse_test python -m pytest -q
       - name: Dependency scan (pip-audit)
         run: |
           pip install pip-audit

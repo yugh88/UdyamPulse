@@ -7,7 +7,8 @@ import tempfile
 from pathlib import Path
 
 _TMP = Path(tempfile.mkdtemp(prefix="udyampulse-test-"))
-os.environ["UP_DB_URL"] = f"sqlite:///{_TMP / 'test.db'}"
+# SQLite by default; set UP_TEST_DB_URL to run the same suite against PostgreSQL (migrations + RLS).
+os.environ["UP_DB_URL"] = os.environ.get("UP_TEST_DB_URL") or f"sqlite:///{_TMP / 'test.db'}"
 os.environ["UP_LLM_PROVIDER"] = "template"
 
 import pytest  # noqa: E402

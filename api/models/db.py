@@ -6,7 +6,7 @@ from collections.abc import Iterator
 from datetime import UTC, date, datetime
 from functools import lru_cache
 
-from sqlalchemy import JSON, Date, DateTime, Float, ForeignKey, Integer, String, Text, create_engine
+from sqlalchemy import JSON, Date, DateTime, Float, ForeignKey, Index, Integer, String, Text, create_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
 from api.tenancy import ENFORCE_KEY, TenantScoped
@@ -42,6 +42,8 @@ class User(TenantScoped, Base):
 
 class Application(TenantScoped, Base):
     __tablename__ = "applications"
+    __table_args__ = (Index("ix_applications_tenant_state", "tenant_id", "state"),
+                      Index("ix_applications_tenant_factory", "tenant_id", "factory_id"))
     id: Mapped[int] = mapped_column(primary_key=True)
     factory_id: Mapped[str] = mapped_column(String(16), index=True)
     state: Mapped[str] = mapped_column(String(24), default="APPLIED")
@@ -118,6 +120,7 @@ class DataSnapshot(TenantScoped, Base):
 
 class Alert(TenantScoped, Base):
     __tablename__ = "alerts"
+    __table_args__ = (Index("ix_alerts_tenant_status_severity", "tenant_id", "status", "severity"),)
     id: Mapped[int] = mapped_column(primary_key=True)
     application_id: Mapped[int] = mapped_column(ForeignKey("applications.id"), index=True)
     factory_id: Mapped[str] = mapped_column(String(16), index=True)
@@ -154,6 +157,7 @@ class Notification(TenantScoped, Base):
 
 class AuditLog(TenantScoped, Base):
     __tablename__ = "audit_log"
+    __table_args__ = (Index("ix_audit_log_tenant_id_id", "tenant_id", "id"),)
     id: Mapped[int] = mapped_column(primary_key=True)
     ts: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
     user: Mapped[str] = mapped_column(String(64))
@@ -192,6 +196,26 @@ class PlanProgress(TenantScoped, Base):
     done_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
+class AccountScore(TenantScoped, Base):
+    """Serving table: one row per monitored account per month (score, band, PD), written by the batch.
+    The portfolio screens read this with indexed SQL instead of scanning the lake in memory.
+
+    It grows by (accounts x months), so on PostgreSQL it is RANGE-partitioned by `month_date`
+    (one partition per month, see migration 0002): old months can be detached or archived without
+    touching current data, and month filters prune to a single partition."""
+
+    __tablename__ = "account_scores"
+    __table_args__ = (Index("ix_account_scores_tenant_month", "tenant_id", "month"),)
+    tenant_id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    factory_id: Mapped[str] = mapped_column(String(16), primary_key=True)
+    month_date: Mapped[date] = mapped_column(Date, primary_key=True)  # first day of the data month
+    month: Mapped[int] = mapped_column(Integer)  # panel month index
+    application_id: Mapped[int] = mapped_column(Integer)
+    score: Mapped[int] = mapped_column(Integer)
+    band: Mapped[str] = mapped_column(String(16))
+    pd_12m: Mapped[float] = mapped_column(Float)
+
+
 class SimClock(Base):
     __tablename__ = "sim_clock"
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -217,8 +241,39 @@ def SessionLocal() -> Session:
     return _session_factory()()
 
 
+def is_postgres() -> bool:
+    return get_engine().dialect.name == "postgresql"
+
+
 def init_db() -> None:
-    Base.metadata.create_all(get_engine())
+    """SQLite (lite demo): create tables directly. PostgreSQL: run the Alembic migrations, which also
+    create the monthly partitions and the row-level security policies."""
+    if is_postgres():
+        migrate()
+    else:
+        Base.metadata.create_all(get_engine())
+
+
+def migrate() -> None:
+    from alembic import command
+    from alembic.config import Config
+
+    from core.settings import ROOT
+
+    command.upgrade(Config(str(ROOT / "alembic.ini")), "head")
+
+
+def reset_db() -> None:
+    """Empty every table (used by the demo seed). Keeps the PostgreSQL schema, partitions and policies."""
+    engine = get_engine()
+    if is_postgres():
+        migrate()
+        tables = ", ".join(t.name for t in Base.metadata.sorted_tables)
+        with engine.begin() as conn:
+            conn.exec_driver_sql(f"TRUNCATE {tables} RESTART IDENTITY CASCADE")
+    else:
+        Base.metadata.drop_all(engine)
+        Base.metadata.create_all(engine)
 
 
 def get_db() -> Iterator[Session]:

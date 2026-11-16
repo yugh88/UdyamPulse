@@ -8,11 +8,11 @@ from sqlalchemy.orm import Session
 from agents.base import set_sim_date, sim_date, visible_month
 from agents.ews_agent import EarlyWarningAgent
 from agents.memo_agent import AI_LABEL
-from agents.providers.consent import get_consent_provider
 from agents.providers.lake import get_lake
+from api import serving
 from api.audit import log_event
 from api.auth import CurrentUser, require_roles
-from api.models.db import Alert, Application, User, get_db, utcnow
+from api.models.db import AccountScore, Alert, Application, Consent, User, get_db, utcnow
 from api.models.schemas import AlertAction, AlertBulk
 from core.timeline import month_label
 
@@ -26,31 +26,36 @@ LGD, EARLY_ACTION_EFFECT = 0.45, 0.40
 def portfolio(db: Session = Depends(get_db), user: CurrentUser = Depends(require_roles(*STAFF))) -> dict:
     lake = get_lake()
     vm = visible_month(db)
-    scores = lake.scores(vm)
+    today = sim_date(db)
     apps = db.query(Application).filter(Application.state == "MONITORING").all()
     open_alerts = db.query(Alert).filter(Alert.status == "OPEN").all()
     by_app: dict[int, list[Alert]] = {}
     for a in open_alerts:
         by_app.setdefault(a.application_id, []).append(a)
 
-    consent = get_consent_provider(db)
-    today = sim_date(db)
+    # Three set-based queries for the whole portfolio (no per-account lookups).
+    scores = serving.recent_scores(db, vm)
+    scores |= serving.latest_scores(db, [a.factory_id for a in apps if a.factory_id not in scores])
+    consented = {row[0] for row in db.query(Consent.application_id)
+                 .filter(Consent.status == "ACTIVE", Consent.expires_on >= today)}
     rows = []
     for app in apps:
+        s = scores.get(app.factory_id)
+        if not s:
+            continue  # not yet picked up by the monitoring batch
         p = lake.profile(app.factory_id)
-        s = scores[scores.factory_id == app.factory_id].sort_values("month")
-        cur = s.iloc[-1]
-        prev = s[s.month == vm - 3]
+        cur = s[-1]
+        prev = next((x for x in s if x.month == cur.month - 3), None)
         alerts = by_app.get(app.id, [])
         top = max(alerts, key=lambda a: SEV_RANK[a.severity]) if alerts else None
         rows.append({
             "application_id": app.id, "factory_id": app.factory_id, "name": p["name"], "sector": p["sector_label"],
             "cluster": p["cluster"], "udyam_category": p["udyam_category"], "exposure": app.sanctioned_limit or 0,
-            "score": int(cur.score), "band": cur.band, "pd_12m": round(float(cur.pd_12m), 4),
-            "trend_3m": int(cur.score - prev.score.iloc[0]) if not prev.empty else 0,
-            "sparkline": [int(x) for x in s.score.tail(6)],
+            "score": cur.score, "band": cur.band, "pd_12m": round(cur.pd_12m, 4),
+            "trend_3m": cur.score - prev.score if prev else 0,
+            "sparkline": [x.score for x in s[-6:]], "score_month": month_label(cur.month),
             "open_alerts": len(alerts), "max_severity": top.severity if top else None,
-            "consent_active": consent.active(app.id, today) is not None,
+            "consent_active": app.id in consented,
         })
 
     sev_counts = {k: sum(1 for a in open_alerts if a.severity == k) for k in ("high", "medium", "low")}
@@ -88,24 +93,23 @@ def migration(db: Session = Depends(get_db), user: CurrentUser = Depends(require
     vm = visible_month(db)
     apps = db.query(Application).filter(Application.state == "MONITORING").all()
     by_factory = {a.factory_id: a for a in apps}
-    scores = lake.scores(vm)
-    scores = scores[scores.factory_id.isin(set(by_factory)) & scores.month.isin([vm - 1, vm])]
-    prev = scores[scores.month == vm - 1].set_index("factory_id")
-    cur = scores[scores.month == vm].set_index("factory_id")
+    rows = db.query(AccountScore).filter(AccountScore.month.in_([vm - 1, vm])).all()
+    prev = {r.factory_id: r for r in rows if r.month == vm - 1 and r.factory_id in by_factory}
+    cur = {r.factory_id: r for r in rows if r.month == vm and r.factory_id in by_factory}
+    both = sorted(set(prev) & set(cur))
     matrix = {a: {b: 0 for b in BAND_ORDER} for a in BAND_ORDER}
     movers = []
-    for fid in cur.index.intersection(prev.index):
-        a, b = prev.loc[fid, "band"], cur.loc[fid, "band"]
+    for fid in both:
+        a, b = prev[fid].band, cur[fid].band
         matrix[a][b] += 1
         if a != b:
             movers.append({"application_id": by_factory[fid].id, "factory_id": fid, "name": lake.profile(fid)["name"],
-                           "from_band": a, "to_band": b, "from_score": int(prev.loc[fid, "score"]),
-                           "to_score": int(cur.loc[fid, "score"]),
+                           "from_band": a, "to_band": b, "from_score": prev[fid].score, "to_score": cur[fid].score,
                            "direction": "down" if BAND_ORDER.index(b) > BAND_ORDER.index(a) else "up"})
     movers.sort(key=lambda m: m["to_score"] - m["from_score"])
     return {
         "from_month": month_label(vm - 1), "to_month": month_label(vm), "bands": list(BAND_ORDER), "matrix": matrix,
-        "accounts": int(len(cur.index.intersection(prev.index))),
+        "accounts": len(both),
         "downgrades": sum(1 for m in movers if m["direction"] == "down"),
         "upgrades": sum(1 for m in movers if m["direction"] == "up"),
         "movers": movers,

@@ -13,9 +13,10 @@ from agents.ews_agent import EarlyWarningAgent
 from agents.policy_engine import assess_limit
 from agents.providers.consent import MockAAConsentProvider
 from agents.providers.lake import get_lake
+from api import serving
 from api.audit import Actor
 from api.auth import hash_password
-from api.models.db import Application, Base, SessionLocal, Tenant, User, get_engine
+from api.models.db import Application, SessionLocal, Tenant, User, reset_db
 from api.tenancy import bind_tenant
 from core.settings import get_settings
 from core.timeline import month_end
@@ -42,9 +43,7 @@ PORTFOLIO_SIZE_B = 20
 
 def main() -> None:
     s = get_settings()
-    engine = get_engine()
-    Base.metadata.drop_all(engine)
-    Base.metadata.create_all(engine)
+    reset_db()
     db = SessionLocal()
     for tid, name in TENANTS.items():
         db.add(Tenant(id=tid, name=name))
@@ -99,6 +98,7 @@ def main() -> None:
         db.add(app)
         db.flush()
         consent.request(app.id, fid, month_end(m0), "seed")
+        serving.write_scores(db, app, range(1, 20))
 
     for fid in pending:
         db.add(Application(factory_id=fid, state="APPLIED", channel="rm" if fid == HERO else "app",
@@ -133,6 +133,7 @@ def main() -> None:
         db.add(app)
         db.flush()
         consent_b.request(app.id, fid, month_end(15), "seed")
+        serving.write_scores(db, app, range(1, 20))
     pending_b = str(rng.choice([f for f in free if f not in chosen_b]))
     db.add(Application(factory_id=pending_b, state="APPLIED", channel="rm",
                        requested_amount=float(profiles.loc[pending_b, "loan_requested_inr"])))

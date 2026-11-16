@@ -9,6 +9,7 @@ from agents.base import Agent, sim_date
 from agents.policy_engine import inr
 from agents.providers.consent import ConsentError, get_consent_provider
 from agents.providers.lake import get_lake
+from api import serving
 from api.models.db import Alert, Application, Notification
 from core.timeline import last_visible_month, month_label
 from ml.ews import explain, next_best_action
@@ -86,6 +87,7 @@ class EarlyWarningAgent(Agent):
                 if row["severity"] in MSME_MESSAGE:
                     self.db.add(Notification(factory_id=app.factory_id, text=MSME_MESSAGE[row["severity"]],
                                              text_hi=MSME_MESSAGE_HI[row["severity"]], sim_date=today))
+            serving.write_scores(self.db, app, months)  # only reached while consent allows new data
             app.last_ews_month = visible
             self.db.commit()
         return run

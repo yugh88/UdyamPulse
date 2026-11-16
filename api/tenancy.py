@@ -30,17 +30,26 @@ class TenantIsolationError(RuntimeError):
 def bind_tenant(session: Session, tenant_id: str) -> None:
     session.info[TENANT_KEY] = tenant_id
     session.info.pop(BYPASS_KEY, None)
-    _apply_rls(session)
+    if session.in_transaction():
+        _set_rls(session.connection(), session)
 
 
 def allow_cross_tenant(session: Session) -> None:
     """Explicit opt-out for the few places that must look across tenants (login lookup, seeding)."""
     session.info[BYPASS_KEY] = True
+    if session.in_transaction():
+        _set_rls(session.connection(), session)
 
 
-def _apply_rls(session: Session) -> None:
-    if session.get_bind().dialect.name == "postgresql" and session.in_transaction():
-        session.execute(text("SELECT set_config('app.tenant_id', :tid, true)"), {"tid": session.info.get(TENANT_KEY, "")})
+def _set_rls(connection, session: Session) -> None:
+    """PostgreSQL only: publish the tenant to the Row-Level Security policies for this transaction.
+    Sessions that are not request-scoped and have no tenant (seeding, batch set-up) run unrestricted."""
+    if connection.dialect.name != "postgresql":
+        return
+    tenant = session.info.get(TENANT_KEY) or ""
+    bypass = bool(session.info.get(BYPASS_KEY)) or (not tenant and not session.info.get(ENFORCE_KEY))
+    connection.execute(text("SELECT set_config('app.tenant_id', :tid, true), set_config('app.tenant_bypass', :b, true)"),
+                       {"tid": tenant, "b": "on" if bypass else "off"})
 
 
 @event.listens_for(Session, "do_orm_execute")
@@ -80,5 +89,4 @@ def _stamp_tenant(session: Session, _ctx, _instances) -> None:
 
 @event.listens_for(Session, "after_begin")
 def _rls_on_begin(session: Session, _transaction, connection) -> None:
-    if connection.dialect.name == "postgresql":
-        connection.execute(text("SELECT set_config('app.tenant_id', :tid, true)"), {"tid": session.info.get(TENANT_KEY, "")})
+    _set_rls(connection, session)
