@@ -44,7 +44,7 @@ def client(pipeline):
     from api.main import app
 
     seed.main()
-    with TestClient(app) as c:
+    with TestClient(app, base_url="http://testserver/v1") as c:  # business endpoints are versioned
         yield c
 
 

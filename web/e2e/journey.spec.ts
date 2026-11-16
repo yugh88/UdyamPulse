@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { expectAccessible, loginAs, setTheme, watchErrors } from "./helpers";
 
 async function reset(page: Page) {
-  const r = await page.request.post("/api/demo/reset");
+  const r = await page.request.post("/api/v1/demo/reset");
   expect(r.ok()).toBeTruthy();
 }
 async function switchTo(page: Page, role: string) {

@@ -3,7 +3,7 @@ import { expectAccessible, loginAs, setTheme, watchErrors } from "./helpers";
 
 // Start from the seeded state whatever ran before.
 test.beforeAll(async ({ request }) => {
-  expect((await request.post("/api/demo/reset")).ok()).toBeTruthy();
+  expect((await request.post("/api/v1/demo/reset")).ok()).toBeTruthy();
 });
 
 const HOME: Record<string, RegExp> = { rm1: /\/console$/, co1: /\/console$/, risk1: /\/cockpit$/, sharma: /\/msme$/ };

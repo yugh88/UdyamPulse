@@ -6,7 +6,7 @@ services:
     environment:
       UP_DB_URL: sqlite:////app/var/udyampulse.db
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/readyz')"]
       interval: 10s
       retries: 30
   web:

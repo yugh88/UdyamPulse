@@ -1,4 +1,4 @@
-const BASE = "/api";
+const BASE = "/api/v1";
 export const UNAUTHORIZED_EVENT = "up-unauthorized";
 
 export class ApiError extends Error {

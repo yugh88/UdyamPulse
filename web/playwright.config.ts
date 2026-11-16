@@ -16,7 +16,7 @@ export default defineConfig({
   webServer: [
     {
       command: `cd .. && UP_DB_URL=${DB} .venv/bin/python -m api.seed && UP_DB_URL=${DB} .venv/bin/uvicorn api.main:app --host 127.0.0.1 --port ${API_PORT}`,
-      url: `http://127.0.0.1:${API_PORT}/health`,
+      url: `http://127.0.0.1:${API_PORT}/readyz`,
       reuseExistingServer: false,
       timeout: 120_000,
     },

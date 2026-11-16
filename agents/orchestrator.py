@@ -34,6 +34,10 @@ class InvalidTransition(Exception):
     pass
 
 
+class ValidationFailed(Exception):
+    """A business rule on the input was not met (reported to the client as 422)."""
+
+
 class Orchestrator(Agent):
     name = "orchestrator"
 
@@ -118,7 +122,7 @@ class Orchestrator(Agent):
 
     def decide(self, app: Application, decision: str, comment: str, sanctioned_limit: float | None) -> dict:
         if not comment or not comment.strip():
-            raise ValueError("A decision comment is mandatory")
+            raise ValidationFailed("A decision comment is mandatory")
         self._transition(app, "DECIDED")
         app.decision, app.decision_comment, app.decided_by = decision, comment.strip(), self.actor.username
         app.decided_at = utcnow()
