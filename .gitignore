@@ -29,3 +29,7 @@ web/dist/
 .vscode/
 
 web/*.tsbuildinfo
+
+# Web tests
+web/test-results/
+web/playwright-report/
