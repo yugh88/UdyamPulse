@@ -49,8 +49,7 @@ class Orchestrator(Agent):
         old = app.state
         app.state = new_state
         log_event(self.db, self.actor, agent=self.name, tool="state_machine", action="transition",
-                  inputs={"from": old, "to": new_state}, output={"state": new_state}, application_id=app.id,
-                  commit=False)
+                  inputs={"from": old, "to": new_state}, output={"state": new_state}, application_id=app.id)
 
     def _notify(self, factory_id: str, text: str, text_hi: str) -> None:
         self.db.add(Notification(factory_id=factory_id, text=text, text_hi=text_hi, sim_date=sim_date(self.db)))
@@ -65,6 +64,7 @@ class Orchestrator(Agent):
         log_event(self.db, self.actor, agent=self.name, tool="applications", action="create",
                   inputs={"factory_id": factory_id, "requested_amount": app.requested_amount, "channel": channel},
                   output={"id": app.id}, application_id=app.id)
+        self.db.commit()
         return app
 
     def consent(self, app: Application) -> dict:
@@ -136,7 +136,7 @@ class Orchestrator(Agent):
                          "या किसी अधिकारी से समीक्षा का अनुरोध करें।")
         log_event(self.db, self.actor, agent=self.name, tool="credit_decision", action=decision.lower(),
                   inputs={"comment": comment, "sanctioned_limit": app.sanctioned_limit},
-                  output={"decision": decision}, application_id=app.id, commit=False)
+                  output={"decision": decision}, application_id=app.id)
         self.db.commit()
         return {"decision": decision, "kfs": app.kfs}
 
@@ -148,7 +148,7 @@ class Orchestrator(Agent):
         app.disbursed_on = sim_date(self.db)
         log_event(self.db, self.actor, agent=self.name, tool="los_stub.disburse", action="disburse",
                   inputs={"amount": app.sanctioned_limit, "to": "borrower's own account (direct, per DLD 2025)"},
-                  output={"ref": app.disbursement_ref}, application_id=app.id, commit=False)
+                  output={"ref": app.disbursement_ref}, application_id=app.id)
         self._transition(app, "MONITORING")
         app.last_ews_month = app.score_month
         self._notify(app.factory_id, f"Your limit of {inr(app.sanctioned_limit or 0)} is now active in your "

@@ -235,4 +235,5 @@ def request_review(app_id: int, body: ReviewRequest, db: Session = Depends(get_d
     app.review_requested, app.review_note = True, body.note
     log_event(db, user, agent="api", tool="review_request", action="request_review", inputs={"note": body.note},
               application_id=app.id)
+    db.commit()
     return {"status": "Review requested — a credit officer will respond", "application_id": app.id}

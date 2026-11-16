@@ -1,5 +1,8 @@
 """Audit trail: every API action and agent tool call is written to `audit_log` with PII masked
-and a SHA-256 hash of the output (so outputs are verifiable without storing them twice)."""
+and a SHA-256 hash of the output (so outputs are verifiable without storing them twice).
+
+`log_event` only adds the row to the session. It never commits: the audit entry and the business
+change it describes are committed together by the caller, or rolled back together."""
 
 from __future__ import annotations
 
@@ -67,7 +70,6 @@ def log_event(
     inputs: dict | None = None,
     output: Any = None,
     application_id: int | None = None,
-    commit: bool = True,
 ) -> AuditLog:
     entry = AuditLog(
         user=actor.username,
@@ -80,6 +82,4 @@ def log_event(
         output_hash=output_hash(output) if output is not None else None,
     )
     db.add(entry)
-    if commit:
-        db.commit()
     return entry

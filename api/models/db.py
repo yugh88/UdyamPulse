@@ -58,6 +58,7 @@ class Application(Base):
     last_ews_month: Mapped[int | None] = mapped_column(Integer, nullable=True)
     review_requested: Mapped[bool] = mapped_column(default=False)
     review_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    plan_cache: Mapped[dict | None] = mapped_column(JSON, nullable=True)  # advisor plan for one data month
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
@@ -214,5 +215,8 @@ def get_db() -> Iterator[Session]:
     db = SessionLocal()
     try:
         yield db
+    except Exception:
+        db.rollback()  # a failed request leaves nothing half-written
+        raise
     finally:
         db.close()

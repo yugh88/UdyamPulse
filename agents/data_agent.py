@@ -86,8 +86,7 @@ class DataAgent(Agent):
         )
         self.db.add(DataSnapshot(application_id=app.id, factory_id=app.factory_id, upto_month=upto,
                                  payload={"months": len(history), "checks": [asdict(c) for c in checks]}))
-        self.db.commit()
-        return result
+        return result  # committed by the caller together with the step that needed the data
 
 
 __all__ = ["DataAgent", "DataPullResult", "ConsentError", "reconcile"]

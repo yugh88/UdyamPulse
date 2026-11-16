@@ -53,6 +53,8 @@ class EarlyWarningAgent(Agent):
         lake = get_lake()
         scores = lake.scores(visible)
         provider = get_consent_provider(self.db)
+        provider.expire_due(today)
+        self.db.commit()
         apps = self.db.query(Application).filter(Application.state == "MONITORING").all()
         for app in apps:
             start = (app.last_ews_month or 0) + 1

@@ -1,13 +1,14 @@
 from __future__ import annotations
 
+import copy
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from agents.advisor_agent import AdvisorAgent
 from agents.base import sim_date, visible_month
-from agents.data_agent import DataAgent
 from agents.memo_agent import AI_LABEL
-from agents.providers.consent import ConsentError, get_consent_provider
+from agents.providers.consent import get_consent_provider
 from agents.providers.lake import get_lake
 from api.audit import log_event
 from api.auth import CurrentUser, ensure_factory_access, require_roles
@@ -38,28 +39,35 @@ def readiness(factory_id: str, db: Session = Depends(get_db),
     base = {"factory_id": factory_id, "name": profile["name"], "application_id": app.id, "state": app.state,
             "decision": app.decision, "review_requested": app.review_requested, "ai_label": AI_LABEL,
             "consent": get_consent_provider(db).summary(app.id, sim_date(db))}
-    try:
-        pull = DataAgent(db, user).pull(app)
-    except ConsentError:
-        last = app.score_detail
-        return {**base, "data_stale": True,
-                "message": "Consent revoked: no new data is being pulled. Showing your last assessment only.",
-                "message_hi": "सहमति वापस ले ली गई है: अब कोई नया डेटा नहीं लिया जा रहा। केवल आपका पिछला आकलन दिखाया जा रहा है।",
-                "score": last["score"] if last else None, "band": last["band"] if last else None,
-                "plan": None}
-    row = lake.features(factory_id, pull.upto_month)
+    stale = {**base, "data_stale": True,
+             "message": "Consent revoked: no new data is being pulled. Showing your last assessment only.",
+             "message_hi": "सहमति वापस ले ली गई है: अब कोई नया डेटा नहीं लिया जा रहा। केवल आपका पिछला आकलन दिखाया जा रहा है।",
+             "score": (app.score_detail or {}).get("score"), "band": (app.score_detail or {}).get("band"), "plan": None}
+    if not base["consent"]["active"]:
+        return stale
+    # Read-only view of data already covered by the active consent: viewing the app is not a new data
+    # pull, so nothing is written to the ledger, the snapshots or the audit trail.
+    upto = visible_month(db)
+    row = lake.features(factory_id, upto)
     score = get_scorer().explain_row(row).to_dict()
     for r in score["reasons"]:  # the owner can read the app in Hindi
         r["text_hi"] = describe_hi(r["feature"], r["value"])
     for p in score["pillars"]:
         p["label_hi"] = PILLARS_HI[p["pillar"]]
-    history = lake.history(factory_id, pull.upto_month)
-    plan = AdvisorAgent(db, user).plan(score, history)
+    cached = app.plan_cache or {}
+    if cached.get("month") == upto:
+        plan = cached["plan"]
+    else:
+        # First view for this data month: the advisor writes the plan once (audited, logged as AI usage).
+        plan = AdvisorAgent(db, user).plan(score, lake.history(factory_id, upto))
+        app.plan_cache = {"month": upto, "plan": plan}
+        db.commit()
+    plan = copy.deepcopy(plan)  # per-request copy: progress ticks are added below, never stored in the cache
     done = {p.step_key for p in db.query(PlanProgress).filter_by(factory_id=factory_id)}
     for step in plan["steps"]:
         step["done"] = step["key"] in done
     plan["steps_done"] = sum(1 for step in plan["steps"] if step["done"])
-    return {**base, "data_stale": False, "data_month": month_label(pull.upto_month), "score": score["score"],
+    return {**base, "data_stale": False, "data_month": month_label(upto), "score": score["score"],
             "band": score["band"], "pillars": score["pillars"], "reasons": score["reasons"], "plan": plan}
 
 
@@ -110,4 +118,5 @@ def erasure_request(factory_id: str, db: Session = Depends(get_db),
                     user: CurrentUser = Depends(require_roles("msme"))) -> dict:
     ensure_factory_access(user, factory_id)
     log_event(db, user, agent="api", tool="dpdp_rights", action="erasure_request", inputs={"factory_id": factory_id})
+    db.commit()
     return {"status": "Erasure request logged; the lender's grievance officer will respond within 30 days"}

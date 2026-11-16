@@ -17,6 +17,7 @@ def login(body: LoginRequest, db: Session = Depends(get_db)) -> LoginResponse:
     if user is None or not verify_password(body.password, user.password_hash):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid username or password")
     log_event(db, Actor(user.username, user.role), agent="api", tool="auth", action="login")
+    db.commit()
     return LoginResponse(access_token=create_token(user), role=user.role, display_name=user.display_name,
                          factory_id=user.factory_id)
 

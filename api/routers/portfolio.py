@@ -164,6 +164,7 @@ def action_alert(alert_id: int, body: AlertAction, db: Session = Depends(get_db)
     log_event(db, user, agent="api", tool="alerts", action="log_action",
               inputs={"alert_id": alert_id, "action": body.action, "note": body.note, "outcome": body.outcome},
               output={"status": "ACTIONED"}, application_id=alert.application_id)
+    db.commit()
     return {"id": alert.id, "status": alert.status, "action_taken": alert.action_taken}
 
 
@@ -185,6 +186,7 @@ def bulk_alerts(body: AlertBulk, db: Session = Depends(get_db),
     log_event(db, user, agent="api", tool="alerts", action=f"bulk_{body.action}",
               inputs={"alert_ids": sorted(a.id for a in alerts), "owner": body.owner},
               output={"updated": len(alerts)})
+    db.commit()
     return {"updated": len(alerts), "skipped": len(set(body.ids)) - len(alerts)}
 
 
@@ -202,4 +204,5 @@ def advance(days: int = Query(default=7, ge=1, le=120), db: Session = Depends(ge
     run = EarlyWarningAgent(db, user).run()
     log_event(db, user, agent="api", tool="sim_clock", action="advance",
               inputs={"days": days, "from": str(before)}, output={"to": str(after), **run.to_dict()})
+    db.commit()
     return {"sim_date": str(after), "data_month": month_label(visible_month(db)), **run.to_dict()}
