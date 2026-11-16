@@ -111,6 +111,7 @@ These are stated plainly because the plan asks for honest numbers.
 | M6 | Drift is PSI of train against test for ten features, computed once. There is no monthly series and no warning badge. | `ml/reports/drift.json` |
 | M7 | No challenger model and no what-if endpoint. | `ml/` |
 | M8 | **The hero factory is scripted.** `_apply_hero_script` pins its stress months so the demo shows exactly e-way −42% and kWh −32%. This is fine for a demo but must be disclosed, and the hero must stay out of any headline metric claim. | `data_gen/generate.py` |
+| M10 | **The model is not monotonic in signals that have a clear economic direction.** Found while building the what-if simulator: for some factories a 30% fall in dispatches, or a 15-point rise in top-buyer share, *raises* the score by 8 to 25 points. For the hero, a 26% fall in the 3-month e-way bill count adds 21 points on its own. This is the overfitting in M1 showing up in individual decisions. Fix in P5a: monotone constraints on directional features, then report the effect on AUC. Until then the simulator shows what the model really does, labelled as a simulation. | `ml/simulate.py`, measured 16 Nov 2026 |
 | M9 | A unit test asserts the AUC target is met, which ties the test suite to a metric and creates pressure to tune toward it. | `tests/test_scoring.py` |
 
 ## 4. Ranked fix list
@@ -132,7 +133,7 @@ Ranked by demo risk first, then judge impact, then effort. Phase refers to secti
 | 11 | Hash-chained audit with a verify endpoint, field-level PII encryption, argon2, short JWT with refresh cookie, security headers | B3, X1, X2, X3, X4 | P4 |
 | 12 | Structured logs, Prometheus metrics, traces, Grafana dashboard; non-root multi-stage images; model trained at build time, not at start | X5, X6, S8, B8 | P4 |
 | 13 | Blocking CI scans, ESLint, Vitest, Playwright with axe, Lighthouse budget | X7, U10 | P1–P6 |
-| 14 | Calibration, EWS operating-point table, challenger, monthly PSI, fairness thresholds, bootstrap confidence intervals | M1–M7, M9 | P5 |
+| 14 | Calibration, monotone constraints, EWS operating-point table, challenger, monthly PSI, fairness thresholds, bootstrap confidence intervals | M1–M7, M9, M10 | P5a, P5 |
 | 15 | Vectorised generator to 1 lakh factories, batch benchmarks, k6 load test, capacity plan and performance report | S7, X8 | P5 |
 | 16 | Guided demo mode, reset in under 3 s, `/system` page, service worker that caches the built assets, README and media | U8, U11 | P6 |
 | 17 | Threat model, Kubernetes manifests with HPA and KEDA, Terraform skeleton | X8 | P4 |

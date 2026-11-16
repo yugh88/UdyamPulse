@@ -1,13 +1,15 @@
 from __future__ import annotations
 
 import json
+import time
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from agents.providers.lake import get_lake
+from agents.providers.llm import get_llm
 from api.auth import CurrentUser, require_roles
-from api.models.db import AuditLog, get_db
+from api.models.db import AiUsage, AuditLog, Consent, ConsentEvent, get_db
 from core.settings import get_settings
 
 router = APIRouter(tags=["governance"])
@@ -51,3 +53,60 @@ def factories(q: str = "", limit: int = Query(default=20, le=100),
         df = df[mask]
     cols = ["factory_id", "name", "sector_label", "cluster", "udyam_category", "turnover_band", "loan_requested_inr"]
     return df[cols].head(limit).to_dict(orient="records")
+
+
+@router.get("/consent-ledger")
+def consent_ledger(limit: int = Query(default=300, le=2000), db: Session = Depends(get_db),
+                   user: CurrentUser = Depends(require_roles("risk"))) -> dict:
+    """Portfolio-wide consent ledger: grants, data pulls, blocked pulls, expiries, revocations, deletion jobs."""
+    lake = get_lake()
+    counts = {st: db.query(Consent).filter_by(status=st).count() for st in ("ACTIVE", "REVOKED", "EXPIRED")}
+    rows = db.query(ConsentEvent).order_by(ConsentEvent.id.desc()).limit(limit).all()
+    return {
+        "consents": counts,
+        "events": [{"id": e.id, "ts": e.ts.isoformat(), "event": e.event, "consent_id": e.consent_id,
+                    "factory_id": e.factory_id, "name": lake.profile(e.factory_id)["name"], "actor": e.actor,
+                    "detail": e.detail} for e in rows],
+    }
+
+
+@router.get("/ai-usage")
+def ai_usage(limit: int = Query(default=300, le=2000), db: Session = Depends(get_db),
+             user: CurrentUser = Depends(require_roles("risk"))) -> dict:
+    """Every LLM-writer call: prompt template, provider, latency and a token estimate (characters / 4)."""
+    rows = db.query(AiUsage).order_by(AiUsage.id.desc()).limit(limit).all()
+    lat = sorted(r.latency_ms for r in rows)
+    by_provider: dict[str, int] = {}
+    for r in rows:
+        by_provider[r.provider] = by_provider.get(r.provider, 0) + 1
+    return {
+        "summary": {
+            "calls": len(rows), "by_provider": by_provider, "fallbacks": sum(1 for r in rows if r.fallback),
+            "p50_latency_ms": lat[len(lat) // 2] if lat else None,
+            "p95_latency_ms": lat[min(len(lat) - 1, int(len(lat) * 0.95))] if lat else None,
+            "tokens_est": sum(r.tokens_est for r in rows),
+            "provider_in_use": get_llm().name,
+        },
+        "calls": [{"id": r.id, "ts": r.ts.isoformat(), "agent": r.agent, "template_id": r.template_id,
+                   "provider": r.provider, "location": "local" if r.provider == "template" else "cloud",
+                   "latency_ms": r.latency_ms, "tokens_est": r.tokens_est, "fallback": r.fallback, "user": r.user,
+                   "application_id": r.application_id} for r in rows],
+    }
+
+
+@router.post("/demo/reset", tags=["demo"])
+def reset_demo() -> dict:
+    """Presenter control: restore the seeded demo state. Available only in demo mode (local synthetic data)."""
+    if not get_settings().demo_mode:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
+    from api import seed
+
+    t0 = time.perf_counter()
+    seed.main()
+    return {"status": "reset", "took_ms": round((time.perf_counter() - t0) * 1000),
+            "sim_date": str(get_settings().sim_start)}
+
+
+@router.get("/demo/status", tags=["demo"])
+def demo_status() -> dict:
+    return {"demo_mode": get_settings().demo_mode}

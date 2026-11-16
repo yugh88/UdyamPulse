@@ -46,6 +46,9 @@ class DuckDBLakeStore:
             raise KeyError(f"{factory_id}@{month}")
         return rows.iloc[0]
 
+    def features_month(self, month: int) -> pd.DataFrame:
+        return self._gold[self._gold.month == month]
+
     def scores(self, upto_month: int) -> pd.DataFrame:
         return self._scores[self._scores.month <= upto_month]
 

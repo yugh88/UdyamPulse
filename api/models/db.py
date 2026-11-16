@@ -50,6 +50,7 @@ class Application(Base):
     decision: Mapped[str | None] = mapped_column(String(16), nullable=True)  # APPROVED | REJECTED
     decision_comment: Mapped[str | None] = mapped_column(Text, nullable=True)
     decided_by: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     kfs: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     sanctioned_limit: Mapped[float | None] = mapped_column(Float, nullable=True)
     disbursement_ref: Mapped[str | None] = mapped_column(String(64), nullable=True)
@@ -119,6 +120,10 @@ class Alert(Base):
     action_taken: Mapped[str | None] = mapped_column(String(64), nullable=True)
     action_note: Mapped[str | None] = mapped_column(Text, nullable=True)
     actioned_by: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    outcome: Mapped[str | None] = mapped_column(String(32), nullable=True)  # set when the action is logged
+    owner: Mapped[str | None] = mapped_column(String(64), nullable=True)  # staff user responsible
+    acknowledged_by: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    acknowledged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     raised_on: Mapped[date] = mapped_column(Date)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
@@ -147,6 +152,32 @@ class AuditLog(Base):
     application_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
     inputs: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     output_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+
+class AiUsage(Base):
+    """One row per LLM-writer call: which prompt template, which provider, how long, roughly how big."""
+
+    __tablename__ = "ai_usage"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    ts: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+    agent: Mapped[str] = mapped_column(String(48))
+    template_id: Mapped[str] = mapped_column(String(64))
+    provider: Mapped[str] = mapped_column(String(32))  # template (local) | azure_openai | openai
+    latency_ms: Mapped[float] = mapped_column(Float)
+    tokens_est: Mapped[int] = mapped_column(Integer)  # estimate: characters / 4
+    fallback: Mapped[bool] = mapped_column(default=False)  # provider failed or was rejected by the number guard
+    user: Mapped[str] = mapped_column(String(64))
+    application_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+
+
+class PlanProgress(Base):
+    """Steps of the 90-day plan that the MSME owner has ticked off."""
+
+    __tablename__ = "plan_progress"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    factory_id: Mapped[str] = mapped_column(String(16), index=True)
+    step_key: Mapped[str] = mapped_column(String(64))
+    done_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
 class SimClock(Base):

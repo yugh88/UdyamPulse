@@ -11,10 +11,11 @@ from agents.providers.consent import get_consent_provider
 from agents.providers.lake import get_lake
 from api.audit import log_event
 from api.auth import CurrentUser, ensure_factory_access, get_current_user, require_roles
-from api.models.db import Alert, Application, ConsentEvent, get_db
+from api.models.db import Alert, Application, AuditLog, ConsentEvent, get_db, utcnow
 from api.models.schemas import ApplicationCreate, DecisionRequest, ReviewRequest, ScoreResponse
 from core.settings import get_settings
 from core.timeline import month_label
+from ml.features import format_value
 
 router = APIRouter(prefix="/applications", tags=["applications"])
 STAFF = ("rm", "credit_officer", "risk")
@@ -34,7 +35,69 @@ def _summary(app: Application, profile: dict) -> dict:
         "cluster": profile["cluster"], "udyam_category": profile["udyam_category"], "state": app.state,
         "requested_amount": app.requested_amount, "score": app.score, "band": app.band, "decision": app.decision,
         "channel": app.channel, "created_at": app.created_at.isoformat() if app.created_at else None,
-        "review_requested": app.review_requested,
+        "last_activity": (app.updated_at or app.created_at).isoformat() if (app.updated_at or app.created_at) else None,
+        "pd_12m": app.pd_12m, "review_requested": app.review_requested,
+    }
+
+
+SIGNAL_COLUMNS = ("eway_value", "einvoice_value", "open_po_value", "aa_credits", "aa_debits", "avg_balance", "bounces",
+                  "kwh", "rm_purchases", "epfo_headcount", "avg_days_to_pay", "top_buyer_share",
+                  "gst_filing_delay_days", "gst_bank_mismatch")
+PEER_FEATURES = (("eway_value_chg_3v12", "E-way bill value, 3m vs 12m"), ("kwh_chg_3v12", "Electricity use, 3m vs 12m"),
+                 ("net_inflow_ratio_3", "Net bank inflow margin (3m)"), ("bounces_12", "Bounces in 12 months"),
+                 ("days_to_pay_3", "Days buyers take to pay (3m)"), ("top_buyer_share_1", "Top-buyer share of sales"))
+
+
+def _signals(hist) -> list[dict]:
+    out = []
+    for r in hist.itertuples():
+        row = {"month": month_label(int(r.month))}
+        for c in SIGNAL_COLUMNS:
+            v = float(getattr(r, c))
+            row[c] = round(v, 4) if c in ("top_buyer_share", "gst_bank_mismatch") else round(v)
+        out.append(row)
+    return out
+
+
+def _peers(lake, factory_id: str, cluster: str, month: int, score: int | None) -> dict:
+    """This factory against the median of the other factories in the same cluster, same month."""
+    profiles = lake.profiles()
+    ids = set(profiles[profiles.cluster == cluster].factory_id) - {factory_id}
+    gold = lake.features_month(month)
+    peers = gold[gold.factory_id.isin(ids)]
+    mine = gold[gold.factory_id == factory_id]
+    scores = lake.scores(month)
+    peer_scores = scores[(scores.month == month) & scores.factory_id.isin(ids)]
+    rows = []
+    if score is not None and not peer_scores.empty:
+        rows.append({"metric": "score", "label": "Factory Health Score", "value": str(score),
+                     "peer_median": str(int(peer_scores.score.median()))})
+    if not mine.empty and not peers.empty:
+        for name, label in PEER_FEATURES:
+            rows.append({"metric": name, "label": label, "value": format_value(name, float(mine[name].iloc[0])),
+                         "peer_median": format_value(name, float(peers[name].median()))})
+    return {"cluster": cluster, "peer_count": len(ids), "month": month_label(month), "rows": rows}
+
+
+@router.get("/stats")
+def application_stats(db: Session = Depends(get_db), user: CurrentUser = Depends(require_roles(*STAFF))) -> dict:
+    """KPI tiles for the console. Decision figures count only decisions made in this system (not seed data)."""
+    apps = db.query(Application).all()
+    pending = [a for a in apps if a.state != "MONITORING" and a.decision is None]
+    decided = [a for a in apps if a.decided_at is not None]
+    approved = sum(1 for a in decided if a.decision == "APPROVED")
+    hours = [(a.decided_at - a.created_at).total_seconds() / 3600 for a in decided if a.created_at]
+    midnight = utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    scored_today = (db.query(AuditLog.application_id).filter(AuditLog.tool == "scoring_engine.explain",
+                                                             AuditLog.ts >= midnight).distinct().count())
+    return {
+        "pending": len(pending),
+        "needs_decision": sum(1 for a in pending if a.state == "MEMO_DRAFTED"),
+        "scored_today": scored_today,
+        "decisions": len(decided),
+        "approval_rate": round(approved / len(decided), 4) if decided else None,
+        "avg_decision_hours": round(sum(hours) / len(hours), 2) if hours else None,
+        "review_requested": sum(1 for a in apps if a.review_requested),
     }
 
 
@@ -68,11 +131,21 @@ def get_application(app_id: int, db: Session = Depends(get_db),
     lake = get_lake()
     profile = lake.profile(app.factory_id)
     consent = get_consent_provider(db).active(app.id, sim_date(db))
-    signals = []
+    signals, score_history, stress_start, peers = [], [], None, None
     if consent:  # signals are only shown while consent is active
-        hist = lake.history(app.factory_id, visible_month(db))
-        signals = [{"month": month_label(int(r.month)), "eway_value": round(r.eway_value),
-                    "kwh": round(r.kwh), "aa_credits": round(r.aa_credits)} for r in hist.itertuples()]
+        vm = visible_month(db)
+        signals = _signals(lake.history(app.factory_id, vm))
+        sc = lake.scores(vm)
+        sc = sc[sc.factory_id == app.factory_id].sort_values("month")
+        score_history = [{"month": month_label(int(r.month)), "score": int(r.score), "band": r.band}
+                         for r in sc.itertuples()]
+        hits = lake.ews_hits(app.factory_id, list(range(max(1, vm - 11), vm + 1)))
+        stressed = hits[hits.severity.isin(["medium", "high"])]
+        if not stressed.empty:
+            first = stressed.iloc[0]
+            stress_start = {"month": month_label(int(first.month)), "severity": first.severity}
+        if user.role != "msme":
+            peers = _peers(lake, app.factory_id, profile["cluster"], vm, int(sc.score.iloc[-1]) if len(sc) else None)
     alerts = db.query(Alert).filter_by(application_id=app.id).order_by(Alert.month.desc()).all()
     return {
         **_summary(app, profile),
@@ -87,7 +160,9 @@ def get_application(app_id: int, db: Session = Depends(get_db),
         "decision_comment": app.decision_comment, "decided_by": app.decided_by, "kfs": app.kfs,
         "sanctioned_limit": app.sanctioned_limit, "disbursement_ref": app.disbursement_ref,
         "disbursed_on": str(app.disbursed_on) if app.disbursed_on else None,
-        "signals": signals,
+        "signals": signals, "score_history": score_history, "stress_start": stress_start, "peers": peers,
+        "decided_at": app.decided_at.isoformat() if app.decided_at else None,
+        "review_note": app.review_note,
         "alerts": [{"id": a.id, "month": month_label(a.month), "severity": a.severity, "status": a.status,
                     "next_best_action": a.next_best_action} for a in alerts],
         "ai_label": AI_LABEL,

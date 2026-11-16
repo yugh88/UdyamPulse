@@ -11,7 +11,7 @@ from fastapi.responses import JSONResponse
 from agents.orchestrator import InvalidTransition
 from agents.providers.consent import ConsentError
 from api.models.db import init_db
-from api.routers import applications, auth, governance, msme, portfolio
+from api.routers import applications, auth, governance, insights, msme, portfolio
 from core.settings import assert_data_residency
 
 
@@ -58,5 +58,5 @@ def health() -> dict:
     return {"status": "ok"}
 
 
-for r in (auth.router, applications.router, portfolio.router, msme.router, governance.router):
+for r in (auth.router, applications.router, insights.router, portfolio.router, msme.router, governance.router):
     app.include_router(r)

@@ -5,7 +5,6 @@ from __future__ import annotations
 
 from agents.base import Agent
 from agents.policy_engine import inr
-from agents.providers.llm import get_llm
 from ml.forecast import forecast_cashflow
 
 ACTIONS = {
@@ -54,10 +53,11 @@ class AdvisorAgent(Agent):
         steps = []
         for i, pillar in enumerate(focus):
             for j, text in enumerate(ACTIONS[pillar]):
-                steps.append({"phase": PHASES[min(i + j, 2)], "pillar": pillar, "action": text})
+                steps.append({"key": f"{pillar}-{j + 1}", "phase": PHASES[min(i + j, 2)], "pillar": pillar,
+                              "action": text})
         steps.sort(key=lambda s: PHASES.index(s["phase"]))
         if forecast["negative_months"]:
-            steps.insert(0, {"phase": PHASES[0], "pillar": "cash_flow",
+            steps.insert(0, {"key": "cash-warning", "phase": PHASES[0], "pillar": "cash_flow",
                              "action": f"Cash may run short in {', '.join(forecast['negative_months'])}: "
                                        "talk to your RM early about a short-term limit review."})
 
@@ -70,8 +70,7 @@ class AdvisorAgent(Agent):
         ) if hurting else f"Your loan-readiness score is {score['score']}. Keep your current discipline going."
         facts = {"score": score["score"], "target": target, "gap": gap, "recoverable_points": recoverable,
                  "reasons": [r["text"] for r in hurting[:3]]}
-        summary = self.tool("llm.write", get_llm().write,
-                            **{"task": "MSME-friendly plan summary", "facts": facts, "draft": draft})
+        summary = self.write("advisor.plan_summary.v1", "MSME-friendly plan summary", facts, draft)
         hindi = " ".join(HINDI[p] for p in focus)
         return {
             "score": score["score"],

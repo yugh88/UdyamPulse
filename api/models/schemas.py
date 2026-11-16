@@ -35,6 +35,22 @@ class DecisionRequest(BaseModel):
 class AlertAction(BaseModel):
     action: Literal["call", "visit", "limit review", "restructure", "visit + limit review", "no action"]
     note: str = Field(default="", max_length=1000)
+    outcome: Literal["resolved", "monitoring", "escalated", "no contact"] | None = None
+
+
+class AlertBulk(BaseModel):
+    ids: list[int] = Field(min_length=1, max_length=500)
+    action: Literal["assign", "acknowledge"]
+    owner: str | None = Field(default=None, description="Staff username; required for assign")
+
+
+class SimulateRequest(BaseModel):
+    application_id: int
+    adjustments: dict[str, float] = Field(default_factory=dict, description="Lever key -> change, see GET /score/levers")
+
+
+class PlanStepUpdate(BaseModel):
+    done: bool
 
 
 class ReviewRequest(BaseModel):

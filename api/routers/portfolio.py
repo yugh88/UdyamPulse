@@ -12,8 +12,8 @@ from agents.providers.consent import get_consent_provider
 from agents.providers.lake import get_lake
 from api.audit import log_event
 from api.auth import CurrentUser, require_roles
-from api.models.db import Alert, Application, get_db
-from api.models.schemas import AlertAction
+from api.models.db import Alert, Application, User, get_db, utcnow
+from api.models.schemas import AlertAction, AlertBulk
 from core.timeline import month_label
 
 router = APIRouter(tags=["portfolio"])
@@ -78,6 +78,47 @@ def portfolio(db: Session = Depends(get_db), user: CurrentUser = Depends(require
     }
 
 
+BAND_ORDER = ("APPROVE", "WATCH", "HIGH_RISK")
+
+
+@router.get("/portfolio/migration")
+def migration(db: Session = Depends(get_db), user: CurrentUser = Depends(require_roles(*STAFF))) -> dict:
+    """Score-band migration of monitored accounts between the previous and the latest visible month."""
+    lake = get_lake()
+    vm = visible_month(db)
+    apps = db.query(Application).filter(Application.state == "MONITORING").all()
+    by_factory = {a.factory_id: a for a in apps}
+    scores = lake.scores(vm)
+    scores = scores[scores.factory_id.isin(set(by_factory)) & scores.month.isin([vm - 1, vm])]
+    prev = scores[scores.month == vm - 1].set_index("factory_id")
+    cur = scores[scores.month == vm].set_index("factory_id")
+    matrix = {a: {b: 0 for b in BAND_ORDER} for a in BAND_ORDER}
+    movers = []
+    for fid in cur.index.intersection(prev.index):
+        a, b = prev.loc[fid, "band"], cur.loc[fid, "band"]
+        matrix[a][b] += 1
+        if a != b:
+            movers.append({"application_id": by_factory[fid].id, "factory_id": fid, "name": lake.profile(fid)["name"],
+                           "from_band": a, "to_band": b, "from_score": int(prev.loc[fid, "score"]),
+                           "to_score": int(cur.loc[fid, "score"]),
+                           "direction": "down" if BAND_ORDER.index(b) > BAND_ORDER.index(a) else "up"})
+    movers.sort(key=lambda m: m["to_score"] - m["from_score"])
+    return {
+        "from_month": month_label(vm - 1), "to_month": month_label(vm), "bands": list(BAND_ORDER), "matrix": matrix,
+        "accounts": int(len(cur.index.intersection(prev.index))),
+        "downgrades": sum(1 for m in movers if m["direction"] == "down"),
+        "upgrades": sum(1 for m in movers if m["direction"] == "up"),
+        "movers": movers,
+    }
+
+
+@router.get("/staff")
+def staff(db: Session = Depends(get_db), user: CurrentUser = Depends(require_roles(*STAFF))) -> list[dict]:
+    """Staff who can own an alert (for the assign menu)."""
+    rows = db.query(User).filter(User.role.in_(("rm", "credit_officer"))).order_by(User.username).all()
+    return [{"username": u.username, "display_name": u.display_name, "role": u.role} for u in rows]
+
+
 @router.get("/alerts")
 def list_alerts(status_filter: str | None = Query(default="OPEN", alias="status"), db: Session = Depends(get_db),
                 user: CurrentUser = Depends(require_roles(*STAFF))) -> list[dict]:
@@ -86,10 +127,22 @@ def list_alerts(status_filter: str | None = Query(default="OPEN", alias="status"
     if status_filter and status_filter != "ALL":
         q = q.filter(Alert.status == status_filter)
     alerts = sorted(q.all(), key=lambda a: (-SEV_RANK[a.severity], -a.month, a.id))
+    today = sim_date(db)
+    app_ids = {a.application_id for a in alerts}
+    exposure = {x.id: x.sanctioned_limit or 0 for x in db.query(Application).filter(Application.id.in_(app_ids))}
+    history: dict[int, list[Alert]] = {}
+    for h in db.query(Alert).filter(Alert.application_id.in_(app_ids)).order_by(Alert.month, Alert.id):
+        history.setdefault(h.application_id, []).append(h)
     out = []
     for a in alerts:
         p = lake.profile(a.factory_id)
         out.append({
+            "owner": a.owner, "acknowledged_by": a.acknowledged_by, "outcome": a.outcome,
+            "acknowledged_at": a.acknowledged_at.isoformat() if a.acknowledged_at else None,
+            "days_open": max((today - a.raised_on).days, 0), "exposure": exposure.get(a.application_id, 0),
+            "timeline": [{"id": h.id, "month": month_label(h.month), "severity": h.severity, "rules": h.rules,
+                          "reasons": h.reasons, "status": h.status, "action_taken": h.action_taken,
+                          "raised_on": str(h.raised_on)} for h in history.get(a.application_id, [])],
             "id": a.id, "application_id": a.application_id, "factory_id": a.factory_id, "name": p["name"],
             "cluster": p["cluster"], "sector": p["sector_label"], "month": month_label(a.month),
             "severity": a.severity, "rules": a.rules, "reasons": a.reasons, "next_best_action": a.next_best_action,
@@ -106,10 +159,33 @@ def action_alert(alert_id: int, body: AlertAction, db: Session = Depends(get_db)
     if alert is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Alert not found")
     alert.status, alert.action_taken, alert.action_note, alert.actioned_by = "ACTIONED", body.action, body.note, user.username
+    alert.outcome = body.outcome
+    alert.owner = alert.owner or user.username
     log_event(db, user, agent="api", tool="alerts", action="log_action",
-              inputs={"alert_id": alert_id, "action": body.action, "note": body.note},
+              inputs={"alert_id": alert_id, "action": body.action, "note": body.note, "outcome": body.outcome},
               output={"status": "ACTIONED"}, application_id=alert.application_id)
     return {"id": alert.id, "status": alert.status, "action_taken": alert.action_taken}
+
+
+@router.post("/alerts/bulk")
+def bulk_alerts(body: AlertBulk, db: Session = Depends(get_db),
+                user: CurrentUser = Depends(require_roles("rm", "credit_officer"))) -> dict:
+    """Assign an owner to, or acknowledge, several open alerts in one step."""
+    if body.action == "assign":
+        owner = db.query(User).filter_by(username=body.owner or "").one_or_none()
+        if owner is None or owner.role not in ("rm", "credit_officer"):
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Owner must be a relationship manager or credit officer")
+    alerts = db.query(Alert).filter(Alert.id.in_(body.ids), Alert.status == "OPEN").all()
+    for a in alerts:
+        if body.action == "assign":
+            a.owner = body.owner
+        else:
+            a.acknowledged_by, a.acknowledged_at = user.username, utcnow()
+            a.owner = a.owner or user.username
+    log_event(db, user, agent="api", tool="alerts", action=f"bulk_{body.action}",
+              inputs={"alert_ids": sorted(a.id for a in alerts), "owner": body.owner},
+              output={"updated": len(alerts)})
+    return {"updated": len(alerts), "skipped": len(set(body.ids)) - len(alerts)}
 
 
 @router.get("/sim/clock")

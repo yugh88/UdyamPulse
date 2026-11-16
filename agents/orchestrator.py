@@ -16,7 +16,7 @@ from agents.memo_agent import MemoAgent
 from agents.policy_engine import inr
 from agents.providers.lake import get_lake
 from api.audit import Actor, log_event
-from api.models.db import Application, Notification
+from api.models.db import Application, Notification, utcnow
 from ml.scoring import get_scorer
 
 TRANSITIONS: dict[str, set[str]] = {
@@ -117,6 +117,7 @@ class Orchestrator(Agent):
             raise ValueError("A decision comment is mandatory")
         self._transition(app, "DECIDED")
         app.decision, app.decision_comment, app.decided_by = decision, comment.strip(), self.actor.username
+        app.decided_at = utcnow()
         if decision == "APPROVED":
             app.sanctioned_limit = sanctioned_limit or app.recommended_limit
             app.kfs = key_fact_statement(app)

@@ -59,6 +59,16 @@ class Settings:
     lake_store: str = field(default_factory=lambda: _env("UP_LAKE_STORE", "duckdb"))
     embeddings: str = field(default_factory=lambda: _env("UP_EMBEDDINGS", "tfidf"))
     data_region: str = field(default_factory=lambda: _env("UP_DATA_REGION", "local"))
+    # Demo conveniences (one-click reset). On by default only for the local, synthetic-data deployment.
+    demo_mode_raw: str = field(default_factory=lambda: _env("UP_DEMO_MODE", "auto"))
+
+    @property
+    def demo_mode(self) -> bool:
+        if self.demo_mode_raw.lower() in ("1", "true", "on"):
+            return True
+        if self.demo_mode_raw.lower() in ("0", "false", "off"):
+            return False
+        return self.data_region.lower() == "local"
 
     @property
     def bronze(self) -> Path:

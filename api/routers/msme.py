@@ -11,7 +11,8 @@ from agents.providers.consent import ConsentError, get_consent_provider
 from agents.providers.lake import get_lake
 from api.audit import log_event
 from api.auth import CurrentUser, ensure_factory_access, require_roles
-from api.models.db import Application, ConsentEvent, DataSnapshot, Notification, get_db
+from api.models.db import Application, ConsentEvent, DataSnapshot, Notification, PlanProgress, get_db
+from api.models.schemas import PlanStepUpdate
 from core.timeline import month_label
 from ml.scoring import get_scorer
 
@@ -49,8 +50,26 @@ def readiness(factory_id: str, db: Session = Depends(get_db),
     score = get_scorer().explain_row(row).to_dict()
     history = lake.history(factory_id, pull.upto_month)
     plan = AdvisorAgent(db, user).plan(score, history)
+    done = {p.step_key for p in db.query(PlanProgress).filter_by(factory_id=factory_id)}
+    for step in plan["steps"]:
+        step["done"] = step["key"] in done
+    plan["steps_done"] = sum(1 for step in plan["steps"] if step["done"])
     return {**base, "data_stale": False, "data_month": month_label(pull.upto_month), "score": score["score"],
             "band": score["band"], "pillars": score["pillars"], "reasons": score["reasons"], "plan": plan}
+
+
+@router.put("/{factory_id}/plan/steps/{step_key}")
+def set_plan_step(factory_id: str, step_key: str, body: PlanStepUpdate, db: Session = Depends(get_db),
+                  user: CurrentUser = Depends(require_roles("msme"))) -> dict:
+    """Tick or untick one step of the 90-day plan."""
+    ensure_factory_access(user, factory_id)
+    row = db.query(PlanProgress).filter_by(factory_id=factory_id, step_key=step_key).one_or_none()
+    if body.done and row is None:
+        db.add(PlanProgress(factory_id=factory_id, step_key=step_key[:64]))
+    elif not body.done and row is not None:
+        db.delete(row)
+    db.commit()
+    return {"step_key": step_key, "done": body.done}
 
 
 @router.get("/{factory_id}/notifications")

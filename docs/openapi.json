@@ -98,6 +98,35 @@
         ]
       }
     },
+    "/applications/stats": {
+      "get": {
+        "tags": [
+          "applications"
+        ],
+        "summary": "Application Stats",
+        "description": "KPI tiles for the console. Decision figures count only decisions made in this system (not seed data).",
+        "operationId": "application_stats_applications_stats_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Application Stats Applications Stats Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/applications": {
       "get": {
         "tags": [
@@ -709,6 +738,133 @@
         }
       }
     },
+    "/policy/{section}": {
+      "get": {
+        "tags": [
+          "insights"
+        ],
+        "summary": "Policy Clause",
+        "description": "Full text of one credit-policy clause, for the citation chips in the memo.",
+        "operationId": "policy_clause_policy__section__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "section",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Section"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Policy Clause Policy  Section  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/score/levers": {
+      "get": {
+        "tags": [
+          "insights"
+        ],
+        "summary": "Levers",
+        "operationId": "levers_score_levers_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Levers Score Levers Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/score/simulate": {
+      "post": {
+        "tags": [
+          "insights"
+        ],
+        "summary": "Simulate",
+        "description": "Re-score with a few signals changed over the latest months. Nothing is stored: the application's\nscore, band and state are untouched and no data pull is recorded.",
+        "operationId": "simulate_score_simulate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SimulateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Simulate Score Simulate Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/portfolio": {
       "get": {
         "tags": [
@@ -725,6 +881,67 @@
                   "additionalProperties": true,
                   "type": "object",
                   "title": "Response Portfolio Portfolio Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/portfolio/migration": {
+      "get": {
+        "tags": [
+          "portfolio"
+        ],
+        "summary": "Migration",
+        "description": "Score-band migration of monitored accounts between the previous and the latest visible month.",
+        "operationId": "migration_portfolio_migration_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Migration Portfolio Migration Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/staff": {
+      "get": {
+        "tags": [
+          "portfolio"
+        ],
+        "summary": "Staff",
+        "description": "Staff who can own an alert (for the assign menu).",
+        "operationId": "staff_staff_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "type": "array",
+                  "title": "Response Staff Staff Get"
                 }
               }
             }
@@ -856,6 +1073,55 @@
         }
       }
     },
+    "/alerts/bulk": {
+      "post": {
+        "tags": [
+          "portfolio"
+        ],
+        "summary": "Bulk Alerts",
+        "description": "Assign an owner to, or acknowledge, several open alerts in one step.",
+        "operationId": "bulk_alerts_alerts_bulk_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlertBulk"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Bulk Alerts Alerts Bulk Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/sim/clock": {
       "get": {
         "tags": [
@@ -969,6 +1235,75 @@
                   "type": "object",
                   "additionalProperties": true,
                   "title": "Response Readiness Msme  Factory Id  Readiness Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/msme/{factory_id}/plan/steps/{step_key}": {
+      "put": {
+        "tags": [
+          "msme"
+        ],
+        "summary": "Set Plan Step",
+        "description": "Tick or untick one step of the 90-day plan.",
+        "operationId": "set_plan_step_msme__factory_id__plan_steps__step_key__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "factory_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Factory Id"
+            }
+          },
+          {
+            "name": "step_key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Step Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlanStepUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Set Plan Step Msme  Factory Id  Plan Steps  Step Key  Put"
                 }
               }
             }
@@ -1299,6 +1634,159 @@
           }
         }
       }
+    },
+    "/consent-ledger": {
+      "get": {
+        "tags": [
+          "governance"
+        ],
+        "summary": "Consent Ledger",
+        "description": "Portfolio-wide consent ledger: grants, data pulls, blocked pulls, expiries, revocations, deletion jobs.",
+        "operationId": "consent_ledger_consent_ledger_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 2000,
+              "default": 300,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Consent Ledger Consent Ledger Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ai-usage": {
+      "get": {
+        "tags": [
+          "governance"
+        ],
+        "summary": "Ai Usage",
+        "description": "Every LLM-writer call: prompt template, provider, latency and a token estimate (characters / 4).",
+        "operationId": "ai_usage_ai_usage_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 2000,
+              "default": 300,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Ai Usage Ai Usage Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/demo/reset": {
+      "post": {
+        "tags": [
+          "governance",
+          "demo"
+        ],
+        "summary": "Reset Demo",
+        "description": "Presenter control: restore the seeded demo state. Available only in demo mode (local synthetic data).",
+        "operationId": "reset_demo_demo_reset_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Reset Demo Demo Reset Post"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/demo/status": {
+      "get": {
+        "tags": [
+          "governance",
+          "demo"
+        ],
+        "summary": "Demo Status",
+        "operationId": "demo_status_demo_status_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Demo Status Demo Status Get"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1322,6 +1810,23 @@
             "maxLength": 1000,
             "title": "Note",
             "default": ""
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "resolved",
+                  "monitoring",
+                  "escalated",
+                  "no contact"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outcome"
           }
         },
         "type": "object",
@@ -1329,6 +1834,45 @@
           "action"
         ],
         "title": "AlertAction"
+      },
+      "AlertBulk": {
+        "properties": {
+          "ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "maxItems": 500,
+            "minItems": 1,
+            "title": "Ids"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "assign",
+              "acknowledge"
+            ],
+            "title": "Action"
+          },
+          "owner": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner",
+            "description": "Staff username; required for assign"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ids",
+          "action"
+        ],
+        "title": "AlertBulk"
       },
       "ApplicationCreate": {
         "properties": {
@@ -1508,6 +2052,19 @@
         ],
         "title": "Pillar"
       },
+      "PlanStepUpdate": {
+        "properties": {
+          "done": {
+            "type": "boolean",
+            "title": "Done"
+          }
+        },
+        "type": "object",
+        "required": [
+          "done"
+        ],
+        "title": "PlanStepUpdate"
+      },
       "Reason": {
         "properties": {
           "feature": {
@@ -1635,6 +2192,27 @@
           "ai_label"
         ],
         "title": "ScoreResponse"
+      },
+      "SimulateRequest": {
+        "properties": {
+          "application_id": {
+            "type": "integer",
+            "title": "Application Id"
+          },
+          "adjustments": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Adjustments",
+            "description": "Lever key -> change, see GET /score/levers"
+          }
+        },
+        "type": "object",
+        "required": [
+          "application_id"
+        ],
+        "title": "SimulateRequest"
       },
       "ValidationError": {
         "properties": {

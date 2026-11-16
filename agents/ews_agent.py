@@ -9,7 +9,6 @@ from agents.base import Agent, sim_date
 from agents.policy_engine import inr
 from agents.providers.consent import ConsentError, get_consent_provider
 from agents.providers.lake import get_lake
-from agents.providers.llm import get_llm
 from api.models.db import Alert, Application, Notification
 from core.timeline import last_visible_month, month_label
 from ml.ews import explain, next_best_action
@@ -94,8 +93,7 @@ class EarlyWarningAgent(Agent):
             + (f" Current Factory Health Score {score}." if score else "")
             + f" Exposure {facts['exposure']}. Next-best action: {action} — {facts['sla']}."
         )
-        briefing = self.tool("llm.write", get_llm().write, audit_app=app.id,
-                             **{"task": "RM early-warning briefing (3 sentences)", "facts": facts, "draft": draft})
+        briefing = self.write("ews.briefing.v1", "RM early-warning briefing (3 sentences)", facts, draft, audit_app=app.id)
         rules = [k for k in ("order_loss", "cash_squeeze", "buyer_risk", "diversion", "compliance_slip") if row[k]]
         if row["anomaly"]:
             rules.append("anomaly")
