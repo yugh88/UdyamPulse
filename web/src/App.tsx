@@ -1,30 +1,36 @@
+import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
-import { Layout } from "./components/Layout";
+import { AppShell } from "./components/shell/AppShell";
+import { SkeletonRows } from "./components/ui";
 import { homeFor, useAuth } from "./lib/auth";
-import ApplicationDetail from "./pages/ApplicationDetail";
-import Cockpit from "./pages/Cockpit";
-import Console from "./pages/Console";
-import Governance from "./pages/Governance";
-import Login from "./pages/Login";
-import MsmeApp from "./pages/MsmeApp";
+
+// Each screen is its own chunk so the login page does not pay for charts and tables.
+const Login = lazy(() => import("./pages/Login"));
+const Console = lazy(() => import("./pages/Console"));
+const ApplicationDetail = lazy(() => import("./pages/ApplicationDetail"));
+const Cockpit = lazy(() => import("./pages/Cockpit"));
+const Governance = lazy(() => import("./pages/Governance"));
+const MsmeApp = lazy(() => import("./pages/MsmeApp"));
 
 export default function App() {
   const { session } = useAuth();
   return (
-    <Routes>
-      <Route path="/login" element={<Login />} />
-      {session ? (
-        <Route element={<Layout />}>
-          <Route path="/console" element={<Console />} />
-          <Route path="/console/:id" element={<ApplicationDetail />} />
-          <Route path="/cockpit" element={<Cockpit />} />
-          <Route path="/governance" element={<Governance />} />
-          <Route path="/msme" element={<MsmeApp />} />
-          <Route path="*" element={<Navigate to={homeFor(session.role)} replace />} />
-        </Route>
-      ) : (
-        <Route path="*" element={<Navigate to="/login" replace />} />
-      )}
-    </Routes>
+    <Suspense fallback={<SkeletonRows rows={6} className="mx-auto max-w-3xl p-8" />}>
+      <Routes>
+        <Route path="/login" element={session ? <Navigate to={homeFor(session.role)} replace /> : <Login />} />
+        {session ? (
+          <Route element={<AppShell />}>
+            <Route path="/console" element={<Console />} />
+            <Route path="/console/:id" element={<ApplicationDetail />} />
+            <Route path="/cockpit" element={<Cockpit />} />
+            <Route path="/governance" element={<Governance />} />
+            <Route path="/msme" element={<MsmeApp />} />
+            <Route path="*" element={<Navigate to={homeFor(session.role)} replace />} />
+          </Route>
+        ) : (
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        )}
+      </Routes>
+    </Suspense>
   );
 }
