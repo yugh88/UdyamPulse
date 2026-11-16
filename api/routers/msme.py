@@ -38,7 +38,7 @@ def readiness(factory_id: str, db: Session = Depends(get_db),
     consent = get_consent_provider(db).active(app.id, sim_date(db))
     base = {"factory_id": factory_id, "name": profile["name"], "application_id": app.id, "state": app.state,
             "decision": app.decision, "review_requested": app.review_requested, "ai_label": AI_LABEL,
-            "consent": {"active": consent is not None, **(consent.__dict__ if consent else {})}}
+            "consent": get_consent_provider(db).summary(app.id, sim_date(db))}
     try:
         pull = DataAgent(db, user).pull(app)
     except ConsentError:

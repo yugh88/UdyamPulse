@@ -11,6 +11,7 @@ from agents.providers.llm import get_llm
 from api.auth import CurrentUser, require_roles
 from api.models.db import AiUsage, AuditLog, Consent, ConsentEvent, get_db
 from core.settings import get_settings
+from ml.features import FEATURES
 
 router = APIRouter(tags=["governance"])
 
@@ -36,11 +37,15 @@ def model_inventory(user: CurrentUser = Depends(require_roles("risk", "credit_of
         p = s.reports / name
         return json.loads(p.read_text()) if p.exists() else None
 
+    importance = load("feature_importance.json") or []
+    for row in importance:
+        row["pillar"] = FEATURES[row["feature"]].pillar if row["feature"] in FEATURES else None
     card = s.ml_dir / "MODEL_CARD.md"
     return {
         "name": "udyampulse-pd", "type": "LightGBM binary classifier (12-month PD)", "owner": "risk-analytics",
         "metrics": load("metrics.json"), "fairness": load("fairness.json"), "drift": load("drift.json"),
-        "ews_backtest": load("ews_backtest.json"), "model_card_md": card.read_text() if card.exists() else None,
+        "ews_backtest": load("ews_backtest.json"), "feature_importance": importance,
+        "model_card_md": card.read_text() if card.exists() else None,
     }
 
 

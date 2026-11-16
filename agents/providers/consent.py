@@ -75,6 +75,15 @@ class MockAAConsentProvider:
             return None
         return _to_artefact(c)
 
+    def summary(self, application_id: int, as_of: date) -> dict:
+        """Consent state for display: the artefact while active, otherwise just the last known status."""
+        art = self.active(application_id, as_of)
+        if art is not None:
+            return {"active": True, **art.__dict__}
+        last = self._current(application_id)
+        return {"active": False, "status": last.status if last else None,
+                "revoked_at": last.revoked_at.isoformat() if last and last.revoked_at else None}
+
     def authorise_pull(self, application_id: int, factory_id: str, as_of: date, actor: str, detail: dict) -> ConsentArtefact:
         """Gate every data pull on an active consent; record the pull (or the blocked attempt) in the ledger."""
         art = self.active(application_id, as_of)

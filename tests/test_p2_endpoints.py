@@ -172,3 +172,15 @@ def test_msme_content_is_available_in_hindi(client):
     assert all(s["action_hi"] and s["phase_hi"] for s in r["plan"]["steps"])
     notes = client.get("/msme/UP-F0001/notifications", headers=msme).json()
     assert notes and all(n["text_hi"] for n in notes)
+
+
+def test_consent_status_is_reported_after_revocation(client):
+    rm, app_id = _consented_hero(client)
+    msme = login(client, "sharma")
+    assert client.get(f"/applications/{app_id}", headers=rm).json()["consent"]["status"] == "ACTIVE"
+    client.delete(f"/applications/{app_id}/consent", headers=msme)
+    for view in (client.get(f"/applications/{app_id}", headers=rm).json(),
+                 client.get("/msme/UP-F0001/readiness", headers=msme).json()):
+        assert view["consent"]["active"] is False and view["consent"]["status"] == "REVOKED"
+    other = next(a["id"] for a in client.get("/applications", headers=rm).json() if a["factory_id"] != "UP-F0001")
+    assert client.get(f"/applications/{other}", headers=rm).json()["consent"] == {"active": False, "status": None, "revoked_at": None}
