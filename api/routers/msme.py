@@ -14,6 +14,7 @@ from api.auth import CurrentUser, ensure_factory_access, require_roles
 from api.models.db import Application, ConsentEvent, DataSnapshot, Notification, PlanProgress, get_db
 from api.models.schemas import PlanStepUpdate
 from core.timeline import month_label
+from ml.i18n_hi import PILLARS_HI, describe_hi
 from ml.scoring import get_scorer
 
 router = APIRouter(prefix="/msme", tags=["msme"])
@@ -44,10 +45,15 @@ def readiness(factory_id: str, db: Session = Depends(get_db),
         last = app.score_detail
         return {**base, "data_stale": True,
                 "message": "Consent revoked: no new data is being pulled. Showing your last assessment only.",
+                "message_hi": "सहमति वापस ले ली गई है: अब कोई नया डेटा नहीं लिया जा रहा। केवल आपका पिछला आकलन दिखाया जा रहा है।",
                 "score": last["score"] if last else None, "band": last["band"] if last else None,
                 "plan": None}
     row = lake.features(factory_id, pull.upto_month)
     score = get_scorer().explain_row(row).to_dict()
+    for r in score["reasons"]:  # the owner can read the app in Hindi
+        r["text_hi"] = describe_hi(r["feature"], r["value"])
+    for p in score["pillars"]:
+        p["label_hi"] = PILLARS_HI[p["pillar"]]
     history = lake.history(factory_id, pull.upto_month)
     plan = AdvisorAgent(db, user).plan(score, history)
     done = {p.step_key for p in db.query(PlanProgress).filter_by(factory_id=factory_id)}
@@ -77,7 +83,8 @@ def notifications(factory_id: str, db: Session = Depends(get_db),
                   user: CurrentUser = Depends(require_roles(*ROLES))) -> list[dict]:
     ensure_factory_access(user, factory_id)
     rows = db.query(Notification).filter_by(factory_id=factory_id).order_by(Notification.id.desc()).limit(30).all()
-    return [{"id": n.id, "channel": n.channel, "text": n.text, "sim_date": str(n.sim_date)} for n in rows]
+    return [{"id": n.id, "channel": n.channel, "text": n.text, "text_hi": n.text_hi, "sim_date": str(n.sim_date)}
+            for n in rows]
 
 
 @router.get("/{factory_id}/my-data")

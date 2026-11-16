@@ -52,8 +52,8 @@ class Orchestrator(Agent):
                   inputs={"from": old, "to": new_state}, output={"state": new_state}, application_id=app.id,
                   commit=False)
 
-    def _notify(self, factory_id: str, text: str) -> None:
-        self.db.add(Notification(factory_id=factory_id, text=text, sim_date=sim_date(self.db)))
+    def _notify(self, factory_id: str, text: str, text_hi: str) -> None:
+        self.db.add(Notification(factory_id=factory_id, text=text, text_hi=text_hi, sim_date=sim_date(self.db)))
 
     # ---- journey steps ----------------------------------------------------------------------
     def create(self, factory_id: str, requested_amount: float | None, channel: str) -> Application:
@@ -74,14 +74,18 @@ class Orchestrator(Agent):
         if app.state == "APPLIED":
             self._transition(app, "CONSENTED")
         self._notify(app.factory_id, "Consent received via Account Aggregator for your loan application. "
-                                     "Purpose: working-capital assessment and monitoring. You can revoke it any time in the app.")
+                                     "Purpose: working-capital assessment and monitoring. You can revoke it any time in the app.",
+                     "आपके लोन आवेदन के लिए अकाउंट एग्रीगेटर से सहमति मिल गई है। उद्देश्य: कार्यशील पूँजी का आकलन और "
+                     "निगरानी। आप इसे ऐप में कभी भी वापस ले सकते हैं।")
         self.db.commit()
         return {"consent": asdict(artefact), "data_pull": pull.to_dict()}
 
     def revoke(self, app: Application) -> dict:
         artefact = self.data_agent.revoke_consent(app)
         self._notify(app.factory_id, "Your data-sharing consent has been revoked. The bank will not fetch new data "
-                                     "and previously fetched copies are being deleted.")
+                                     "and previously fetched copies are being deleted.",
+                     "आपकी डेटा साझा करने की सहमति वापस ले ली गई है। बैंक अब नया डेटा नहीं लेगा और पहले लिया गया डेटा "
+                     "हटाया जा रहा है।")
         self.db.commit()
         return asdict(artefact)
 
@@ -122,10 +126,14 @@ class Orchestrator(Agent):
             app.sanctioned_limit = sanctioned_limit or app.recommended_limit
             app.kfs = key_fact_statement(app)
             self._notify(app.factory_id, f"Good news! Your working-capital limit of {inr(app.sanctioned_limit)} is "
-                                         "approved. Please review the Key Fact Statement before signing.")
+                                         "approved. Please review the Key Fact Statement before signing.",
+                         f"बधाई हो! आपकी {inr(app.sanctioned_limit)} की कार्यशील पूँजी लिमिट मंज़ूर हो गई है। "
+                         "हस्ताक्षर से पहले की फ़ैक्ट स्टेटमेंट ज़रूर पढ़ें।")
         else:
             self._notify(app.factory_id, "Your application was not approved this time. Open the app to see the "
-                                         "main reasons and your 90-day improvement plan, or request a human review.")
+                                         "main reasons and your 90-day improvement plan, or request a human review.",
+                         "इस बार आपका आवेदन मंज़ूर नहीं हुआ। मुख्य कारण और 90 दिन की सुधार योजना ऐप में देखें, "
+                         "या किसी अधिकारी से समीक्षा का अनुरोध करें।")
         log_event(self.db, self.actor, agent=self.name, tool="credit_decision", action=decision.lower(),
                   inputs={"comment": comment, "sanctioned_limit": app.sanctioned_limit},
                   output={"decision": decision}, application_id=app.id, commit=False)
@@ -144,7 +152,9 @@ class Orchestrator(Agent):
         self._transition(app, "MONITORING")
         app.last_ews_month = app.score_month
         self._notify(app.factory_id, f"Your limit of {inr(app.sanctioned_limit or 0)} is now active in your "
-                                     f"account (ref {app.disbursement_ref}).")
+                                     f"account (ref {app.disbursement_ref}).",
+                     f"आपकी {inr(app.sanctioned_limit or 0)} की लिमिट अब आपके खाते में चालू है "
+                     f"(संदर्भ {app.disbursement_ref})।")
         self.db.commit()
         return {"disbursement_ref": app.disbursement_ref, "disbursed_on": str(app.disbursed_on), "state": app.state}
 

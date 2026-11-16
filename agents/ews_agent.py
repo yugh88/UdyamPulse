@@ -24,6 +24,14 @@ MSME_MESSAGE = {
 }
 
 
+MSME_MESSAGE_HI = {
+    "high": "आपके बैंक की ओर से नमस्ते। हमारी निगरानी में इस महीने आपके डिस्पैच और नकदी प्रवाह में बड़ा बदलाव दिखा है। "
+            "आपके रिलेशनशिप मैनेजर सहायता के विकल्पों पर बात करने के लिए कॉल करेंगे। अभी बात करने के लिए HELP लिखें।",
+    "medium": "आपके बैंक की ओर से नमस्ते। इस महीने आपके कारोबार के संकेतों में कुछ बदलाव दिखे हैं। "
+              "आपके रिलेशनशिप मैनेजर संपर्क कर सकते हैं। कॉल बैक के लिए HELP लिखें।",
+}
+
+
 @dataclass
 class EwsRun:
     as_of: str
@@ -75,7 +83,7 @@ class EarlyWarningAgent(Agent):
                 run.new_alerts.append(alert.id)
                 if row["severity"] in MSME_MESSAGE:
                     self.db.add(Notification(factory_id=app.factory_id, text=MSME_MESSAGE[row["severity"]],
-                                             sim_date=today))
+                                             text_hi=MSME_MESSAGE_HI[row["severity"]], sim_date=today))
             app.last_ews_month = visible
             self.db.commit()
         return run

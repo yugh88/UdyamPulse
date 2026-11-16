@@ -29,6 +29,29 @@ ACTIONS = {
         "Keep EPFO filings regular so your workforce record stays continuous.",
     ],
 }
+ACTIONS_HI = {
+    "order_book": [
+        "हर महीने अपने पक्के परचेज़ ऑर्डर बैंक के साथ साझा करें ताकि आपकी ऑर्डर बुक दिखे।",
+        "GeM या ONDC से कम से कम दो नए खरीदार जोड़ें ताकि एक खरीदार के धीमे होने का असर कम हो।",
+    ],
+    "cash_flow": [
+        "चेक/NACH बाउंस से बचने के लिए खाते में कम से कम एक महीने की किस्त जितना बैलेंस रखें।",
+        "अपने बड़े खरीदारों का भुगतान इसी खाते में मँगवाएँ ताकि बैंक में आपकी असली बिक्री दिखे।",
+    ],
+    "production": [
+        "नकदी बचाने के लिए कच्चा माल पक्के ऑर्डर के हिसाब से खरीदें।",
+        "बिजली कनेक्शन और ERP स्टॉक रिकॉर्ड अपडेट रखें; ये आपके उत्पादन का सबूत हैं।",
+    ],
+    "receivables": [
+        "TReDS प्लेटफ़ॉर्म पर पंजीकरण करें और 45 दिन बाद भुगतान करने वाले खरीदारों के बिल डिस्काउंट कराएँ।",
+        "45 दिन से ज़्यादा बकाया बिलों के लिए MSMED अधिनियम के तहत MSME समाधान पोर्टल का उपयोग करें।",
+    ],
+    "compliance": [
+        "GSTR-3B हर महीने 20 तारीख तक भरें; 3 दिन पहले का रिमाइंडर लगाएँ।",
+        "EPFO फाइलिंग नियमित रखें ताकि आपके कर्मचारियों का रिकॉर्ड लगातार बना रहे।",
+    ],
+}
+PHASES_HI = {"Days 1–30": "दिन 1–30", "Days 31–60": "दिन 31–60", "Days 61–90": "दिन 61–90"}
 HINDI = {
     "order_book": "हर महीने अपने पक्के ऑर्डर बैंक के साथ साझा करें और GeM/ONDC से नए खरीदार जोड़ें।",
     "cash_flow": "खाते में कम से कम एक महीने की किस्त जितना बैलेंस रखें ताकि चेक/NACH बाउंस न हो।",
@@ -53,13 +76,18 @@ class AdvisorAgent(Agent):
         steps = []
         for i, pillar in enumerate(focus):
             for j, text in enumerate(ACTIONS[pillar]):
-                steps.append({"key": f"{pillar}-{j + 1}", "phase": PHASES[min(i + j, 2)], "pillar": pillar,
-                              "action": text})
+                phase = PHASES[min(i + j, 2)]
+                steps.append({"key": f"{pillar}-{j + 1}", "phase": phase, "phase_hi": PHASES_HI[phase], "pillar": pillar,
+                              "action": text, "action_hi": ACTIONS_HI[pillar][j]})
         steps.sort(key=lambda s: PHASES.index(s["phase"]))
         if forecast["negative_months"]:
-            steps.insert(0, {"key": "cash-warning", "phase": PHASES[0], "pillar": "cash_flow",
-                             "action": f"Cash may run short in {', '.join(forecast['negative_months'])}: "
-                                       "talk to your RM early about a short-term limit review."})
+            months = ", ".join(forecast["negative_months"])
+            steps.insert(0, {"key": "cash-warning", "phase": PHASES[0], "phase_hi": PHASES_HI[PHASES[0]],
+                             "pillar": "cash_flow",
+                             "action": f"Cash may run short in {months}: "
+                                       "talk to your RM early about a short-term limit review.",
+                             "action_hi": f"{months} में नकदी कम पड़ सकती है: अल्पकालिक लिमिट समीक्षा के लिए "
+                                          "अपने रिलेशनशिप मैनेजर से जल्दी बात करें।"})
 
         gap = target - score["score"]
         draft = (

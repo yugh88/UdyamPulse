@@ -150,3 +150,25 @@ def test_demo_reset_is_unavailable_outside_demo_mode(client, monkeypatch):
     monkeypatch.setattr(governance, "get_settings", lambda: prod)
     assert prod.demo_mode is False
     assert client.post("/demo/reset").status_code == 404
+
+
+def test_every_feature_has_a_hindi_template():
+    from ml.features import FEATURE_NAMES, PILLARS
+    from ml.i18n_hi import PILLARS_HI, TEMPLATES_HI, describe_hi
+
+    assert set(TEMPLATES_HI) == set(FEATURE_NAMES)
+    assert all("{v}" in t for t in TEMPLATES_HI.values())
+    assert set(PILLARS_HI) == set(PILLARS)
+    assert describe_hi("bounces_12", 3.0) == "12 महीनों में 3 चेक/NACH बाउंस"
+    assert describe_hi("days_to_pay_1", 72.0) == "खरीदार 72 दिन में भुगतान करते हैं"
+
+
+def test_msme_content_is_available_in_hindi(client):
+    rm, app_id = _consented_hero(client)
+    msme = login(client, "sharma")
+    r = client.get("/msme/UP-F0001/readiness", headers=msme).json()
+    assert r["application_id"] == app_id
+    assert all(x["text_hi"] for x in r["reasons"]) and all(p["label_hi"] for p in r["pillars"])
+    assert all(s["action_hi"] and s["phase_hi"] for s in r["plan"]["steps"])
+    notes = client.get("/msme/UP-F0001/notifications", headers=msme).json()
+    assert notes and all(n["text_hi"] for n in notes)

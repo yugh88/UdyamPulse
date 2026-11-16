@@ -136,6 +136,7 @@ class Notification(Base):
     factory_id: Mapped[str] = mapped_column(String(16), index=True)
     channel: Mapped[str] = mapped_column(String(16), default="whatsapp")
     text: Mapped[str] = mapped_column(Text)
+    text_hi: Mapped[str | None] = mapped_column(Text, nullable=True)
     sim_date: Mapped[date] = mapped_column(Date)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
