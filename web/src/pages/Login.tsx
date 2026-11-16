@@ -32,7 +32,7 @@ export default function Login() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-navy px-4">
       <div className="w-full max-w-3xl">
-        <div className="mb-8 text-center text-white">
+        <div className="mb-8 text-center text-on-primary">
           <img src="/icon.svg" alt="" className="mx-auto mb-3 h-14 w-14" />
           <h1 className="text-3xl font-bold">UdyamPulse</h1>
           <p className="mt-2 text-white/70">Credit backed by your production, not your property.</p>
@@ -45,7 +45,7 @@ export default function Login() {
               disabled={busy !== null}
               className="rounded-xl bg-white p-5 text-left shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl disabled:opacity-60"
             >
-              <p className="font-semibold text-navy">{p.title}</p>
+              <p className="font-semibold text-fg">{p.title}</p>
               <p className="mt-1 text-sm text-muted">{p.desc}</p>
               <p className="mt-3 text-xs font-mono text-violet">{busy === p.username ? "signing in…" : `${p.username} / demo123`}</p>
             </button>

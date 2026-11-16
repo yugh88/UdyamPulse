@@ -40,7 +40,11 @@ export function PillarBars({ pillars }: { pillars: Pillar[] }) {
       {pillars.map((p) => {
         const w = (Math.abs(p.points) / max) * 50;
         return (
-          <div key={p.pillar} className="grid grid-cols-[170px_1fr_56px] items-center gap-3 text-sm" title={`${p.label}: ${p.points} points (prior weight ${p.prior_weight * 100}%)`}>
+          <div
+            key={p.pillar}
+            className="grid grid-cols-[170px_1fr_56px] items-center gap-3 text-sm"
+            title={`${p.label}: ${p.points} points (prior weight ${p.prior_weight * 100}%)`}
+          >
             <span className="flex items-center gap-2 truncate">
               <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: PILLAR_COLORS[p.pillar] }} />
               {p.label}
@@ -52,7 +56,7 @@ export function PillarBars({ pillars }: { pillars: Pillar[] }) {
                 style={{
                   width: `${w}%`,
                   left: p.points >= 0 ? "50%" : `${50 - w}%`,
-                  background: p.points >= 0 ? "#2FA866" : "#E5397A",
+                  background: p.points >= 0 ? "var(--success)" : "var(--danger)",
                 }}
               />
             </div>

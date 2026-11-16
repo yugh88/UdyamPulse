@@ -79,7 +79,7 @@ export default function Cockpit() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-navy">Portfolio risk cockpit</h1>
+          <h1 className="text-2xl font-bold text-fg">Portfolio risk cockpit</h1>
           <p className="text-sm text-muted">
             {k.accounts} monitored MSME accounts · data through {data.data_month}
           </p>
@@ -176,7 +176,7 @@ export default function Cockpit() {
                       · {a.cluster} · {a.month}
                     </span>
                   </span>
-                  <span className="text-xs font-semibold text-navy">→ {a.next_best_action}</span>
+                  <span className="text-xs font-semibold text-fg">→ {a.next_best_action}</span>
                   <span className="text-xs text-muted">{a.status === "OPEN" ? "open" : `✓ ${a.action_taken}`}</span>
                 </button>
                 {open === a.id && (
@@ -226,7 +226,7 @@ export default function Cockpit() {
                 <Fragment key={r.application_id}>
                   <tr className="border-b border-line/60 hover:bg-surface">
                     <td className="py-2 pr-3">
-                      <Link to={`/console/${r.application_id}`} className="font-medium text-navy hover:text-magenta">
+                      <Link to={`/console/${r.application_id}`} className="font-medium text-fg hover:text-magenta">
                         {r.name}
                       </Link>
                     </td>

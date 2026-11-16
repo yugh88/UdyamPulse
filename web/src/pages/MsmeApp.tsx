@@ -70,7 +70,7 @@ export default function MsmeApp() {
   return (
     <div className="flex justify-center">
       <div className="w-full max-w-sm overflow-hidden rounded-[2rem] border-8 border-navy bg-white shadow-2xl">
-        <div className="bg-navy px-5 pb-4 pt-3 text-white">
+        <div className="bg-navy px-5 pb-4 pt-3 text-on-primary">
           <p className="text-[10px] text-white/60">UdyamPulse · for MSMEs</p>
           <p className="font-semibold">{r.name}</p>
         </div>
@@ -78,13 +78,13 @@ export default function MsmeApp() {
           {(["home", "plan", "consent", "chat"] as const).map((t) => (
             <button key={t} onClick={() => setTab(t)} className={`py-2.5 ${tab === t ? "border-b-2 border-magenta text-magenta" : "text-muted"}`}>
               {{ home: "Readiness", plan: "90-day plan", consent: "Consent", chat: "Messages" }[t]}
-              {t === "chat" && notes.length > 0 && <span className="ml-1 rounded-full bg-green px-1.5 text-[10px] text-white">{notes.length}</span>}
+              {t === "chat" && notes.length > 0 && <span className="ml-1 rounded-full bg-green px-1.5 text-[10px] text-on-primary">{notes.length}</span>}
             </button>
           ))}
         </nav>
         <div className="max-h-[640px] space-y-4 overflow-y-auto p-4">
           {msg && <p className="rounded-lg bg-violet/10 p-2 text-xs text-violet">{msg}</p>}
-          {r.data_stale && <p className="rounded-lg bg-amber/15 p-2 text-xs text-navy">{r.message}</p>}
+          {r.data_stale && <p className="rounded-lg bg-amber/15 p-2 text-xs text-fg">{r.message}</p>}
 
           {tab === "home" && (
             <>
@@ -117,7 +117,7 @@ export default function MsmeApp() {
           {tab === "plan" && plan && (
             <>
               <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold text-navy">Your 90-day improvement plan</p>
+                <p className="text-sm font-semibold text-fg">Your 90-day improvement plan</p>
                 <button className="rounded-full border border-line px-2 py-0.5 text-xs" onClick={() => setHindi(!hindi)}>
                   {hindi ? "English" : "हिंदी"}
                 </button>
@@ -166,7 +166,7 @@ export default function MsmeApp() {
                 )}
               </div>
               {r.consent.active && (
-                <button className="btn w-full bg-magenta text-white" onClick={revoke}>
+                <button className="btn w-full bg-magenta text-on-primary" onClick={revoke}>
                   Revoke consent
                 </button>
               )}

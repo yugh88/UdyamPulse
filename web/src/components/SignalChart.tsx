@@ -8,9 +8,9 @@ interface Point {
 }
 
 const SERIES = [
-  { key: "eway", label: "E-way bill value", color: "#7B5CFF" },
-  { key: "kwh", label: "Electricity (kWh)", color: "#E5397A" },
-  { key: "aa", label: "AA bank inflow", color: "#F0A040" },
+  { key: "eway", label: "E-way bill value", color: "var(--chart-1)" },
+  { key: "kwh", label: "Electricity (kWh)", color: "var(--chart-2)" },
+  { key: "aa", label: "AA bank inflow", color: "var(--chart-3)" },
 ];
 
 /** Three signals on different units, indexed to their first 6-month average = 100 (one shared axis). */
@@ -28,12 +28,12 @@ export function SignalChart({ data }: { data: Point[] }) {
     <div className="h-64">
       <ResponsiveContainer>
         <LineChart data={rows} margin={{ top: 8, right: 12, left: -16, bottom: 0 }}>
-          <CartesianGrid stroke="#eef0f6" vertical={false} />
-          <XAxis dataKey="month" tick={{ fontSize: 10, fill: "#6b7088" }} tickLine={false} axisLine={{ stroke: "#e6e8f0" }} interval={2} />
-          <YAxis tick={{ fontSize: 10, fill: "#6b7088" }} tickLine={false} axisLine={false} domain={["auto", "auto"]} />
-          <ReferenceLine y={100} stroke="#c9cce0" strokeDasharray="3 3" />
+          <CartesianGrid stroke="var(--border)" vertical={false} />
+          <XAxis dataKey="month" tick={{ fontSize: 10, fill: "var(--text-muted)" }} tickLine={false} axisLine={{ stroke: "var(--border)" }} interval={2} />
+          <YAxis tick={{ fontSize: 10, fill: "var(--text-muted)" }} tickLine={false} axisLine={false} domain={["auto", "auto"]} />
+          <ReferenceLine y={100} stroke="var(--border-strong)" strokeDasharray="3 3" />
           <Tooltip
-            contentStyle={{ fontSize: 12, borderRadius: 8, borderColor: "#e6e8f0" }}
+            contentStyle={{ fontSize: 12, borderRadius: 8, borderColor: "var(--border)", background: "var(--surface)", color: "var(--text)" }}
             formatter={(v: number, name: string) => [`${v}`, name]}
           />
           <Legend iconType="plainline" wrapperStyle={{ fontSize: 12 }} />

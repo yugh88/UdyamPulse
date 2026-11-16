@@ -51,7 +51,7 @@ export default function Console() {
     <div className="space-y-6">
       <div className="flex items-end justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-navy">Applications</h1>
+          <h1 className="text-2xl font-bold text-fg">Applications</h1>
           <p className="text-sm text-muted">Underwrite MSME manufacturers on consented GST, e-way bill, bank, power and ERP data.</p>
         </div>
       </div>
@@ -72,11 +72,11 @@ export default function Console() {
               <tr key={a.id} className="border-b border-line/60 last:border-0 hover:bg-surface">
                 <td className="py-2.5 pr-3 font-mono text-xs text-muted">#{a.id}</td>
                 <td className="pr-3">
-                  <Link to={`/console/${a.id}`} className="font-semibold text-navy hover:text-magenta">
+                  <Link to={`/console/${a.id}`} className="font-semibold text-fg hover:text-magenta">
                     {a.name}
                   </Link>
                   {a.factory_id === "UP-F0001" && <span className="ml-2 rounded bg-magenta/10 px-1.5 text-[10px] font-bold text-magenta">DEMO</span>}
-                  {a.review_requested && <span className="ml-2 rounded bg-amber/20 px-1.5 text-[10px] font-bold text-navy">REVIEW REQUESTED</span>}
+                  {a.review_requested && <span className="ml-2 rounded bg-amber/20 px-1.5 text-[10px] font-bold text-fg">REVIEW REQUESTED</span>}
                 </td>
                 <td className="pr-3 text-muted">
                   {a.sector} · {a.cluster}

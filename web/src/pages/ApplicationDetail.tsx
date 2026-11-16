@@ -55,10 +55,10 @@ export default function ApplicationDetail() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <Link to="/console" className="text-xs text-muted hover:text-navy">
+          <Link to="/console" className="text-xs text-muted hover:text-fg">
             ← Applications
           </Link>
-          <h1 className="text-2xl font-bold text-navy">{app.name}</h1>
+          <h1 className="text-2xl font-bold text-fg">{app.name}</h1>
           <p className="text-sm text-muted">
             {app.sector} · {app.cluster} · {app.udyam_category} · {app.profile.vintage_years.toFixed(0)} yrs · turnover {app.profile.turnover_band} ·{" "}
             {app.profile.udyam_number} · requested <b className="text-ink">{inr(app.requested_amount)}</b>
@@ -180,12 +180,12 @@ export default function ApplicationDetail() {
             <div className="grid gap-3 sm:grid-cols-3">
               <div className="rounded-lg bg-surface p-3">
                 <p className="label">Recommended limit</p>
-                <p className="text-xl font-bold text-navy">{memo.recommended_limit_display}</p>
+                <p className="text-xl font-bold text-fg">{memo.recommended_limit_display}</p>
                 <p className="text-xs text-muted">requested {memo.requested_display}</p>
               </div>
               <div className="rounded-lg bg-surface p-3">
                 <p className="label">Pricing band</p>
-                <p className="text-lg font-bold text-navy">{memo.pricing_band}</p>
+                <p className="text-lg font-bold text-fg">{memo.pricing_band}</p>
               </div>
               <div className="rounded-lg bg-surface p-3">
                 <p className="label">Limit workings</p>
@@ -201,7 +201,7 @@ export default function ApplicationDetail() {
                 ["Strengths", memo.strengths, "text-green"],
                 ["Risks", memo.risks, "text-magenta"],
                 ["Mitigants", memo.mitigants, "text-violet"],
-                ["Covenants", memo.covenants, "text-navy"],
+                ["Covenants", memo.covenants, "text-fg"],
               ].map(([title, items, cls]) => (
                 <div key={title as string}>
                   <h3 className={`label mb-1.5 ${cls}`}>{title as string}</h3>
@@ -214,7 +214,7 @@ export default function ApplicationDetail() {
               ))}
             </div>
             <details className="rounded-lg border border-line p-3 text-sm">
-              <summary className="cursor-pointer font-semibold text-navy">Policy citations ({memo.citations.length}) — retrieved from credit_policy.md</summary>
+              <summary className="cursor-pointer font-semibold text-fg">Policy citations ({memo.citations.length}) — retrieved from credit_policy.md</summary>
               <ul className="mt-2 space-y-2">
                 {memo.citations.map((c: any) => (
                   <li key={c.section}>
@@ -268,14 +268,14 @@ export default function ApplicationDetail() {
                 />
                 <div className="flex gap-2">
                   <button
-                    className="btn bg-green text-white"
+                    className="btn bg-green text-on-primary"
                     disabled={!!busy || comment.trim().length < 3}
                     onClick={() => run("approve", () => post(`/applications/${id}/decision`, { decision: "APPROVED", comment }))}
                   >
                     Approve
                   </button>
                   <button
-                    className="btn bg-magenta text-white"
+                    className="btn bg-magenta text-on-primary"
                     disabled={!!busy || comment.trim().length < 3}
                     onClick={() => run("reject", () => post(`/applications/${id}/decision`, { decision: "REJECTED", comment }))}
                   >

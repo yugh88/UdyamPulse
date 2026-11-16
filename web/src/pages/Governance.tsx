@@ -22,7 +22,7 @@ export default function Governance() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-bold text-navy">Governance</h1>
+        <h1 className="text-2xl font-bold text-fg">Governance</h1>
         <p className="text-sm text-muted">Model inventory, fairness, drift and the full audit trail (RBI FREE-AI: explainable, human-in-the-loop, auditable).</p>
       </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
