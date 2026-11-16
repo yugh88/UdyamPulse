@@ -10,7 +10,10 @@ import { DEMO_PASSWORD, homeFor, PERSONAS, useAuth } from "../lib/auth";
 const ICON: Record<string, LucideIcon> = { rm: LayoutList, credit_officer: ShieldCheck, risk: ChartPie, msme: Smartphone };
 
 const PROMISES = [
-  { title: "Lend on production, not property", body: "A Factory Health Score from consented GST, e-way bill, bank, power and payroll signals, with the top reasons in plain language." },
+  {
+    title: "Lend on production, not property",
+    body: "A Factory Health Score from consented GST, e-way bill, bank, power and payroll signals, with the top reasons in plain language.",
+  },
   { title: "The officer decides", body: "AI drafts the credit memo with policy citations. Only a credit officer can approve or reject." },
   { title: "See stress months earlier", body: "Continuous early-warning alerts with a next-best action, before an account turns into a Special Mention Account." },
 ];
@@ -52,7 +55,10 @@ export default function Login() {
 
   return (
     <div className="grid min-h-screen lg:grid-cols-[1.1fr_1fr]">
-      <section className="hidden flex-col justify-between border-r border-edge bg-panel p-12 lg:flex" style={{ backgroundImage: "radial-gradient(60rem 30rem at 0% 0%, color-mix(in srgb, var(--primary) 4%, transparent), transparent)" }}>
+      <section
+        className="hidden flex-col justify-between border-r border-edge bg-panel p-12 lg:flex"
+        style={{ backgroundImage: "radial-gradient(60rem 30rem at 0% 0%, color-mix(in srgb, var(--primary) 4%, transparent), transparent)" }}
+      >
         <div className="flex items-center gap-2.5">
           <img src="/icon.svg" alt="" className="h-9 w-9 rounded-lg" />
           <span className="text-xl font-semibold tracking-tight text-fg">UdyamPulse</span>
@@ -133,7 +139,7 @@ export default function Login() {
                         <span className="block text-sm font-medium text-fg">{p.title}</span>
                         <span className="block truncate text-xs text-fg-muted">{busy === p.username ? "Signing in…" : p.desc}</span>
                       </span>
-                      <ArrowRight className="h-4 w-4 shrink-0 text-fg-subtle group-hover:text-primary" aria-hidden />
+                      <ArrowRight className="h-4 w-4 shrink-0 text-fg-muted group-hover:text-primary" aria-hidden />
                     </button>
                   </li>
                 );
@@ -144,7 +150,12 @@ export default function Login() {
           {demo.data?.demo_mode && (
             <p className="mt-4 text-center text-xs text-fg-muted">
               Presenter:{" "}
-              <button type="button" onClick={() => reset.mutate()} disabled={reset.isPending} className="inline-flex items-center gap-1 font-medium text-primary underline-offset-2 hover:underline disabled:opacity-60">
+              <button
+                type="button"
+                onClick={() => reset.mutate()}
+                disabled={reset.isPending}
+                className="inline-flex items-center gap-1 font-medium text-primary underline-offset-2 hover:underline disabled:opacity-60"
+              >
                 <RotateCcw className="h-3 w-3" aria-hidden />
                 {reset.isPending ? "Resetting…" : "Reset demo data"}
               </button>

@@ -3,7 +3,23 @@ import { ArrowRight, CircleCheck, Flag, ShieldCheck, ShieldOff, TriangleAlert } 
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { toast } from "sonner";
-import { Badge, BandPill, Button, Card, Dialog, EmptyState, ErrorState, ScoreGauge, SeverityPill, Skeleton, Stepper, Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui";
+import {
+  Badge,
+  BandPill,
+  Button,
+  Card,
+  Dialog,
+  EmptyState,
+  ErrorState,
+  ScoreGauge,
+  SeverityPill,
+  Skeleton,
+  Stepper,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "../components/ui";
 import { DecisionPanel, type DecisionInput } from "../features/application/Decision";
 import { MemoView } from "../features/application/Memo";
 import { PillarBars, ReasonCards } from "../features/application/Score";
@@ -21,21 +37,33 @@ function nextStep(app: AppDetail, role: Role): { text: string; action?: Step; la
   const worker = role === "rm" || role === "credit_officer";
   switch (app.state) {
     case "APPLIED":
-      return role === "rm" ? { text: "Ask the MSME for consent through the Account Aggregator, then pull and reconcile its data.", action: "consent", label: "Request consent and pull data" } : { text: "Waiting for the relationship manager to take consent." };
+      return role === "rm"
+        ? { text: "Ask the MSME for consent through the Account Aggregator, then pull and reconcile its data.", action: "consent", label: "Request consent and pull data" }
+        : { text: "Waiting for the relationship manager to take consent." };
     case "CONSENTED":
       return worker ? { text: "Consent is active and the data checks are done. Score the factory.", action: "score", label: "Run scoring" } : { text: "Waiting for scoring." };
     case "SCORED":
-      return worker ? { text: "The score is ready. Draft the credit memo with policy citations.", action: "memo", label: "Generate memo" } : { text: "Waiting for the credit memo." };
+      return worker
+        ? { text: "The score is ready. Draft the credit memo with policy citations.", action: "memo", label: "Generate memo" }
+        : { text: "Waiting for the credit memo." };
     case "MEMO_DRAFTED":
-      return role === "credit_officer" ? { text: "The memo is ready for your decision.", tab: "memo", label: "Review memo and decide" } : { text: "The memo is with the credit officer for a decision.", tab: "memo", label: "View memo" };
+      return role === "credit_officer"
+        ? { text: "The memo is ready for your decision.", tab: "memo", label: "Review memo and decide" }
+        : { text: "The memo is with the credit officer for a decision.", tab: "memo", label: "View memo" };
     case "DECIDED":
-      return app.decision === "APPROVED" && worker ? { text: "Approved. Disburse directly to the borrower's own account.", action: "disburse", label: "Disburse via LOS" } : { text: app.decision === "REJECTED" ? "Rejected. The MSME has been told the reasons and given a 90-day plan." : "Approved. Waiting for disbursal." };
+      return app.decision === "APPROVED" && worker
+        ? { text: "Approved. Disburse directly to the borrower's own account.", action: "disburse", label: "Disburse via LOS" }
+        : { text: app.decision === "REJECTED" ? "Rejected. The MSME has been told the reasons and given a 90-day plan." : "Approved. Waiting for disbursal." };
     default:
       return { text: "Disbursed and under continuous early-warning monitoring." };
   }
 }
 
-const CHECK_ICON = { pass: <CircleCheck className="h-4 w-4 text-success" aria-hidden />, warn: <TriangleAlert className="h-4 w-4 text-warning" aria-hidden />, fail: <TriangleAlert className="h-4 w-4 text-danger" aria-hidden /> };
+const CHECK_ICON = {
+  pass: <CircleCheck className="h-4 w-4 text-success" aria-hidden />,
+  warn: <TriangleAlert className="h-4 w-4 text-warning" aria-hidden />,
+  fail: <TriangleAlert className="h-4 w-4 text-danger" aria-hidden />,
+};
 const CHECK_WORD = { pass: "Pass", warn: "Check", fail: "Fail" };
 
 export default function ApplicationDetail() {
@@ -49,12 +77,21 @@ export default function ApplicationDetail() {
 
   const q = useQuery({ queryKey: ["application", appId], queryFn: () => api<AppDetail>(`/applications/${appId}`), enabled: Number.isFinite(appId) });
 
-  const refresh = () => Promise.all([qc.invalidateQueries({ queryKey: ["application", appId] }), qc.invalidateQueries({ queryKey: ["applications"] }), qc.invalidateQueries({ queryKey: ["simulate", appId] })]);
+  const refresh = () =>
+    Promise.all([
+      qc.invalidateQueries({ queryKey: ["application", appId] }),
+      qc.invalidateQueries({ queryKey: ["applications"] }),
+      qc.invalidateQueries({ queryKey: ["simulate", appId] }),
+    ]);
   const fail = (what: string) => (e: unknown) => {
     toast.error(`${what} failed: ${(e as Error).message}`);
   };
 
-  const consent = useMutation({ mutationFn: () => post(`/applications/${appId}/consent`), onSuccess: () => (toast.success("Consent received. Data pulled and reconciled."), refresh()), onError: fail("Consent") });
+  const consent = useMutation({
+    mutationFn: () => post(`/applications/${appId}/consent`),
+    onSuccess: () => (toast.success("Consent received. Data pulled and reconciled."), refresh()),
+    onError: fail("Consent"),
+  });
   const score = useMutation({
     mutationFn: () => post<{ score: number; band: string }>(`/applications/${appId}/score`),
     onSuccess: (r) => (toast.success(`Scored ${r.score}`), refresh()),
@@ -141,8 +178,8 @@ export default function ApplicationDetail() {
             )}
           </div>
           <p className="mt-1 text-sm text-fg-muted">
-            {app.sector} · {app.cluster} · {app.udyam_category} enterprise · {Math.round(app.profile.vintage_years)} years in business · turnover {app.profile.turnover_band} · requested{" "}
-            <span className="tabular font-medium text-fg">{inr(app.requested_amount)}</span>
+            {app.sector} · {app.cluster} · {app.udyam_category} enterprise · {Math.round(app.profile.vintage_years)} years in business · turnover {app.profile.turnover_band} ·
+            requested <span className="tabular font-medium text-fg">{inr(app.requested_amount)}</span>
           </p>
         </div>
       </header>
@@ -192,7 +229,12 @@ export default function ApplicationDetail() {
                   <dl className="mt-4 grid grid-cols-3 gap-2 text-center">
                     {[
                       ["12-month PD", pct(sd.pd_12m, 2)],
-                      ["Data as of", app.score_history.length ? monthLabel(app.score_history[Math.min(sd.month, app.score_history.length) - 1]?.month ?? app.score_history[0].month) : `month ${sd.month}`],
+                      [
+                        "Data as of",
+                        app.score_history.length
+                          ? monthLabel(app.score_history[Math.min(sd.month, app.score_history.length) - 1]?.month ?? app.score_history[0].month)
+                          : `month ${sd.month}`,
+                      ],
                       ["Model", "udyampulse-pd"],
                     ].map(([k, v]) => (
                       <div key={k} className="rounded-control bg-panel-2 px-2 py-2">
@@ -285,7 +327,11 @@ export default function ApplicationDetail() {
                     )}
                   </>
                 ) : (
-                  <p className="text-13 text-fg-muted">{app.consent.status === "REVOKED" ? "Consent was revoked. No new data is pulled and stored copies were deleted." : "No data can be pulled until the MSME gives consent."}</p>
+                  <p className="text-13 text-fg-muted">
+                    {app.consent.status === "REVOKED"
+                      ? "Consent was revoked. No new data is pulled and stored copies were deleted."
+                      : "No data can be pulled until the MSME gives consent."}
+                  </p>
                 )}
               </Card>
 
@@ -355,12 +401,24 @@ export default function ApplicationDetail() {
               onGenerate={() => memo.mutate()}
               generateHint={!sd ? "Score the application first. The memo is built from the score." : undefined}
             />
-            <DecisionPanel key={`${app.state}-${app.recommended_limit}`} app={app} role={role} deciding={decide.isPending} disbursing={disburse.isPending} onDecide={(d) => decide.mutateAsync(d)} onDisburse={() => disburse.mutate()} />
+            <DecisionPanel
+              key={`${app.state}-${app.recommended_limit}`}
+              app={app}
+              role={role}
+              deciding={decide.isPending}
+              disbursing={disburse.isPending}
+              onDecide={(d) => decide.mutateAsync(d)}
+              onDisburse={() => disburse.mutate()}
+            />
           </div>
         </TabsContent>
 
         <TabsContent value="whatif">
-          {app.consent.active ? <WhatIf applicationId={app.id} /> : <EmptyState title="Simulator unavailable" description="The simulator reads the factory's consented data. It needs an active consent." />}
+          {app.consent.active ? (
+            <WhatIf applicationId={app.id} />
+          ) : (
+            <EmptyState title="Simulator unavailable" description="The simulator reads the factory's consented data. It needs an active consent." />
+          )}
         </TabsContent>
       </Tabs>
 
@@ -380,7 +438,9 @@ export default function ApplicationDetail() {
           </>
         }
       >
-        <p className="text-sm text-fg">New data pulls stop immediately, stored copies are deleted, and scoring and monitoring for this account are blocked until consent is given again.</p>
+        <p className="text-sm text-fg">
+          New data pulls stop immediately, stored copies are deleted, and scoring and monitoring for this account are blocked until consent is given again.
+        </p>
       </Dialog>
     </div>
   );

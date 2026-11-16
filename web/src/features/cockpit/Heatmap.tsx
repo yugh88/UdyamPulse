@@ -48,7 +48,9 @@ export function Heatmap({ cells, selected, onSelect }: { cells: Portfolio["heatm
       </div>
       <div className="overflow-x-auto">
         <table className="w-full border-separate border-spacing-1 text-13">
-          <caption className="sr-only">{metric === "score" ? "Average Factory Health Score" : "Open alerts per account"} by cluster and sector. Select a cell to filter the tables below.</caption>
+          <caption className="sr-only">
+            {metric === "score" ? "Average Factory Health Score" : "Open alerts per account"} by cluster and sector. Select a cell to filter the tables below.
+          </caption>
           <thead>
             <tr>
               <td />
@@ -69,7 +71,7 @@ export function Heatmap({ cells, selected, onSelect }: { cells: Portfolio["heatm
                   const c = byKey.get(`${cl}|${s}`);
                   if (!c)
                     return (
-                      <td key={s} className="rounded-md bg-panel-2 text-center text-xs text-fg-subtle" aria-label={`${cl}, ${s}: no accounts`}>
+                      <td key={s} className="rounded-md bg-panel-2 text-center text-xs text-fg-muted" aria-label={`${cl}, ${s}: no accounts`}>
                         –
                       </td>
                     );
@@ -83,11 +85,14 @@ export function Heatmap({ cells, selected, onSelect }: { cells: Portfolio["heatm
                         aria-pressed={isSel}
                         onClick={() => onSelect(isSel ? null : { cluster: cl, sector: s })}
                         aria-label={`${cl}, ${s}: average score ${c.avg_score}, ${c.accounts} accounts, ${c.alerts} open alerts`}
-                        className={cn("tabular flex h-12 w-full min-w-16 flex-col items-center justify-center rounded-md text-fg transition-shadow hover:shadow-pop", isSel && "outline-2 outline-primary")}
+                        className={cn(
+                          "tabular flex h-12 w-full min-w-16 flex-col items-center justify-center rounded-md text-fg transition-shadow hover:shadow-pop",
+                          isSel && "outline-2 outline-primary",
+                        )}
                         style={{ background: wash(metric === "score" ? "var(--danger)" : "var(--warning)", t) }}
                       >
                         <span className="text-sm font-semibold">{metric === "score" ? c.avg_score : c.alerts ? `${c.alerts} / ${c.accounts}` : "0"}</span>
-                        <span className="text-[11px] text-fg-muted">{metric === "score" ? `${c.accounts} acct${c.accounts === 1 ? "" : "s"}` : "alerts / accts"}</span>
+                        <span className="text-xs text-fg">{metric === "score" ? `${c.accounts} acct${c.accounts === 1 ? "" : "s"}` : "alerts / accts"}</span>
                       </button>
                     </td>
                   );
@@ -97,7 +102,9 @@ export function Heatmap({ cells, selected, onSelect }: { cells: Portfolio["heatm
           </tbody>
         </table>
       </div>
-      <p className="mt-2 text-xs text-fg-muted">{metric === "score" ? "Stronger shading means a lower average score." : "Stronger shading means more open alerts per account."} Every cell shows its number.</p>
+      <p className="mt-2 text-xs text-fg-muted">
+        {metric === "score" ? "Stronger shading means a lower average score." : "Stronger shading means more open alerts per account."} Every cell shows its number.
+      </p>
     </div>
   );
 }

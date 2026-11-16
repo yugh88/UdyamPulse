@@ -63,10 +63,3 @@ export const PILLAR_COLORS: Record<string, string> = {
   receivables: "var(--chart-4)",
   compliance: "var(--chart-5)",
 };
-
-/** Legacy shape used by pages not yet rebuilt (removed in P2). */
-export const BAND_STYLE: Record<string, { label: string; cls: string; color: string }> = {
-  APPROVE: { label: "Approve", cls: "bg-success-tint text-success ring-success/30", color: BAND_VAR.APPROVE },
-  WATCH: { label: "Watch", cls: "bg-warning-tint text-warning ring-warning/30", color: BAND_VAR.WATCH },
-  HIGH_RISK: { label: "High risk", cls: "bg-danger-tint text-danger ring-danger/30", color: BAND_VAR.HIGH_RISK },
-};

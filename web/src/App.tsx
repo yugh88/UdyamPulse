@@ -1,8 +1,8 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, type ComponentType, type LazyExoticComponent } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AppShell } from "./components/shell/AppShell";
 import { SkeletonRows } from "./components/ui";
-import { homeFor, useAuth } from "./lib/auth";
+import { homeFor, useAuth, type Role } from "./lib/auth";
 
 // Each screen is its own chunk so the login page does not pay for charts and tables.
 const Login = lazy(() => import("./pages/Login"));
@@ -12,6 +12,16 @@ const Cockpit = lazy(() => import("./pages/Cockpit"));
 const Governance = lazy(() => import("./pages/Governance"));
 const MsmeApp = lazy(() => import("./pages/MsmeApp"));
 
+const STAFF: Role[] = ["rm", "credit_officer", "risk"];
+/** A screen is mounted only for roles that may use it, so it never calls an API it is not allowed to. */
+const ROUTES: { path: string; page: LazyExoticComponent<ComponentType>; roles: Role[] }[] = [
+  { path: "/console", page: Console, roles: ["rm", "credit_officer"] },
+  { path: "/console/:id", page: ApplicationDetail, roles: STAFF },
+  { path: "/cockpit", page: Cockpit, roles: STAFF },
+  { path: "/governance", page: Governance, roles: ["risk"] },
+  { path: "/msme", page: MsmeApp, roles: ["msme"] },
+];
+
 export default function App() {
   const { session } = useAuth();
   return (
@@ -20,11 +30,9 @@ export default function App() {
         <Route path="/login" element={session ? <Navigate to={homeFor(session.role)} replace /> : <Login />} />
         {session ? (
           <Route element={<AppShell />}>
-            <Route path="/console" element={<Console />} />
-            <Route path="/console/:id" element={<ApplicationDetail />} />
-            <Route path="/cockpit" element={<Cockpit />} />
-            <Route path="/governance" element={<Governance />} />
-            <Route path="/msme" element={<MsmeApp />} />
+            {ROUTES.filter((r) => r.roles.includes(session.role)).map((r) => (
+              <Route key={r.path} path={r.path} element={<r.page />} />
+            ))}
             <Route path="*" element={<Navigate to={homeFor(session.role)} replace />} />
           </Route>
         ) : (

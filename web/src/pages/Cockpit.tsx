@@ -18,6 +18,10 @@ import type { AdvanceResult, AlertRow, Migration, Portfolio, PortfolioAccount, S
 const SEV_RANK: Record<string, number> = { high: 3, medium: 2, low: 1 };
 const STORY_WEEKS = 6;
 
+function inCell<T extends { cluster: string; sector: string }>(rows: T[] | undefined, cell: CellFilter | null): T[] | undefined {
+  return rows && cell ? rows.filter((r) => r.cluster === cell.cluster && r.sector === cell.sector) : rows;
+}
+
 function Sparkline({ values }: { values: number[] }) {
   if (values.length < 2) return null;
   const min = Math.min(...values);
@@ -91,14 +95,15 @@ export default function Cockpit() {
     mutationFn: (body: { action: "assign" | "acknowledge"; owner?: string }) => post<{ updated: number }>("/alerts/bulk", { ids: selected.map((a) => a.id), ...body }),
     onSuccess: async (r, body) => {
       await refresh();
-      toast.success(body.action === "assign" ? `${r.updated} alert${r.updated === 1 ? "" : "s"} assigned to ${body.owner}` : `${r.updated} alert${r.updated === 1 ? "" : "s"} acknowledged`);
+      toast.success(
+        body.action === "assign" ? `${r.updated} alert${r.updated === 1 ? "" : "s"} assigned to ${body.owner}` : `${r.updated} alert${r.updated === 1 ? "" : "s"} acknowledged`,
+      );
     },
     onError: (e) => toast.error(`Bulk update failed: ${(e as Error).message}`),
   });
 
-  const inCell = <T extends { cluster: string; sector: string }>(rows: T[] | undefined) => (rows && cell ? rows.filter((r) => r.cluster === cell.cluster && r.sector === cell.sector) : rows);
-  const alertRows = useMemo(() => inCell(alerts.data), [alerts.data, cell]); // eslint-disable-line react-hooks/exhaustive-deps
-  const accountRows = useMemo(() => inCell(portfolio.data?.accounts), [portfolio.data, cell]); // eslint-disable-line react-hooks/exhaustive-deps
+  const alertRows = useMemo(() => inCell(alerts.data, cell), [alerts.data, cell]);
+  const accountRows = useMemo(() => inCell(portfolio.data?.accounts, cell), [portfolio.data, cell]);
 
   const openId = Number(params.get("alert"));
   const openAlert = useMemo(() => alerts.data?.find((a) => a.id === openId) ?? null, [alerts.data, openId]);
@@ -106,7 +111,13 @@ export default function Cockpit() {
 
   const alertColumns = useMemo<ColumnDef<AlertRow>[]>(
     () => [
-      { id: "severity", accessorFn: (a) => SEV_RANK[a.severity], header: "Severity", meta: { label: "Severity", csv: (a) => a.severity }, cell: ({ row }) => <SeverityPill severity={row.original.severity} /> },
+      {
+        id: "severity",
+        accessorFn: (a) => SEV_RANK[a.severity],
+        header: "Severity",
+        meta: { label: "Severity", csv: (a) => a.severity },
+        cell: ({ row }) => <SeverityPill severity={row.original.severity} />,
+      },
       {
         accessorKey: "name",
         header: "Factory",
@@ -134,7 +145,7 @@ export default function Cockpit() {
         meta: { label: "Owner" },
         cell: ({ row: { original: a } }) => (
           <span className="inline-flex items-center gap-1.5">
-            {a.owner ?? <span className="text-fg-subtle">Unassigned</span>}
+            {a.owner ?? <span className="text-fg-muted">Unassigned</span>}
             {a.acknowledged_by && (
               <Tooltip content={`Acknowledged by ${a.acknowledged_by}`}>
                 <span tabIndex={0} aria-label={`Acknowledged by ${a.acknowledged_by}`}>
@@ -171,14 +182,20 @@ export default function Cockpit() {
           return <span className={cn(v > 0 ? "text-success" : v < 0 ? "text-danger" : "text-fg-muted")}>{signed(v)}</span>;
         },
       },
-      { id: "trend", header: "6 months", meta: { label: "6-month trend", csv: (a) => a.sparkline.join(" ") }, enableSorting: false, cell: ({ row }) => <Sparkline values={row.original.sparkline} /> },
+      {
+        id: "trend",
+        header: "6 months",
+        meta: { label: "6-month trend", csv: (a) => a.sparkline.join(" ") },
+        enableSorting: false,
+        cell: ({ row }) => <Sparkline values={row.original.sparkline} />,
+      },
       { accessorKey: "band", header: "Band", meta: { label: "Band" }, cell: ({ row }) => <BandPill band={row.original.band} /> },
       {
         id: "alerts",
         accessorFn: (a) => SEV_RANK[a.max_severity ?? ""] ?? 0,
         header: "Alerts",
         meta: { label: "Highest open alert", csv: (a) => a.max_severity ?? "" },
-        cell: ({ row }) => (row.original.max_severity ? <SeverityPill severity={row.original.max_severity} /> : <span className="text-fg-subtle">–</span>),
+        cell: ({ row }) => (row.original.max_severity ? <SeverityPill severity={row.original.max_severity} /> : <span className="text-fg-muted">–</span>),
       },
       {
         accessorKey: "consent_active",
@@ -210,7 +227,9 @@ export default function Cockpit() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-fg">Portfolio risk cockpit</h1>
-          <p className="mt-0.5 text-sm text-fg-muted">{portfolio.data ? `${portfolio.data.kpis.accounts} monitored accounts · data through ${monthLabel(portfolio.data.data_month)}` : "Loading the monitored portfolio…"}</p>
+          <p className="mt-0.5 text-sm text-fg-muted">
+            {portfolio.data ? `${portfolio.data.kpis.accounts} monitored accounts · data through ${monthLabel(portfolio.data.data_month)}` : "Loading the monitored portfolio…"}
+          </p>
         </div>
         <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Simulated clock">
           <Button disabled={busy} loading={advance.isPending && advance.variables === 7} onClick={() => advance.mutate(7)} icon={<FastForward className="h-4 w-4" aria-hidden />}>
@@ -284,7 +303,13 @@ export default function Cockpit() {
           {portfolio.data ? <Heatmap cells={portfolio.data.heatmap} selected={cell} onSelect={setCell} /> : <Skeleton className="h-72" />}
         </Card>
         <Card title="Score migration" description="Accounts that changed band since last month">
-          {migration.isError ? <ErrorState error={migration.error} onRetry={() => migration.refetch()} /> : migration.data ? <MigrationMatrix data={migration.data} /> : <Skeleton className="h-72" />}
+          {migration.isError ? (
+            <ErrorState error={migration.error} onRetry={() => migration.refetch()} />
+          ) : migration.data ? (
+            <MigrationMatrix data={migration.data} />
+          ) : (
+            <Skeleton className="h-72" />
+          )}
         </Card>
       </div>
 
@@ -330,7 +355,12 @@ export default function Cockpit() {
                   </MenuItem>
                 ))}
               </DropdownMenu>
-              <Button size="sm" disabled={!canAct || selected.length === 0 || bulk.isPending} onClick={() => bulk.mutate({ action: "acknowledge" })} icon={<CheckCheck className="h-4 w-4" aria-hidden />}>
+              <Button
+                size="sm"
+                disabled={!canAct || selected.length === 0 || bulk.isPending}
+                onClick={() => bulk.mutate({ action: "acknowledge" })}
+                icon={<CheckCheck className="h-4 w-4" aria-hidden />}
+              >
                 Acknowledge {selected.length > 0 && `(${selected.length})`}
               </Button>
               <label className="ml-1 inline-flex items-center gap-1.5 text-13 text-fg-muted">

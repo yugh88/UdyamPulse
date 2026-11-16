@@ -62,7 +62,13 @@ function NewApplication({ open, onOpenChange, initial }: { open: boolean; onOpen
                     {f.factory_id} · {f.sector_label} · {f.cluster} · {f.udyam_category} · {f.turnover_band}
                   </p>
                 </div>
-                <Button size="sm" variant="primary" loading={create.isPending && create.variables === f.factory_id} disabled={create.isPending} onClick={() => create.mutate(f.factory_id)}>
+                <Button
+                  size="sm"
+                  variant="primary"
+                  loading={create.isPending && create.variables === f.factory_id}
+                  disabled={create.isPending}
+                  onClick={() => create.mutate(f.factory_id)}
+                >
                   Create · {inr(f.loan_requested_inr)}
                 </Button>
               </li>
@@ -121,7 +127,7 @@ export default function Console() {
         sortUndefined: "last",
         cell: ({ row: { original: a } }) =>
           a.score == null ? (
-            <span className="text-fg-subtle">–</span>
+            <span className="text-fg-muted">–</span>
           ) : (
             <span className="inline-flex items-center justify-end gap-2">
               <span className="font-semibold">{a.score}</span>
@@ -133,9 +139,18 @@ export default function Console() {
         accessorKey: "state",
         header: "State",
         meta: { label: "State" },
-        cell: ({ row: { original: a } }) => <Badge tone={a.decision === "REJECTED" ? "danger" : a.decision === "APPROVED" ? "success" : "neutral"}>{a.decision === "REJECTED" ? "Rejected" : STATE_LABEL[a.state]}</Badge>,
+        cell: ({ row: { original: a } }) => (
+          <Badge tone={a.decision === "REJECTED" ? "danger" : a.decision === "APPROVED" ? "success" : "neutral"}>
+            {a.decision === "REJECTED" ? "Rejected" : STATE_LABEL[a.state]}
+          </Badge>
+        ),
       },
-      { accessorKey: "last_activity", header: "Last activity", meta: { label: "Last activity", csv: (a) => a.last_activity }, cell: ({ getValue }) => <span className="text-fg-muted">{ago(getValue<string | null>())}</span> },
+      {
+        accessorKey: "last_activity",
+        header: "Last activity",
+        meta: { label: "Last activity", csv: (a) => a.last_activity },
+        cell: ({ getValue }) => <span className="text-fg-muted">{ago(getValue<string | null>())}</span>,
+      },
     ],
     [],
   );
@@ -159,11 +174,22 @@ export default function Console() {
         <Stat label="Scored today" value={stats.data?.scored_today ?? "–"} sub="applications scored since midnight" loading={stats.isLoading} />
         <Stat
           label="Average decision time"
-          value={stats.data?.avg_decision_hours == null ? "–" : stats.data.avg_decision_hours < 1 ? `${Math.round(stats.data.avg_decision_hours * 60)} min` : `${stats.data.avg_decision_hours.toFixed(1)} h`}
+          value={
+            stats.data?.avg_decision_hours == null
+              ? "–"
+              : stats.data.avg_decision_hours < 1
+                ? `${Math.round(stats.data.avg_decision_hours * 60)} min`
+                : `${stats.data.avg_decision_hours.toFixed(1)} h`
+          }
           sub={stats.data?.decisions ? `from application to decision, ${stats.data.decisions} decided here` : "no decisions made here yet"}
           loading={stats.isLoading}
         />
-        <Stat label="Approval rate" value={pct(stats.data?.approval_rate, 0)} sub={stats.data?.decisions ? `of ${stats.data.decisions} decisions made here` : "no decisions made here yet"} loading={stats.isLoading} />
+        <Stat
+          label="Approval rate"
+          value={pct(stats.data?.approval_rate, 0)}
+          sub={stats.data?.decisions ? `of ${stats.data.decisions} decisions made here` : "no decisions made here yet"}
+          loading={stats.isLoading}
+        />
       </div>
 
       <Card>

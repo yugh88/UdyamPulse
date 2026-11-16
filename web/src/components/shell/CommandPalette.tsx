@@ -86,7 +86,7 @@ export function CommandPalette({ open, onOpenChange, onShortcuts }: { open: bool
           value={q}
           onValueChange={setQ}
           placeholder="Search factories, applications, alerts or pages…"
-          className="h-11 w-full bg-transparent text-sm text-fg outline-none placeholder:text-fg-subtle"
+          className="h-11 w-full bg-transparent text-sm text-fg outline-none placeholder:text-fg-muted"
         />
         <kbd className="rounded border border-edge bg-panel-2 px-1.5 py-0.5 text-xs text-fg-muted">Esc</kbd>
       </div>

@@ -181,7 +181,7 @@ export function AppShell() {
               <nav aria-label="Breadcrumb" className="hidden min-w-0 items-center gap-1 text-sm sm:flex">
                 {trail.map((c, i) => (
                   <span key={c.label} className="flex min-w-0 items-center gap-1">
-                    {i > 0 && <ChevronRight className="h-3.5 w-3.5 shrink-0 text-fg-subtle" aria-hidden />}
+                    {i > 0 && <ChevronRight className="h-3.5 w-3.5 shrink-0 text-fg-muted" aria-hidden />}
                     {c.to ? (
                       <Link to={c.to} className="truncate text-fg-muted hover:text-fg">
                         {c.label}

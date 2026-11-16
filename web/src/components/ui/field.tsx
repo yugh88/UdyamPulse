@@ -3,7 +3,7 @@ import { useId, type InputHTMLAttributes, type ReactElement, type ReactNode, typ
 import { cn } from "../../lib/cn";
 
 const CONTROL =
-  "w-full rounded-control border border-edge-strong bg-panel px-3 text-sm text-fg placeholder:text-fg-subtle transition-colors " +
+  "w-full rounded-control border border-edge-strong bg-panel px-3 text-sm text-fg placeholder:text-fg-muted transition-colors " +
   "hover:border-fg-muted focus:border-primary focus:outline-2 focus:outline-offset-0 focus:outline-primary/30 " +
   "disabled:cursor-not-allowed disabled:bg-panel-2 disabled:opacity-60 aria-[invalid=true]:border-danger";
 

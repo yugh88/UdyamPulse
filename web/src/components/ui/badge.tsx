@@ -34,7 +34,7 @@ const BAND: Record<Band, { tone: Tone; icon: ReactNode }> = {
 
 /** Risk band: always icon + label + colour, never colour alone. */
 export function BandPill({ band, className }: { band?: string | null; className?: string }) {
-  if (!band || !(band in BAND)) return <span className="text-fg-subtle">–</span>;
+  if (!band || !(band in BAND)) return <span className="text-fg-muted">–</span>;
   const b = BAND[band as Band];
   return (
     <Badge tone={b.tone} icon={b.icon} className={className}>

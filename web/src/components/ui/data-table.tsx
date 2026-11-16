@@ -198,7 +198,7 @@ export function DataTable<T>({
                 value={globalFilter}
                 onChange={(e) => setGlobalFilter(e.target.value)}
                 placeholder={searchPlaceholder}
-                className="h-8 w-56 rounded-control border border-edge-strong bg-panel pr-2 pl-8 text-13 text-fg placeholder:text-fg-subtle focus:border-primary"
+                className="h-8 w-56 rounded-control border border-edge-strong bg-panel pr-2 pl-8 text-13 text-fg placeholder:text-fg-muted focus:border-primary"
               />
             </label>
           )}

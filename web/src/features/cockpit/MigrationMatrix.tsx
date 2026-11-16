@@ -43,7 +43,13 @@ export function MigrationMatrix({ data }: { data: Migration }) {
                       aria-label={`${n} accounts from ${BAND_LABEL[from]} to ${BAND_LABEL[to]}${kind === "same" ? " (unchanged)" : kind === "down" ? " (downgraded)" : " (upgraded)"}`}
                       className={cn(
                         "tabular h-12 rounded-md text-center text-base font-semibold",
-                        n === 0 ? "bg-panel-2 text-fg-subtle" : kind === "same" ? "bg-panel-2 text-fg" : kind === "down" ? "bg-danger-tint text-danger" : "bg-success-tint text-success",
+                        n === 0
+                          ? "bg-panel-2 text-fg-muted"
+                          : kind === "same"
+                            ? "bg-panel-2 text-fg"
+                            : kind === "down"
+                              ? "bg-danger-tint text-danger"
+                              : "bg-success-tint text-success",
                       )}
                     >
                       {n}
@@ -68,11 +74,15 @@ export function MigrationMatrix({ data }: { data: Migration }) {
         </span>
       </p>
       {data.movers.length > 0 && (
-        <ul className="mt-3 max-h-40 space-y-1 overflow-y-auto">
+        <ul className="mt-3 max-h-44 space-y-1.5 overflow-y-auto">
           {data.movers.map((m) => (
             <li key={m.factory_id} className="flex items-center gap-2 text-13">
-              {m.direction === "down" ? <ArrowDownRight className="h-3.5 w-3.5 shrink-0 text-danger" aria-hidden /> : <ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-success" aria-hidden />}
-              <Link to={`/console/${m.application_id}`} className="truncate font-medium text-fg hover:text-primary hover:underline">
+              {m.direction === "down" ? (
+                <ArrowDownRight className="h-3.5 w-3.5 shrink-0 text-danger" aria-hidden />
+              ) : (
+                <ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-success" aria-hidden />
+              )}
+              <Link to={`/console/${m.application_id}`} className="inline-flex min-h-6 items-center truncate font-medium text-fg hover:text-primary hover:underline">
                 {m.name}
               </Link>
               <span className="tabular ml-auto shrink-0 text-fg-muted">

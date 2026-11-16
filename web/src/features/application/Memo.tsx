@@ -202,7 +202,7 @@ export function MemoView({
             {LISTS.map((l) => (
               <section key={l.key}>
                 <h3 className="mb-1.5 text-sm font-semibold text-fg">{l.title}</h3>
-                <ul className="list-disc space-y-1.5 pl-5 text-13 text-fg marker:text-fg-subtle">
+                <ul className="list-disc space-y-1.5 pl-5 text-13 text-fg marker:text-fg-muted">
                   {memo[l.key].map((t) => (
                     <li key={t}>
                       <Cited text={t} onOpen={setSection} />

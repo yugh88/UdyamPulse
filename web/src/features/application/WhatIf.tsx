@@ -105,7 +105,7 @@ export function WhatIf({ applicationId }: { applicationId: number }) {
                 <p className="tabular text-2xl font-semibold text-fg">{s.base.score}</p>
                 <BandPill band={s.base.band} />
               </div>
-              <ArrowRight className="h-5 w-5 text-fg-subtle" aria-hidden />
+              <ArrowRight className="h-5 w-5 text-fg-muted" aria-hidden />
               <div>
                 <p className="text-xs text-fg-muted">Simulated</p>
                 <p className="tabular text-2xl font-semibold text-fg" data-testid="sim-score">
