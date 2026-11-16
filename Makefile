@@ -5,7 +5,7 @@ VENV := .venv
 PY := $(VENV)/bin/python
 export MLFLOW_DISABLE_AGENT_HINT := 1
 
-.PHONY: help setup data lake train backtest seed pipeline api web demo test lint openapi clean
+.PHONY: help setup data lake train backtest seed pipeline api web demo test test-web e2e lint openapi clean
 
 help:  ## Show targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-10s %s\n", $$1, $$2}'
@@ -58,9 +58,15 @@ demo: setup pipeline  ## Everything: build data/model, seed, start API + web at 
 test: $(VENV)/.installed  ## Run pytest
 	$(PY) -m pytest -q
 
-lint: $(VENV)/.installed  ## Ruff + TypeScript checks
+lint: $(VENV)/.installed web/node_modules/.installed  ## Ruff, ESLint, Prettier, TypeScript and contrast checks
 	$(VENV)/bin/ruff check .
-	cd web && npx tsc -b --noEmit
+	cd web && npx tsc -b --noEmit && npm run lint && npm run format:check && npm run check:contrast
+
+test-web: web/node_modules/.installed  ## Web unit tests (Vitest)
+	cd web && npm test
+
+e2e: $(VENV)/.installed web/node_modules/.installed  ## Browser tests on an isolated stack (Playwright + axe)
+	cd web && npx playwright install chromium && npm run e2e
 
 openapi: $(VENV)/.installed  ## Export the OpenAPI spec to docs/openapi.json
 	$(PY) -c "import json; from api.main import app; print(json.dumps(app.openapi(), indent=2))" > docs/openapi.json
