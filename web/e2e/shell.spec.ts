@@ -46,7 +46,10 @@ test("command palette jumps to the hero application", async ({ page }) => {
   const input = page.getByPlaceholder(/Search factories/);
   await expect(input).toBeVisible();
   await input.fill("sharma");
-  await page.getByRole("option", { name: /Sharma Auto Components/ }).first().click();
+  await page
+    .getByRole("option", { name: /Sharma Auto Components/ })
+    .first()
+    .click();
   await expect(page).toHaveURL(/\/console\/\d+$/);
   await expect(page.getByRole("navigation", { name: "Breadcrumb" })).toContainText("Application #");
 });
