@@ -21,6 +21,7 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from api.kv import get_kv
 from api.problems import MEDIA_TYPE, PROBLEM_BASE
 from api.request_context import request_id
+from core import metrics
 from core.settings import get_settings
 
 EXEMPT = ("/healthz", "/readyz", "/health", "/docs", "/openapi.json", "/redoc", "/v1/events", "/metrics")
@@ -84,12 +85,13 @@ class RateLimitMiddleware:
         if who:
             checks = [(f"rl:u:{who[1]}:{who[0]}:{window}", s.rate_limit_user_per_min),
                       (f"rl:t:{who[1]}:{window}", s.rate_limit_tenant_per_min)]
-        elif scope["path"].endswith("/auth/login"):
+        elif scope["path"].endswith(("/auth/login", "/auth/refresh")):
             ip = (scope.get("client") or ("unknown", 0))[0]
             checks = [(f"rl:ip:{ip}:{window}", s.rate_limit_login_per_min)]
         for key, limit in checks:
             if limit > 0 and kv.incr(key, ttl=61) > limit:
                 scope_name = "sign-in attempts" if ":ip:" in key else ("your bank" if ":t:" in key else "you")
+                metrics.RATE_LIMITED.labels(key.split(":")[1]).inc()
                 await send_problem(send, scope, 429, "rate_limited",
                                    f"Too many requests for {scope_name}. Try again in {retry_after} seconds.",
                                    {"Retry-After": retry_after})

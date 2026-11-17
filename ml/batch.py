@@ -32,6 +32,7 @@ import joblib
 import pandas as pd
 
 from api.models.db import BatchChunk, BatchRun, SessionLocal, init_db, utcnow
+from core.metrics import BATCH_ACCOUNTS
 from core.settings import get_settings
 from ml.ews import evaluate, rule_inputs
 
@@ -135,6 +136,7 @@ def run_batch(month: int, *, workers: int = 1, shards: int | None = None, chunk_
             db.add(BatchChunk(run_id=run_id, shard=shard, **r))
             db.commit()
         results.append(r)
+        BATCH_ACCOUNTS.inc(r["accounts"])
         if on_chunk:
             on_chunk(r)
 

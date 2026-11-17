@@ -8,7 +8,7 @@ from __future__ import annotations
 import time
 from contextlib import asynccontextmanager
 
-from fastapi import APIRouter, FastAPI, Response
+from fastapi import APIRouter, FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
@@ -16,16 +16,24 @@ from api import cache, problems  # noqa: F401  (cache registers its invalidation
 from api.kv import get_kv
 from api.middleware import IdempotencyMiddleware, RateLimitMiddleware
 from api.models.db import get_engine, init_db
+from api.observability import ObservabilityMiddleware
 from api.request_context import RequestIdMiddleware
 from api.routers import applications, auth, governance, insights, jobs, msme, portfolio, system
-from core.settings import assert_data_residency, get_settings
+from api.security import SecurityHeadersMiddleware
+from core import metrics
+from core.logs import configure_logging
+from core.settings import assert_startup_safe, get_settings
+from core.telemetry import configure_tracing, instrument_engine
 
 API_VERSION = "v1"
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    assert_data_residency()
+    configure_logging()
+    assert_startup_safe()
+    if configure_tracing("udyampulse-api"):
+        instrument_engine(get_engine())
     init_db()
     runtime = None
     if get_settings().inprocess_worker:  # lite demo: no Redis, so the API runs the relay and one worker thread
@@ -48,7 +56,8 @@ app = FastAPI(
                 "Errors use RFC 9457 problem details (`application/problem+json`).",
     lifespan=lifespan,
 )
-# Starlette runs the last-added middleware first: request id → CORS → rate limit → idempotency → routes.
+# Starlette runs the last-added middleware first:
+# request id → security headers → observability → CORS → rate limit → idempotency → routes.
 app.add_middleware(IdempotencyMiddleware)
 app.add_middleware(RateLimitMiddleware)
 app.add_middleware(
@@ -58,6 +67,8 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type", "Idempotency-Key", "X-Request-ID"],
     expose_headers=["X-Request-ID", "Retry-After", "Link", "X-Next-Cursor", "X-Cache"],
 )
+app.add_middleware(ObservabilityMiddleware)
+app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(RequestIdMiddleware)
 problems.install(app)
 
@@ -118,6 +129,18 @@ def readyz(response: Response) -> dict:
     if not ready:
         response.status_code = 503
     return {"status": "ready" if ready else "not_ready", "version": app.version, "checks": checks}
+
+
+@app.get("/metrics", tags=["meta"], include_in_schema=False)
+def prometheus_metrics(request: Request) -> Response:
+    """Prometheus scrape endpoint. Not proxied by the web front end; optionally needs `UP_METRICS_TOKEN`."""
+    s = get_settings()
+    if not s.metrics_enabled:
+        raise HTTPException(404, "Not Found")
+    if s.metrics_token and request.headers.get("authorization", "") != f"Bearer {s.metrics_token}":
+        raise HTTPException(401, "Metrics token required")
+    body, content_type = metrics.render()
+    return Response(body, media_type=content_type)
 
 
 @app.get("/health", tags=["meta"], include_in_schema=False)

@@ -15,6 +15,7 @@ from sqlalchemy import event
 from sqlalchemy.orm import Session
 
 from api.kv import get_kv
+from core import metrics
 from core.settings import get_settings
 
 _TENANT_DIRTY, _GLOBAL_DIRTY = "cache_dirty_tenants", "cache_dirty_global"
@@ -68,7 +69,9 @@ def cached(name: str, tenant: str, build: Callable[[], Any]) -> tuple[Any, bool]
     key = f"cache:{name}:{tenant}:{kv.get(f'ver:{tenant}') or 0}:{kv.get('ver:global') or 0}"
     hit = kv.get(key)
     if hit is not None:
+        metrics.CACHE.labels(name, "hit").inc()
         return json.loads(hit), True
+    metrics.CACHE.labels(name, "miss").inc()
     value = build()
     kv.set(key, json.dumps(value, default=str), s.cache_ttl_seconds)
     return value, False

@@ -23,7 +23,7 @@ FROM python:3.11-slim AS runtime
 RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 && rm -rf /var/lib/apt/lists/* \
     && useradd --create-home --uid 10001 app
 ENV PATH=/opt/venv/bin:$PATH MLFLOW_DISABLE_AGENT_HINT=1 PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 \
-    UP_DB_URL=sqlite:////app/var/udyampulse.db
+    UP_DB_URL=sqlite:////app/var/udyampulse.db PROMETHEUS_MULTIPROC_DIR=/tmp/prometheus
 WORKDIR /app
 COPY --from=deps /opt/venv /opt/venv
 COPY --chown=app:app . .
@@ -34,4 +34,4 @@ USER app
 EXPOSE 8000
 HEALTHCHECK --interval=10s --timeout=3s --retries=30 \
   CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/readyz')"
-CMD ["sh", "-c", "python -m api.seed --if-empty && exec uvicorn api.main:app --host 0.0.0.0 --port 8000 --workers 2 --proxy-headers"]
+CMD ["sh", "-c", "rm -rf /tmp/prometheus && mkdir -p /tmp/prometheus && python -m api.seed --if-empty && exec uvicorn api.main:app --host 0.0.0.0 --port 8000 --workers 2 --proxy-headers"]

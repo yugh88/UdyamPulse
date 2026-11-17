@@ -8,11 +8,13 @@ unexpected errors are retried with backoff and end in the dead-letter queue."""
 from __future__ import annotations
 
 import logging
+import time
 from collections.abc import Callable
 from datetime import timedelta
 
 import dramatiq
 from dramatiq.middleware import CurrentMessage
+from opentelemetry import trace
 from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
@@ -22,7 +24,10 @@ from agents.providers.consent import ConsentError
 from api.audit import Actor
 from api.models.db import Application, Job, SessionLocal, utcnow
 from api.tenancy import allow_cross_tenant, bind_tenant
+from core import metrics
+from core.logs import set_log_tenant
 from core.settings import get_settings
+from core.telemetry import continue_trace
 from core.timeline import month_label
 from worker.broker import broker  # noqa: F401  (the broker must exist before actors are declared)
 
@@ -127,35 +132,51 @@ def execute(job_id: str) -> str:
         if not claimed:
             return "skipped"
         job = db.get(Job, job_id)
-        fn = HANDLERS.get(job.kind)
+        kind = job.kind
+        fn = HANDLERS.get(kind)
         actor = Actor(job.created_by, job.role, None, tenant)
-        try:
-            if fn is None:
-                raise LookupError(f"No handler for job kind '{job.kind}'")
-            result = fn(db, actor, job, _progress(db, job_id))
-            db.commit()
-            job = db.get(Job, job_id)
-            job.status, job.progress, job.message, job.result, job.finished_at = "succeeded", 100, "Done", result, utcnow()
-            db.commit()
-            return "succeeded"
-        except BUSINESS_ERRORS as exc:
-            db.rollback()
-            job = db.get(Job, job_id)
-            job.status, job.error, job.message, job.finished_at = "failed", str(exc)[:500], str(exc)[:256], utcnow()
-            db.commit()
-            return "failed"
-        except Exception as exc:
-            db.rollback()
-            final = _retries_so_far() >= get_settings().job_max_retries
-            job = db.get(Job, job_id)
-            job.status = "dead" if final else "retrying"
-            job.error = f"{type(exc).__name__}: {exc}"[:500]
-            job.message = "Failed after all retries" if final else f"Attempt {job.attempts} failed; retrying"
-            if final:
-                job.finished_at = utcnow()
-            db.commit()
-            log.exception("job %s (%s) attempt %s failed", job_id, job.kind, job.attempts)
-            raise  # Dramatiq retries with backoff, then dead-letters
+        set_log_tenant(tenant)
+        started = time.perf_counter()
+        with continue_trace((job.params or {}).get("_trace"), f"job {kind}", **{
+                "udyam.job.id": job_id, "udyam.job.kind": kind, "udyam.job.attempt": job.attempts}) as span:
+            try:
+                if fn is None:
+                    raise LookupError(f"No handler for job kind '{kind}'")
+                result = fn(db, actor, job, _progress(db, job_id))
+                db.commit()
+                job = db.get(Job, job_id)
+                job.status, job.progress, job.message, job.result, job.finished_at = "succeeded", 100, "Done", result, utcnow()
+                db.commit()
+                outcome = "succeeded"
+            except BUSINESS_ERRORS as exc:
+                db.rollback()
+                job = db.get(Job, job_id)
+                job.status, job.error, job.message, job.finished_at = "failed", str(exc)[:500], str(exc)[:256], utcnow()
+                db.commit()
+                outcome = "failed"
+            except Exception as exc:
+                db.rollback()
+                final = _retries_so_far() >= get_settings().job_max_retries
+                job = db.get(Job, job_id)
+                job.status = "dead" if final else "retrying"
+                job.error = f"{type(exc).__name__}: {exc}"[:500]
+                job.message = "Failed after all retries" if final else f"Attempt {job.attempts} failed; retrying"
+                if final:
+                    job.finished_at = utcnow()
+                db.commit()
+                metrics.JOBS.labels(kind, job.status).inc()
+                metrics.JOB_LATENCY.labels(kind).observe(time.perf_counter() - started)
+                span.record_exception(exc)
+                span.set_status(trace.StatusCode.ERROR)
+                log.exception("job %s (%s) attempt %s failed", job_id, kind, job.attempts,
+                              extra={"job_id": job_id, "kind": kind})
+                raise  # Dramatiq retries with backoff, then dead-letters
+            span.set_attribute("udyam.job.status", outcome)
+            metrics.JOBS.labels(kind, outcome).inc()
+            metrics.JOB_LATENCY.labels(kind).observe(time.perf_counter() - started)
+            log.info("job %s %s", kind, outcome, extra={"job_id": job_id, "kind": kind, "status": outcome,
+                                                        "duration_ms": round((time.perf_counter() - started) * 1000, 1)})
+            return outcome
 
 
 @dramatiq.actor(queue_name="jobs")

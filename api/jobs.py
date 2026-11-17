@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 
 from api.audit import Actor
 from api.models.db import Job, OutboxEvent
+from core.telemetry import carrier
 
 TERMINAL = frozenset({"succeeded", "failed", "dead"})
 RELAY_WAKE = threading.Event()  # lets an in-process relay publish right after a commit instead of on its next poll
@@ -21,7 +22,11 @@ _OUTBOX_TOUCHED = "outbox_touched"
 
 
 def enqueue(db: Session, actor: Actor, kind: str, params: dict | None = None, *, application_id: int | None = None) -> Job:
-    job = Job(id=uuid.uuid4().hex, kind=kind, params=params or {}, status="queued", progress=0, message="Queued",
+    params = {**(params or {})}
+    trace_ctx = carrier()
+    if trace_ctx:
+        params["_trace"] = trace_ctx  # the worker continues this request's trace
+    job = Job(id=uuid.uuid4().hex, kind=kind, params=params, status="queued", progress=0, message="Queued",
               attempts=0, created_by=actor.username, role=actor.role, application_id=application_id)
     db.add(job)
     db.add(OutboxEvent(topic="job.requested", payload={"job_id": job.id, "kind": kind}))

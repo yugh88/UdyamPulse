@@ -11,6 +11,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 
 INDIA_REGIONS = {"centralindia", "southindia", "westindia", "jioindiacentral", "jioindiawest"}
+DEFAULT_JWT_SECRET = "change-me-local-demo-secret-please-rotate-0001"
 
 
 def _load_dotenv(path: Path) -> None:
@@ -48,9 +49,30 @@ class Settings:
     ml_dir: Path = ROOT / "ml"
     policy_dir: Path = ROOT / "policy"
 
+    # local (demo defaults allowed) | production (refuses to start on demo secrets, SQLite or a non-India region)
+    env: str = field(default_factory=lambda: _env("UP_ENV", "local").lower())
     db_url: str = field(default_factory=lambda: _env("UP_DB_URL", f"sqlite:///{ROOT / 'var' / 'udyampulse.db'}"))
-    jwt_secret: str = field(default_factory=lambda: _env("UP_JWT_SECRET", "change-me-local-demo-secret-please-rotate-0001"))
-    jwt_ttl_minutes: int = field(default_factory=lambda: int(_env("UP_JWT_TTL_MINUTES", "480")))
+    jwt_secret: str = field(default_factory=lambda: _env("UP_JWT_SECRET", DEFAULT_JWT_SECRET))
+    # Access tokens are short-lived; the browser renews them with a rotating httpOnly refresh cookie.
+    jwt_ttl_minutes: int = field(default_factory=lambda: int(_env("UP_JWT_TTL_MINUTES", "15")))
+    refresh_ttl_hours: int = field(default_factory=lambda: int(_env("UP_REFRESH_TTL_HOURS", "12")))
+    cookie_secure_raw: str = field(default_factory=lambda: _env("UP_COOKIE_SECURE", "auto"))
+    # Fernet keys for field-level PII encryption, comma separated, newest first (older keys still decrypt).
+    field_keys_raw: str = field(default_factory=lambda: _env("UP_FIELD_KEYS", ""))
+
+    # Observability
+    log_format: str = field(default_factory=lambda: _env("UP_LOG_FORMAT", "json").lower())  # json | text
+    log_level: str = field(default_factory=lambda: _env("UP_LOG_LEVEL", "INFO").upper())
+    otel_endpoint: str = field(default_factory=lambda: _env("UP_OTEL_ENDPOINT", ""))  # OTLP/HTTP, empty = off
+    metrics_enabled: bool = field(default_factory=lambda: _env("UP_METRICS", "on").lower() not in ("0", "off", "false"))
+    metrics_token: str = field(default_factory=lambda: _env("UP_METRICS_TOKEN", ""))  # if set, /metrics needs it
+
+    # LLM resilience (only matters when a hosted LLM provider is configured)
+    llm_timeout_s: float = field(default_factory=lambda: float(_env("UP_LLM_TIMEOUT_S", "20")))
+    llm_concurrency_per_tenant: int = field(default_factory=lambda: int(_env("UP_LLM_CONCURRENCY_PER_TENANT", "4")))
+    llm_breaker_failures: int = field(default_factory=lambda: int(_env("UP_LLM_BREAKER_FAILURES", "5")))
+    llm_breaker_reset_s: float = field(default_factory=lambda: float(_env("UP_LLM_BREAKER_RESET_S", "60")))
+    llm_cache_ttl_s: int = field(default_factory=lambda: int(_env("UP_LLM_CACHE_TTL_S", "86400")))
 
     llm_provider: str = field(default_factory=lambda: _env("UP_LLM_PROVIDER", "template"))
     search_provider: str = field(default_factory=lambda: _env("UP_SEARCH_PROVIDER", "local"))
@@ -88,7 +110,20 @@ class Settings:
             return True
         if self.demo_mode_raw.lower() in ("0", "false", "off"):
             return False
-        return self.data_region.lower() == "local"
+        return self.data_region.lower() == "local" and not self.production
+
+    @property
+    def production(self) -> bool:
+        return self.env in ("prod", "production")
+
+    @property
+    def cookie_secure(self) -> bool:
+        raw = self.cookie_secure_raw.lower()
+        if raw in ("1", "on", "true"):
+            return True
+        if raw in ("0", "off", "false"):
+            return False
+        return self.production
 
     @property
     def bronze(self) -> Path:
@@ -122,3 +157,36 @@ def assert_data_residency(settings: Settings | None = None) -> None:
     region = s.data_region.lower().replace(" ", "")
     if region != "local" and region not in INDIA_REGIONS:
         raise RuntimeError(f"Data residency violation: region '{s.data_region}' is not an India region")
+    if s.production and region not in INDIA_REGIONS:
+        raise RuntimeError("Data residency violation: production needs UP_DATA_REGION set to an India region")
+
+
+def production_problems(settings: Settings | None = None) -> list[str]:
+    """Everything that makes this configuration unsafe for production. Empty means it may start."""
+    s = settings or get_settings()
+    problems = []
+    if s.jwt_secret == DEFAULT_JWT_SECRET or len(s.jwt_secret) < 32:
+        problems.append("UP_JWT_SECRET is the demo default or shorter than 32 characters")
+    if not s.field_keys_raw:
+        problems.append("UP_FIELD_KEYS is empty, so PII would be encrypted with the public demo key")
+    if s.db_url.startswith("sqlite"):
+        problems.append("UP_DB_URL points at SQLite; production needs PostgreSQL")
+    if not s.redis_url:
+        problems.append("UP_REDIS_URL is empty; production needs Redis for limits, cache and the job queue")
+    if s.demo_mode_raw.lower() in ("1", "true", "on"):
+        problems.append("UP_DEMO_MODE is on; demo reset must never be reachable in production")
+    if not s.cookie_secure:
+        problems.append("UP_COOKIE_SECURE is off; refresh cookies must be HTTPS-only")
+    if s.jwt_ttl_minutes > 60:
+        problems.append("UP_JWT_TTL_MINUTES is above 60; access tokens must be short-lived")
+    return problems
+
+
+def assert_startup_safe(settings: Settings | None = None) -> None:
+    """Fail fast at boot: data residency always, and the production checklist when UP_ENV=production."""
+    s = settings or get_settings()
+    assert_data_residency(s)
+    if s.production:
+        problems = production_problems(s)
+        if problems:
+            raise RuntimeError("Refusing to start in production: " + "; ".join(problems))

@@ -34,3 +34,12 @@ psycopg[binary]==3.3.9
 # Redis: cache, rate limits, idempotency keys; Dramatiq job queue (in-process stub when Redis is not configured)
 redis==8.1.0
 dramatiq[redis]==2.2.1
+
+# Ops & security: Prometheus metrics, OpenTelemetry traces (OTLP/HTTP, off unless UP_OTEL_ENDPOINT is set),
+# argon2id password hashing, Fernet field encryption (cryptography)
+prometheus-client==0.26.0
+opentelemetry-api==1.45.2
+opentelemetry-sdk==1.45.2
+opentelemetry-exporter-otlp-proto-http==1.45.2
+argon2-cffi==25.1.0
+cryptography==50.0.2
