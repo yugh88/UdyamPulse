@@ -143,7 +143,8 @@ def test_production_requires_india_region():
 def test_production_guard_accepts_hardened_configuration():
     hardened = replace(get_settings(), env="production", data_region="centralindia", jwt_secret="x" * 48,
                        field_keys_raw="k1", db_url="postgresql+psycopg://u@db/x", redis_url="redis://r:6379/0",
-                       demo_mode_raw="auto", cookie_secure_raw="auto", jwt_ttl_minutes=15)
+                       demo_mode_raw="auto", cookie_secure_raw="auto", jwt_ttl_minutes=15,
+                       argon2_time_cost=3, argon2_memory_kib=65536)
     assert production_problems(hardened) == []
     assert hardened.cookie_secure and not hardened.demo_mode
     assert_startup_safe(hardened)

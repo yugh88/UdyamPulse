@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
-import { post, UNAUTHORIZED_EVENT } from "./api";
+import { post, setAccessToken, UNAUTHORIZED_EVENT } from "./api";
 
 export type Role = "rm" | "credit_officer" | "risk" | "msme";
 export interface Session {
@@ -32,10 +32,13 @@ interface AuthCtx {
 
 const Ctx = createContext<AuthCtx | null>(null);
 
+/** Who is signed in (names and role only). No token is ever written to storage: the access token lives in
+ * memory and the refresh token is an httpOnly cookie, so a reload renews the session through the cookie. */
 function stored(): Session | null {
   try {
+    localStorage.removeItem("up_token"); // tokens from older builds
     const raw = localStorage.getItem("up_session");
-    return raw && localStorage.getItem("up_token") ? (JSON.parse(raw) as Session) : null;
+    return raw ? (JSON.parse(raw) as Session) : null;
   } catch {
     return null;
   }
@@ -47,7 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [expired, setExpired] = useState(false);
 
   const clear = useCallback(() => {
-    localStorage.removeItem("up_token");
+    setAccessToken(null);
     localStorage.removeItem("up_session");
     qc.clear();
     setSession(null);
@@ -58,7 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const r = await post<{ access_token: string; role: Role; display_name: string; factory_id: string | null; tenant_name: string }>("/auth/login", { username, password });
       const s: Session = { username, role: r.role, display_name: r.display_name, factory_id: r.factory_id, tenant_name: r.tenant_name };
       qc.clear(); // never show one persona's cached data to the next
-      localStorage.setItem("up_token", r.access_token);
+      setAccessToken(r.access_token);
       localStorage.setItem("up_session", JSON.stringify(s));
       setExpired(false);
       setSession(s);
@@ -69,6 +72,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     setExpired(false);
+    // Revoke the refresh token on the server; sign-out in this tab does not wait for it.
+    post("/auth/logout").catch(() => undefined);
     clear();
   }, [clear]);
 

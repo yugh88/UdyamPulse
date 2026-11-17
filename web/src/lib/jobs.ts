@@ -1,4 +1,4 @@
-import { api, ApiError } from "./api";
+import { api, ApiError, ensureAccessToken } from "./api";
 
 export interface JobView<R = Record<string, unknown>> {
   id: string;
@@ -40,7 +40,8 @@ async function* sse(body: ReadableStream<Uint8Array>): AsyncGenerator<{ event: s
 async function follow<R>(jobId: string, onUpdate?: (j: JobView<R>) => void, signal?: AbortSignal): Promise<JobView<R>> {
   // Live updates over SSE (fetch, so the bearer token can be sent); polling if streaming is unavailable.
   try {
-    const res = await fetch(`/api/v1/events?job=${jobId}`, { headers: { Authorization: `Bearer ${localStorage.getItem("up_token")}` }, signal });
+    const token = await ensureAccessToken();
+    const res = await fetch(`/api/v1/events?job=${jobId}`, { headers: { Authorization: `Bearer ${token}` }, signal });
     if (res.ok && res.body) {
       let last: JobView<R> | null = null;
       for await (const msg of sse(res.body)) {

@@ -17,6 +17,10 @@ if os.environ.get("UP_TEST_REDIS_URL"):
 
     _redis.Redis.from_url(os.environ["UP_REDIS_URL"]).flushdb()
     os.environ.setdefault("UP_INPROCESS_WORKER", "on")  # jobs run in the test process, through Redis
+# Cheap argon2 for the hundreds of test logins (production cost is checked by the production guard).
+os.environ.setdefault("UP_ARGON2_TIME_COST", "1")
+os.environ.setdefault("UP_ARGON2_MEMORY_KIB", "1024")
+os.environ.setdefault("UP_ARGON2_PARALLELISM", "1")
 # Fast retries for the job tests.
 os.environ.setdefault("UP_JOB_MIN_BACKOFF_MS", "50")
 os.environ.setdefault("UP_JOB_MAX_BACKOFF_MS", "200")

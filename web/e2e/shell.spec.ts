@@ -79,11 +79,33 @@ test("role switcher changes persona", async ({ page }) => {
   await expect(page.getByRole("banner")).toContainText("Risk Head");
 });
 
-test("an expired session returns to login", async ({ page }) => {
+test("a reload keeps the session through the refresh cookie, without storing a token", async ({ page }) => {
   await loginAs(page, "rm1");
-  await page.evaluate(() => localStorage.setItem("up_token", "not-a-valid-token"));
+  expect(await page.evaluate(() => Object.keys(localStorage).filter((k) => k.includes("token")))).toEqual([]);
+  const cookies = await page.context().cookies();
+  const refresh = cookies.find((c) => c.name === "up_refresh");
+  expect(refresh?.httpOnly).toBe(true);
+  expect(refresh?.sameSite).toBe("Strict");
+  await page.reload();
+  await expect(page).toHaveURL(/\/console$/);
+  await expect(page.getByRole("banner")).toContainText("Relationship Manager");
+});
+
+test("an ended session returns to login", async ({ page }) => {
+  await loginAs(page, "rm1");
+  await page.context().clearCookies(); // refresh token gone: the next reload cannot renew the session
   await page.reload();
   await expect(page).toHaveURL(/\/login$/);
+});
+
+test("sign out revokes the refresh token", async ({ page }) => {
+  await loginAs(page, "rm1");
+  const before = (await page.context().cookies()).find((c) => c.name === "up_refresh")!.value;
+  await page.getByRole("button", { name: /Account menu/ }).click();
+  await page.getByRole("menuitem", { name: /Sign out/ }).click();
+  await expect(page).toHaveURL(/\/login$/);
+  const res = await page.request.post("/api/v1/auth/refresh", { headers: { Cookie: `up_refresh=${before}` } });
+  expect(res.status()).toBe(401);
 });
 
 test("sidebar collapses and stays usable", async ({ page }) => {

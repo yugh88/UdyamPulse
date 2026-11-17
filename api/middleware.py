@@ -106,7 +106,9 @@ class IdempotencyMiddleware:
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         key = _header(scope, "idempotency-key") if scope["type"] == "http" else ""
         who = principal(scope) if key else None
-        if not key or scope["method"] not in MUTATING or not scope["path"].startswith("/v1/") or who is None:
+        # Sign-in endpoints are never stored or replayed: their responses carry tokens and set cookies.
+        if (not key or scope["method"] not in MUTATING or not scope["path"].startswith("/v1/") or who is None
+                or scope["path"].startswith("/v1/auth/")):
             await self.app(scope, receive, send)
             return
         if not (1 <= len(key) <= 128) or not key.isprintable():

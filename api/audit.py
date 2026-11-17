@@ -23,6 +23,7 @@ class Actor:
     role: str
     factory_id: str | None = None
     tenant_id: str | None = None
+    branch: str | None = None  # staff home branch, for attribute-based access checks
 
 
 SYSTEM = Actor("system", "system")

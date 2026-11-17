@@ -40,6 +40,22 @@ class User(TenantScoped, Base):
     branch: Mapped[str | None] = mapped_column(String(32), nullable=True)  # RM home cluster, for attribute checks
 
 
+class RefreshToken(TenantScoped, Base):
+    """One rotating refresh token. Only its SHA-256 is stored. Every refresh marks the old token used and issues
+    a new one in the same family; presenting a used token again means it was stolen, so the family is revoked."""
+
+    __tablename__ = "refresh_tokens"
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    family_id: Mapped[str] = mapped_column(String(32), index=True)
+    username: Mapped[str] = mapped_column(String(64), index=True)
+    token_hash: Mapped[str] = mapped_column(String(64))
+    issued_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    replaced_by: Mapped[str | None] = mapped_column(String(32), nullable=True)
+
+
 class Application(TenantScoped, Base):
     __tablename__ = "applications"
     __table_args__ = (Index("ix_applications_tenant_state", "tenant_id", "state"),

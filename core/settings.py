@@ -57,6 +57,10 @@ class Settings:
     jwt_ttl_minutes: int = field(default_factory=lambda: int(_env("UP_JWT_TTL_MINUTES", "15")))
     refresh_ttl_hours: int = field(default_factory=lambda: int(_env("UP_REFRESH_TTL_HOURS", "12")))
     cookie_secure_raw: str = field(default_factory=lambda: _env("UP_COOKIE_SECURE", "auto"))
+    # argon2id cost (RFC 9106 second recommended option by default: 3 passes, 64 MiB, 4 lanes)
+    argon2_time_cost: int = field(default_factory=lambda: int(_env("UP_ARGON2_TIME_COST", "3")))
+    argon2_memory_kib: int = field(default_factory=lambda: int(_env("UP_ARGON2_MEMORY_KIB", "65536")))
+    argon2_parallelism: int = field(default_factory=lambda: int(_env("UP_ARGON2_PARALLELISM", "4")))
     # Fernet keys for field-level PII encryption, comma separated, newest first (older keys still decrypt).
     field_keys_raw: str = field(default_factory=lambda: _env("UP_FIELD_KEYS", ""))
 
@@ -177,6 +181,8 @@ def production_problems(settings: Settings | None = None) -> list[str]:
         problems.append("UP_DEMO_MODE is on; demo reset must never be reachable in production")
     if not s.cookie_secure:
         problems.append("UP_COOKIE_SECURE is off; refresh cookies must be HTTPS-only")
+    if s.argon2_memory_kib < 19456 or s.argon2_time_cost < 2:
+        problems.append("argon2 cost is below the OWASP minimum (19 MiB, 2 passes)")
     if s.jwt_ttl_minutes > 60:
         problems.append("UP_JWT_TTL_MINUTES is above 60; access tokens must be short-lived")
     return problems

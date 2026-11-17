@@ -12,8 +12,64 @@ export class ApiError extends Error {
   }
 }
 
-function token(): string | null {
-  return localStorage.getItem("up_token");
+// The access token lives in memory only (15 minutes). The refresh token is an httpOnly cookie the page
+// cannot read; `refreshAccess` swaps it for a new access token and the server rotates the cookie.
+let accessToken: string | null = null;
+let refreshing: Promise<string | null> | null = null;
+const SESSION_KEY = "up_session";
+
+export function setAccessToken(t: string | null) {
+  accessToken = t;
+}
+
+export function getAccessToken(): string | null {
+  return accessToken;
+}
+
+function hasSession(): boolean {
+  try {
+    return localStorage.getItem(SESSION_KEY) !== null;
+  } catch {
+    return false;
+  }
+}
+
+async function callRefresh(): Promise<Response | null> {
+  try {
+    return await fetch(`${BASE}/auth/refresh`, { method: "POST", credentials: "same-origin" });
+  } catch {
+    return null;
+  }
+}
+
+/** One refresh at a time per tab. Returns the new access token, or null when the session is over. */
+export function refreshAccess(): Promise<string | null> {
+  refreshing ??= (async () => {
+    let res = await callRefresh();
+    if (res?.status === 401) {
+      // Another tab rotated the shared cookie a moment ago: the browser now holds the newer one.
+      const body = await res
+        .clone()
+        .json()
+        .catch(() => ({}));
+      if (body.code === "refresh_superseded") {
+        await new Promise((r) => setTimeout(r, 200));
+        res = await callRefresh();
+      }
+    }
+    if (!res?.ok) return null;
+    const body = await res.json();
+    accessToken = body.access_token as string;
+    return accessToken;
+  })().finally(() => {
+    refreshing = null;
+  });
+  return refreshing;
+}
+
+/** A usable access token for requests made outside `api()` (the job event stream). */
+export async function ensureAccessToken(): Promise<string | null> {
+  return accessToken ?? (hasSession() ? refreshAccess() : null);
 }
 
 /** Reads FastAPI `{detail}` and RFC 9457 problem+json `{title, detail, code}` error bodies. */
@@ -37,23 +93,30 @@ async function toError(res: Response): Promise<ApiError> {
   return new ApiError(res.status, msg, code);
 }
 
-async function request(path: string, init: RequestInit): Promise<Response> {
-  const headers = new Headers(init.headers);
-  if (init.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
-  const t = token();
+async function send(path: string, init: RequestInit, headers: Headers, t: string | null): Promise<Response> {
   if (t) headers.set("Authorization", `Bearer ${t}`);
-  // Every write carries a fresh idempotency key, so a network retry can never apply it twice.
-  const method = (init.method ?? "GET").toUpperCase();
-  if (method !== "GET" && !headers.has("Idempotency-Key")) headers.set("Idempotency-Key", crypto.randomUUID());
-  let res: Response;
   try {
-    res = await fetch(`${BASE}${path}`, { ...init, headers });
+    return await fetch(`${BASE}${path}`, { ...init, headers, credentials: "same-origin" });
   } catch {
     throw new ApiError(0, "Cannot reach the server. Check that the API is running.");
   }
-  if (res.status === 401 && t && !path.startsWith("/auth/login")) {
-    // Expired or invalid session: sign out everywhere and return to login.
-    window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
+}
+
+async function request(path: string, init: RequestInit): Promise<Response> {
+  const headers = new Headers(init.headers);
+  if (init.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
+  // Every write carries a fresh idempotency key, so a network retry can never apply it twice.
+  const method = (init.method ?? "GET").toUpperCase();
+  if (method !== "GET" && !headers.has("Idempotency-Key")) headers.set("Idempotency-Key", crypto.randomUUID());
+  const isAuth = path.startsWith("/auth/");
+  // After a page reload the access token is gone but the refresh cookie is not: renew before the first call.
+  const t = isAuth ? accessToken : await ensureAccessToken();
+  let res = await send(path, init, headers, t);
+  if (res.status === 401 && !isAuth && hasSession()) {
+    // The access token expired mid-session: renew once and repeat the request with the same idempotency key.
+    const fresh = await refreshAccess();
+    if (fresh) res = await send(path, init, headers, fresh);
+    if (res.status === 401) window.dispatchEvent(new Event(UNAUTHORIZED_EVENT)); // session over: back to sign-in
   }
   if (!res.ok) throw await toError(res);
   return res;
