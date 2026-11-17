@@ -1,6 +1,7 @@
 import { lazy, Suspense, type ComponentType, type LazyExoticComponent } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AppShell } from "./components/shell/AppShell";
+import { DemoGuide } from "./features/demo/DemoGuide";
 import { SkeletonRows } from "./components/ui";
 import { homeFor, useAuth, type Role } from "./lib/auth";
 
@@ -39,6 +40,7 @@ export default function App() {
           <Route path="*" element={<Navigate to="/login" replace />} />
         )}
       </Routes>
+      <DemoGuide />
     </Suspense>
   );
 }

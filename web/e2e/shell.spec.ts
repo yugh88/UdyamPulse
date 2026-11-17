@@ -115,3 +115,21 @@ test("sidebar collapses and stays usable", async ({ page }) => {
   await page.getByRole("link", { name: "Risk cockpit" }).click();
   await expect(page).toHaveURL(/\/cockpit$/);
 });
+
+test("guided demo signs in the right persona and opens the right screen", async ({ page }) => {
+  await page.goto("/login");
+  await page.getByRole("button", { name: "Guided demo" }).click();
+  const panel = page.getByRole("complementary", { name: "Guided demo" });
+  await expect(panel).toContainText("step 1 of 7");
+  await panel.getByRole("button", { name: "Sign in as rm1 and open" }).click();
+  await expect(page).toHaveURL(/\/console\/\d+$/);
+  await expect(page.getByRole("heading", { name: "Sharma Auto Components" })).toBeVisible();
+  for (let i = 0; i < 4; i++) await panel.getByRole("button", { name: "Next step" }).click();
+  await expect(panel).toContainText("Early warning");
+  await panel.getByRole("button", { name: "Sign in as risk1 and open" }).click();
+  await expect(page).toHaveURL(/\/cockpit$/);
+  await expect(page.getByRole("banner")).toContainText("Risk Head");
+  await expectAccessible(page);
+  await panel.getByRole("button", { name: "Close the guided demo" }).click();
+  await expect(panel).toBeHidden();
+});

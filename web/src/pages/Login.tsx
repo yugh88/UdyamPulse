@@ -7,6 +7,7 @@ import { Button, ErrorNote, Field, Input } from "../components/ui";
 import { api, post } from "../lib/api";
 import { DEMO_PASSWORD, homeFor, PERSONAS, useAuth } from "../lib/auth";
 import { PrototypeBanner } from "../components/shell/PrototypeBanner";
+import { GuideLauncher } from "../features/demo/DemoGuide";
 
 const ICON: Record<string, LucideIcon> = { rm: LayoutList, credit_officer: ShieldCheck, risk: ChartPie, msme: Smartphone };
 
@@ -150,8 +151,11 @@ export default function Login() {
               </ul>
             </div>
 
+            <div className="mt-4 flex justify-center">
+              <GuideLauncher />
+            </div>
             {demo.data?.demo_mode && (
-              <p className="mt-4 text-center text-xs text-fg-muted">
+              <p className="mt-2 text-center text-xs text-fg-muted">
                 Presenter:{" "}
                 <button
                   type="button"
