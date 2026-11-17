@@ -12,7 +12,9 @@ from fastapi import APIRouter, FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
-from api import problems
+from api import cache, problems  # noqa: F401  (cache registers its invalidation listeners)
+from api.kv import get_kv
+from api.middleware import IdempotencyMiddleware, RateLimitMiddleware
 from api.models.db import get_engine, init_db
 from api.request_context import RequestIdMiddleware
 from api.routers import applications, auth, governance, insights, msme, portfolio
@@ -37,6 +39,9 @@ app = FastAPI(
                 "Errors use RFC 9457 problem details (`application/problem+json`).",
     lifespan=lifespan,
 )
+# Starlette runs the last-added middleware first: request id → CORS → rate limit → idempotency → routes.
+app.add_middleware(IdempotencyMiddleware)
+app.add_middleware(RateLimitMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:4173"],
@@ -88,10 +93,17 @@ def _lake() -> dict:
     return {}
 
 
+def _redis() -> dict:
+    kv = get_kv()
+    if kv.backend == "redis" and not kv.ping():
+        raise ConnectionError("redis")
+    return {"backend": kv.backend}
+
+
 @app.get("/readyz", tags=["meta"])
 def readyz(response: Response) -> dict:
-    """Readiness: database, model artifact and lake are reachable. 503 takes the pod out of rotation."""
-    checks = {"database": _check(_db), "model": _check(_model), "lake": _check(_lake)}
+    """Readiness: database, model artifact, lake and (when configured) Redis. 503 takes the pod out of rotation."""
+    checks = {"database": _check(_db), "model": _check(_model), "lake": _check(_lake), "cache": _check(_redis)}
     ready = all(c["ok"] for c in checks.values())
     if not ready:
         response.status_code = 503

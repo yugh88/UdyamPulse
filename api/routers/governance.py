@@ -105,9 +105,11 @@ def reset_demo() -> dict:
     if not get_settings().demo_mode:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
     from api import seed
+    from api.cache import invalidate_all
 
     t0 = time.perf_counter()
     seed.main()
+    invalidate_all()
     return {"status": "reset", "took_ms": round((time.perf_counter() - t0) * 1000),
             "sim_date": str(get_settings().sim_start)}
 

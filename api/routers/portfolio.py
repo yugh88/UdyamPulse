@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
 
 from agents.base import set_sim_date, sim_date, visible_month
@@ -12,6 +12,7 @@ from agents.providers.lake import get_lake
 from api import serving
 from api.audit import log_event
 from api.auth import CurrentUser, require_roles
+from api.cache import cached
 from api.models.db import AccountScore, Alert, Application, Consent, User, get_db, utcnow
 from api.models.schemas import AlertAction, AlertBulk
 from core.timeline import month_label
@@ -23,7 +24,15 @@ LGD, EARLY_ACTION_EFFECT = 0.45, 0.40
 
 
 @router.get("/portfolio")
-def portfolio(db: Session = Depends(get_db), user: CurrentUser = Depends(require_roles(*STAFF))) -> dict:
+def portfolio(response: Response, db: Session = Depends(get_db),
+              user: CurrentUser = Depends(require_roles(*STAFF))) -> dict:
+    """Portfolio aggregates, cached per bank and invalidated by any change to its accounts (see api/cache.py)."""
+    value, hit = cached("portfolio", user.tenant_id, lambda: _portfolio(db))
+    response.headers["X-Cache"] = "hit" if hit else "miss"
+    return value
+
+
+def _portfolio(db: Session) -> dict:
     lake = get_lake()
     vm = visible_month(db)
     today = sim_date(db)
@@ -87,8 +96,15 @@ BAND_ORDER = ("APPROVE", "WATCH", "HIGH_RISK")
 
 
 @router.get("/portfolio/migration")
-def migration(db: Session = Depends(get_db), user: CurrentUser = Depends(require_roles(*STAFF))) -> dict:
+def migration(response: Response, db: Session = Depends(get_db),
+              user: CurrentUser = Depends(require_roles(*STAFF))) -> dict:
     """Score-band migration of monitored accounts between the previous and the latest visible month."""
+    value, hit = cached("migration", user.tenant_id, lambda: _migration(db))
+    response.headers["X-Cache"] = "hit" if hit else "miss"
+    return value
+
+
+def _migration(db: Session) -> dict:
     lake = get_lake()
     vm = visible_month(db)
     apps = db.query(Application).filter(Application.state == "MONITORING").all()

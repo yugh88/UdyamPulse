@@ -10,6 +10,15 @@ _TMP = Path(tempfile.mkdtemp(prefix="udyampulse-test-"))
 # SQLite by default; set UP_TEST_DB_URL to run the same suite against PostgreSQL (migrations + RLS).
 os.environ["UP_DB_URL"] = os.environ.get("UP_TEST_DB_URL") or f"sqlite:///{_TMP / 'test.db'}"
 os.environ["UP_LLM_PROVIDER"] = "template"
+# Set UP_TEST_REDIS_URL to run against Redis (cache, limits, idempotency). The test database is flushed first.
+if os.environ.get("UP_TEST_REDIS_URL"):
+    os.environ["UP_REDIS_URL"] = os.environ["UP_TEST_REDIS_URL"]
+    import redis as _redis
+
+    _redis.Redis.from_url(os.environ["UP_REDIS_URL"]).flushdb()
+# The suite logs in hundreds of times from one address; rate limits get their own tests.
+for _k in ("UP_RATE_LIMIT_USER_PER_MIN", "UP_RATE_LIMIT_TENANT_PER_MIN", "UP_RATE_LIMIT_LOGIN_PER_MIN"):
+    os.environ[_k] = "100000"
 
 import pytest  # noqa: E402
 

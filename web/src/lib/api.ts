@@ -42,6 +42,9 @@ async function request(path: string, init: RequestInit): Promise<Response> {
   if (init.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
   const t = token();
   if (t) headers.set("Authorization", `Bearer ${t}`);
+  // Every write carries a fresh idempotency key, so a network retry can never apply it twice.
+  const method = (init.method ?? "GET").toUpperCase();
+  if (method !== "GET" && !headers.has("Idempotency-Key")) headers.set("Idempotency-Key", crypto.randomUUID());
   let res: Response;
   try {
     res = await fetch(`${BASE}${path}`, { ...init, headers });

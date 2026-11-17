@@ -59,6 +59,13 @@ class Settings:
     lake_store: str = field(default_factory=lambda: _env("UP_LAKE_STORE", "duckdb"))
     embeddings: str = field(default_factory=lambda: _env("UP_EMBEDDINGS", "tfidf"))
     data_region: str = field(default_factory=lambda: _env("UP_DATA_REGION", "local"))
+    # Redis: cache, rate limits, idempotency keys and the job queue. Empty = in-process fallbacks (lite demo).
+    redis_url: str = field(default_factory=lambda: _env("UP_REDIS_URL", ""))
+    cache_enabled: bool = field(default_factory=lambda: _env("UP_CACHE", "on").lower() not in ("0", "off", "false"))
+    cache_ttl_seconds: int = field(default_factory=lambda: int(_env("UP_CACHE_TTL_SECONDS", "30")))
+    rate_limit_user_per_min: int = field(default_factory=lambda: int(_env("UP_RATE_LIMIT_USER_PER_MIN", "600")))
+    rate_limit_tenant_per_min: int = field(default_factory=lambda: int(_env("UP_RATE_LIMIT_TENANT_PER_MIN", "6000")))
+    rate_limit_login_per_min: int = field(default_factory=lambda: int(_env("UP_RATE_LIMIT_LOGIN_PER_MIN", "30")))
     # Demo conveniences (one-click reset). On by default only for the local, synthetic-data deployment.
     demo_mode_raw: str = field(default_factory=lambda: _env("UP_DEMO_MODE", "auto"))
 

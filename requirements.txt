@@ -30,3 +30,7 @@ ruff==0.17.3
 # PostgreSQL (docker compose default; SQLite stays for make demo)
 alembic==1.20.1
 psycopg[binary]==3.3.9
+
+# Redis: cache, rate limits, idempotency keys; Dramatiq job queue (in-process stub when Redis is not configured)
+redis==8.1.0
+dramatiq[redis]==2.2.1

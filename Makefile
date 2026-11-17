@@ -5,7 +5,7 @@ VENV := .venv
 PY := $(VENV)/bin/python
 export MLFLOW_DISABLE_AGENT_HINT := 1
 
-.PHONY: help setup data lake train backtest seed pipeline api web demo demo-lite test test-web test-pg pg-up pg-down e2e lint openapi clean
+.PHONY: help setup data lake train backtest seed pipeline api web demo demo-lite test test-web test-pg test-full pg-up pg-down redis-up redis-down e2e lint openapi clean
 
 help:  ## Show targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-10s %s\n", $$1, $$2}'
@@ -65,6 +65,16 @@ pg-up:  ## Start a project-local PostgreSQL on :55432 (data in var/pg, non-super
 
 pg-down:  ## Stop the project-local PostgreSQL
 	@bash ops/postgres/local.sh down
+
+redis-up:  ## Start a project-local Redis on :56379 (no persistence)
+	@redis-cli -p 56379 ping >/dev/null 2>&1 || redis-server --port 56379 --bind 127.0.0.1 --save "" --appendonly no --daemonize yes --dir $(CURDIR)/var --logfile $(CURDIR)/var/redis.log
+	@echo "Redis ready: redis://127.0.0.1:56379/0"
+
+redis-down:  ## Stop the project-local Redis
+	@redis-cli -p 56379 shutdown nosave >/dev/null 2>&1 || true
+
+test-full: $(VENV)/.installed pg-up redis-up  ## Run pytest against PostgreSQL and Redis
+	UP_TEST_DB_URL=postgresql+psycopg://udyam_app@127.0.0.1:55432/udyampulse_test UP_TEST_REDIS_URL=redis://127.0.0.1:56379/15 $(PY) -m pytest -q
 
 test-pg: $(VENV)/.installed pg-up  ## Run pytest against PostgreSQL (migrations, partitions, row-level security)
 	UP_TEST_DB_URL=postgresql+psycopg://udyam_app@127.0.0.1:55432/udyampulse_test $(PY) -m pytest -q
