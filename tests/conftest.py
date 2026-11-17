@@ -66,6 +66,14 @@ def client(pipeline):
         yield c
 
 
+def hero_score() -> int:
+    """The current model's score for the hero at month 20 (never a hard-coded number: retraining changes it)."""
+    from agents.providers.lake import get_lake
+    from ml.scoring import get_scorer
+
+    return get_scorer().explain_row(get_lake().features("UP-F0001", 20)).score
+
+
 def login(client, username: str) -> dict:
     r = client.post("/auth/login", json={"username": username, "password": "demo123"})
     assert r.status_code == 200, r.text

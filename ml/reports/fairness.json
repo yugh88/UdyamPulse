@@ -4,56 +4,56 @@
       "group": "auto_components",
       "n": 795,
       "default_rate": 0.0289,
-      "mean_score": 738.6,
-      "approval_rate": 0.8893,
-      "approval_rate_non_defaulters": 0.8964,
-      "auc": 0.7062,
-      "adverse_impact_ratio": 1.0,
-      "equal_opportunity_ratio": 1.0
+      "mean_score": 746.6,
+      "approval_rate": 0.8792,
+      "approval_rate_non_defaulters": 0.8899,
+      "auc": 0.785,
+      "adverse_impact_ratio": 0.993,
+      "equal_opportunity_ratio": 0.987
     },
     {
       "group": "ceramics",
       "n": 801,
       "default_rate": 0.0237,
-      "mean_score": 733.5,
-      "approval_rate": 0.8727,
-      "approval_rate_non_defaulters": 0.8887,
-      "auc": 0.91,
-      "adverse_impact_ratio": 0.981,
-      "equal_opportunity_ratio": 0.991
+      "mean_score": 738.0,
+      "approval_rate": 0.8527,
+      "approval_rate_non_defaulters": 0.867,
+      "auc": 0.8936,
+      "adverse_impact_ratio": 0.964,
+      "equal_opportunity_ratio": 0.962
     },
     {
       "group": "engineering",
       "n": 800,
       "default_rate": 0.05,
-      "mean_score": 736.2,
-      "approval_rate": 0.8675,
-      "approval_rate_non_defaulters": 0.8803,
-      "auc": 0.7388,
-      "adverse_impact_ratio": 0.975,
-      "equal_opportunity_ratio": 0.982
+      "mean_score": 751.1,
+      "approval_rate": 0.885,
+      "approval_rate_non_defaulters": 0.9013,
+      "auc": 0.7833,
+      "adverse_impact_ratio": 1.0,
+      "equal_opportunity_ratio": 1.0
     },
     {
       "group": "food_processing",
       "n": 580,
       "default_rate": 0.0414,
-      "mean_score": 718.8,
-      "approval_rate": 0.8086,
-      "approval_rate_non_defaulters": 0.8327,
-      "auc": 0.8928,
-      "adverse_impact_ratio": 0.909,
-      "equal_opportunity_ratio": 0.929
+      "mean_score": 716.3,
+      "approval_rate": 0.7966,
+      "approval_rate_non_defaulters": 0.8219,
+      "auc": 0.9105,
+      "adverse_impact_ratio": 0.9,
+      "equal_opportunity_ratio": 0.912
     },
     {
       "group": "textiles",
       "n": 879,
       "default_rate": 0.0171,
-      "mean_score": 725.9,
-      "approval_rate": 0.8532,
-      "approval_rate_non_defaulters": 0.8669,
-      "auc": 0.9667,
-      "adverse_impact_ratio": 0.959,
-      "equal_opportunity_ratio": 0.967
+      "mean_score": 725.8,
+      "approval_rate": 0.8225,
+      "approval_rate_non_defaulters": 0.8345,
+      "auc": 0.9488,
+      "adverse_impact_ratio": 0.929,
+      "equal_opportunity_ratio": 0.926
     }
   ],
   "udyam_category": [
@@ -61,21 +61,21 @@
       "group": "micro",
       "n": 2287,
       "default_rate": 0.045,
-      "mean_score": 712.2,
-      "approval_rate": 0.8203,
-      "approval_rate_non_defaulters": 0.842,
-      "auc": 0.8133,
-      "adverse_impact_ratio": 0.891,
-      "equal_opportunity_ratio": 0.913
+      "mean_score": 713.4,
+      "approval_rate": 0.7976,
+      "approval_rate_non_defaulters": 0.8201,
+      "auc": 0.8398,
+      "adverse_impact_ratio": 0.862,
+      "equal_opportunity_ratio": 0.885
     },
     {
       "group": "small",
       "n": 1568,
       "default_rate": 0.0115,
-      "mean_score": 758.8,
-      "approval_rate": 0.9203,
-      "approval_rate_non_defaulters": 0.9219,
-      "auc": 0.7023,
+      "mean_score": 770.0,
+      "approval_rate": 0.9254,
+      "approval_rate_non_defaulters": 0.9271,
+      "auc": 0.697,
       "adverse_impact_ratio": 1.0,
       "equal_opportunity_ratio": 1.0
     }

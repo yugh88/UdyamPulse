@@ -2,7 +2,7 @@
 alert ownership, band migration, governance logs, plan progress and the demo reset."""
 
 from api.models.db import Application, AuditLog, ConsentEvent, DataSnapshot, SessionLocal
-from tests.conftest import advance, hero_app_id, login
+from tests.conftest import advance, hero_app_id, hero_score, login
 
 
 def _consented_hero(client) -> tuple[dict, int]:
@@ -19,7 +19,7 @@ def test_stats_and_detail_signals(client):
 
     d = client.get(f"/applications/{app_id}", headers=rm).json()
     assert len(d["signals"]) == 20 and {"eway_value", "avg_days_to_pay", "gst_filing_delay_days"} <= set(d["signals"][0])
-    assert len(d["score_history"]) == 20 and d["score_history"][-1]["score"] == 723
+    assert len(d["score_history"]) == 20 and d["score_history"][-1]["score"] == hero_score()
     assert d["stress_start"] is None  # the hero is healthy at the start of the demo
     assert d["peers"]["cluster"] == "Ludhiana" and d["peers"]["rows"][0]["metric"] == "score"
 
@@ -45,7 +45,7 @@ def test_simulation_is_read_only_and_labelled(client):
     before = counts()
     none = client.post("/score/simulate", headers=rm, json={"application_id": app_id, "adjustments": {}}).json()
     assert none["simulation"] is True and "not a score of record" in none["label"]
-    assert none["delta"] == 0 and none["base"]["score"] == none["simulated"]["score"] == 723
+    assert none["delta"] == 0 and none["base"]["score"] == none["simulated"]["score"] == hero_score()
 
     hit = client.post("/score/simulate", headers=rm,
                       json={"application_id": app_id, "adjustments": {"bounces_count": 2, "days_to_pay_days": 30}}).json()

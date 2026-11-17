@@ -10,7 +10,10 @@ import pandas as pd
 
 from ml.features import FEATURE_NAMES, _factory_features, _safe_div
 
-WINDOW_MONTHS = 3  # adjustments apply to the latest three months
+WINDOW_MONTHS = 3  # flow adjustments apply to the latest three months
+# Stocks are point-in-time snapshots: a change applies to the current snapshot only. Rewriting past order-book
+# snapshots made the 3-month order-cover change read as *improving* when dispatches fell (audit M10).
+STOCK_COLUMNS = frozenset({"open_po_value"})
 
 
 @dataclass(frozen=True)
@@ -44,11 +47,13 @@ def apply_adjustments(history: pd.DataFrame, adjustments: dict[str, float]) -> p
     if unknown:
         raise KeyError(f"unknown levers: {sorted(unknown)}")
     out = history.sort_values("month").copy()
-    recent = out["month"] > out["month"].max() - WINDOW_MONTHS
+    window = out["month"] > out["month"].max() - WINDOW_MONTHS
+    latest = out["month"] == out["month"].max()
     for key, raw in adjustments.items():
         lv = LEVER_BY_KEY[key]
         value = float(np.clip(raw, lv.min, lv.max))
         for col in lv.columns:
+            recent = latest if col in STOCK_COLUMNS else window
             series = out.loc[recent, col].astype(float)
             if lv.unit == "%":
                 series = series * (1 + value / 100)

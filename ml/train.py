@@ -17,7 +17,7 @@ import pandas as pd
 from sklearn.metrics import brier_score_loss, roc_auc_score, roc_curve
 
 from core.settings import get_settings
-from ml.features import FEATURE_NAMES, FEATURES, PILLARS
+from ml.features import FEATURE_NAMES, FEATURES, MONOTONE, PILLARS
 from ml.scoring import BASE_SCORE, PD_AT_BASE, PDO, Scorer, band_for, pd_to_score
 
 TRAIN_MONTHS = range(4, 13)  # fit
@@ -36,6 +36,11 @@ PARAMS = {
     "lambda_l2": 30.0,
     "verbose": -1,
     "seed": 42,
+    # Audit M10: features with a clear economic direction may only move the PD that way.
+    "monotone_constraints": [MONOTONE[f] for f in FEATURE_NAMES],
+    # "intermediate": the "advanced" method left one feature non-monotone (tests/test_monotone.py). Chosen on
+    # validation with zero violations; it also keeps the smallest train/validation gap.
+    "monotone_constraints_method": "intermediate",
 }
 
 
@@ -121,7 +126,8 @@ def log_to_mlflow(metrics: dict, art_dir: str) -> str | None:
         mlflow.set_tracking_uri((s.ml_dir / "mlruns").resolve().as_uri())
         mlflow.set_experiment("udyampulse-pd")
         with mlflow.start_run(run_name="lgbm-pd-12m") as run:
-            mlflow.log_params({k: v for k, v in PARAMS.items() if k != "verbose"})
+            mlflow.log_params({k: v for k, v in PARAMS.items() if k not in ("verbose", "monotone_constraints")})
+            mlflow.log_param("monotone_features", sum(1 for v in MONOTONE.values() if v))
             mlflow.log_params({"n_features": len(FEATURE_NAMES), "train_months": "4-12", "test_months": "17-24"})
             for split in ("train", "test"):
                 for k in ("auc", "ks", "brier"):
@@ -172,7 +178,8 @@ operating data, mapped to a **Factory Health Score (300–900)** with plain-lang
   *not* model inputs; they are used only for fairness monitoring.
 
 ## Model
-LightGBM binary classifier (`{json.dumps({k: v for k, v in PARAMS.items() if k not in ("verbose", "seed")})}`),
+LightGBM binary classifier (`{json.dumps({k: v for k, v in PARAMS.items() if k not in ("verbose", "seed", "monotone_constraints")})}`)
+with **monotone constraints** on {sum(1 for v in MONOTONE.values() if v)} of {len(FEATURE_NAMES)} features (audit M10),
 explanations via TreeSHAP (`pred_contrib`). Score mapping: `score = {BASE_SCORE:.0f} − {PDO:.0f}/ln2 · (logit(PD) − logit({PD_AT_BASE}))`,
 clipped to 300–900. Bands: **300–549 High risk · 550–649 Watch · 650–900 Approve**.
 

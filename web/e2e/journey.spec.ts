@@ -33,7 +33,7 @@ for (const theme of ["light", "dark"] as const) {
     await page.getByRole("button", { name: "Request consent and pull data" }).click();
     await expect(page.getByText("Consent received")).toBeVisible();
     await page.getByRole("button", { name: "Run scoring" }).click();
-    await expect(page.getByRole("img", { name: /Factory Health Score 723 out of 900, band Approve/ })).toBeVisible();
+    await expect(page.getByRole("img", { name: /Factory Health Score 742 out of 900, band Approve/ })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Top 5 reasons" })).toBeVisible();
     await page.getByRole("tab", { name: "Receivables" }).click();
     await page.getByRole("tab", { name: "Orders and dispatch" }).click();
@@ -52,9 +52,9 @@ for (const theme of ["light", "dark"] as const) {
 
     // What-if simulator: labelled, and it does not change the real score.
     await page.getByRole("tab", { name: "What-if simulator" }).click();
-    await expect(page.getByTestId("sim-score")).toHaveText("723");
+    await expect(page.getByTestId("sim-score")).toHaveText("742");
     await page.getByLabel("Cheque/NACH bounces per month").fill("2");
-    await expect(page.getByTestId("sim-score")).not.toHaveText("723");
+    await expect(page.getByTestId("sim-score")).not.toHaveText("742");
     await expect(page.getByText(/Simulation only/)).toBeVisible();
     await expectAccessible(page);
     await shot(page, `detail-whatif-${theme}`);

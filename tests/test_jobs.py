@@ -9,7 +9,7 @@ from api.audit import Actor
 from api.jobs import enqueue, job_view
 from api.models.db import Job, OutboxEvent, SessionLocal
 from api.tenancy import allow_cross_tenant, bind_tenant
-from tests.conftest import hero_app_id, login, wait_job
+from tests.conftest import hero_app_id, hero_score, login, wait_job
 from worker import tasks
 from worker.broker import broker
 
@@ -64,7 +64,7 @@ def test_async_scoring_returns_202_and_streams_progress(client):
         for line in stream.iter_lines():
             if line.startswith("data: "):
                 events.append(json.loads(line[6:]))
-    assert events[-1]["status"] == "succeeded" and events[-1]["result"]["score"] == 723
+    assert events[-1]["status"] == "succeeded" and events[-1]["result"]["score"] == hero_score()
     assert [e["status"] for e in events][-1] == "succeeded" and len(events) >= 1
     assert client.get(f"/applications/{app_id}", headers=rm).json()["state"] == "SCORED"
 

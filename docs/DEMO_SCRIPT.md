@@ -6,7 +6,7 @@
 | # | Time | Persona | Do | Say |
 |---|---|---|---|---|
 | 1 | 0:00 | RM (`rm1`) | Credit console → **Sharma Auto Components, Ludhiana** → *Request consent & pull data* | "Consent comes through the Account Aggregator with a clear purpose. The data agent pulls GST, e-way bills, bank, power and EPFO data and reconciles it — all four checks pass." |
-| 2 | 0:40 | RM | *Run scoring* | "Factory Health Score **723 — Approve**, PD 0.67%. Top-5 reasons in plain language, and pillar bars showing exactly how many points each pillar adds or removes. The 24-month chart shows dispatch, power and bank inflow moving together." |
+| 2 | 0:40 | RM | *Run scoring* | "Factory Health Score **742 — Approve**, PD 0.43%. Top-5 reasons in plain language, and pillar bars showing exactly how many points each pillar adds or removes. The 24-month chart shows dispatch, power and bank inflow moving together." |
 | 3 | 1:20 | RM | *Generate memo* → *Preview PDF* | "The memo agent produced this in **well under 10 seconds**: limit ₹3.00 Cr, pricing EBLR + 2.50–3.00%, strengths, risks, mitigants, covenants and **policy citations** like [§4.1]. Every number comes from the scoring engine — the LLM only writes prose, and a guard rejects invented numbers." |
 | 4 | 2:00 | Credit officer (`co1`) | Sign out → Credit officer → open the application → comment → **Approve** → **Disburse via LOS** | "Only the credit officer can decide — the RM gets a 403. Approval generates the **Key Fact Statement** stub; disbursal goes straight to the borrower's account through the LOS stub." |
 | 5 | 2:40 | Credit officer / RM | **Risk cockpit** → **+6 weeks** | "We fast-forward six weeks. Sharma's biggest buyer has cut orders: **e-way bills ↓42%, kWh ↓32%** against the 8-week baseline." |
