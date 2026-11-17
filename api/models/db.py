@@ -257,6 +257,38 @@ class OutboxEvent(TenantScoped, Base):
     last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
+class BatchRun(Base):
+    """One nightly batch over the lake (platform-level operational data, not a bank's business data)."""
+
+    __tablename__ = "batch_runs"
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    kind: Mapped[str] = mapped_column(String(32))
+    month: Mapped[int] = mapped_column(Integer)
+    shards: Mapped[int] = mapped_column(Integer)
+    chunk_size: Mapped[int] = mapped_column(Integer)
+    status: Mapped[str] = mapped_column(String(16), default="running")  # running | succeeded | failed
+    total_accounts: Mapped[int] = mapped_column(Integer, default=0)
+    total_chunks: Mapped[int] = mapped_column(Integer, default=0)
+    stats: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class BatchChunk(Base):
+    """Checkpoint: a chunk is recorded only after its output file is fully written. A resumed run skips it."""
+
+    __tablename__ = "batch_chunks"
+    run_id: Mapped[str] = mapped_column(String(32), ForeignKey("batch_runs.id"), primary_key=True)
+    chunk_no: Mapped[int] = mapped_column(Integer, primary_key=True)
+    shard: Mapped[int] = mapped_column(Integer)
+    accounts: Mapped[int] = mapped_column(Integer)
+    alerts: Mapped[int] = mapped_column(Integer)
+    seconds: Mapped[float] = mapped_column(Float)
+    worker: Mapped[str] = mapped_column(String(64))
+    finished_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class SimClock(Base):
     __tablename__ = "sim_clock"
     id: Mapped[int] = mapped_column(primary_key=True)

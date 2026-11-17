@@ -73,6 +73,19 @@ def draft_memo(db: Session, actor: Actor, job: Job, progress: Progress) -> dict:
             "recommended_limit_display": memo["recommended_limit_display"]}
 
 
+@handler("batch.ews")
+def nightly_batch(db: Session, actor: Actor, job: Job, progress: Progress) -> dict:
+    from ml.batch import run_batch
+
+    seen: list[int] = []
+
+    def chunk_done(r: dict) -> None:
+        seen.append(r["chunk_no"])
+        progress(min(95, len(seen) * 10), f"{len(seen)} chunks done")
+
+    return run_batch(int(job.params["month"]), chunk_size=10_000, on_chunk=chunk_done)
+
+
 def _progress(db: Session, job_id: str) -> Progress:
     """Progress is written through the handler's own session, so one job holds one connection. Handlers call
     it only where everything before it may be committed: before work starts, or between accounts in the
