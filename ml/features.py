@@ -132,6 +132,27 @@ def describe(name: str, value: float) -> str:
     return FEATURES[name].template.replace("{v}", format_value(name, value))
 
 
+# Economic direction of each feature for monotone constraints (audit finding M10): +1 = a higher value can
+# only raise the PD, -1 = can only lower it, 0 = no constraint (direction genuinely ambiguous). Without these
+# the model, trained on a few hundred defaults, learned that a fall in dispatches could *raise* a score.
+UP, DOWN, FREE = 1, -1, 0
+
+
+def _direction(name: str) -> int:
+    if name in ("kwh_per_lakh_3", "kwh_vs_sector", "rm_ratio_1", "rm_ratio_3", "eway_to_einvoice_ratio",
+                "top_buyer_share_chg_1v6"):
+        return FREE  # intensity and ratio measures: both directions can signal trouble
+    if name.startswith(("bounces_", "days_to_pay", "gst_delay", "gst_late", "gst_consecutive", "top_buyer_share",
+                        "buyer_hhi", "epfo_drop", "gst_bank_mismatch", "debits_to_credits", "loan_to_turnover")):
+        return UP
+    if name.endswith(("_cv_6", "_cv_12")):
+        return UP  # volatility
+    if any(k in name for k in ("_chg_", "_yoy", "_slope_", "net_inflow", "balance_to_debits", "po_cover")) or \
+            name in ("n_buyers", "vintage_years"):
+        return DOWN  # growth, cash cover, order book, diversification, age
+    return FREE
+
+
 def _safe_div(a: pd.Series, b: pd.Series) -> pd.Series:
     return a / b.replace(0, np.nan)
 
@@ -248,12 +269,33 @@ def _factory_features(g: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
-def compute_features(silver: pd.DataFrame, profile: pd.DataFrame) -> pd.DataFrame:
+def _features_for(df: pd.DataFrame) -> pd.DataFrame:
+    return pd.concat([_factory_features(g) for _, g in df.groupby("factory_id", sort=True)], ignore_index=True)
+
+
+PARALLEL_ABOVE = 3_000  # factories; below this a process pool costs more than it saves
+
+
+def compute_features(silver: pd.DataFrame, profile: pd.DataFrame, workers: int | None = None) -> pd.DataFrame:
+    """Per-factory windows. Large panels run the same function on factory chunks in a process pool, so
+    the demo's features are bit-for-bit what they were and 50,000 factories take minutes, not a quarter-hour."""
+    import os
+
     df = silver.merge(
         profile[["factory_id", "sector", "n_buyers", "vintage_years", "loan_requested_inr"]], on="factory_id"
     )
-    parts = [_factory_features(g) for _, g in df.groupby("factory_id", sort=True)]
-    feats = pd.concat(parts, ignore_index=True)
+    ids = df["factory_id"].unique()
+    if len(ids) <= PARALLEL_ABOVE:
+        feats = _features_for(df)
+    else:
+        from concurrent.futures import ProcessPoolExecutor
+
+        workers = workers or max(1, (os.cpu_count() or 2) - 1)
+        chunks = np.array_split(np.sort(ids), workers * 4)
+        parts = [df[df["factory_id"].isin(set(c))] for c in chunks]
+        with ProcessPoolExecutor(max_workers=workers) as pool:
+            feats = pd.concat(list(pool.map(_features_for, parts)), ignore_index=True)
+        feats = feats.sort_values(["factory_id", "month"]).reset_index(drop=True)
 
     # Cross-sectional: power intensity relative to sector peers in the same month.
     feats = feats.merge(df[["factory_id", "month", "sector"]], on=["factory_id", "month"])
@@ -278,3 +320,6 @@ def build_gold() -> pd.DataFrame:
     labels = pd.read_parquet(s.bronze / "_truth_monthly.parquet")
     labels.to_parquet(s.gold / "labels.parquet", index=False)
     return feats
+
+
+MONOTONE: dict[str, int] = {name: _direction(name) for name in FEATURE_NAMES}

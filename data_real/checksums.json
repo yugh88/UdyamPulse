@@ -23,6 +23,16 @@
     "source": "U.S. Small Business Administration, 7(a) & 504 FOIA, https://data.sba.gov",
     "retrieved_at": "2026-11-17T12:50:55+00:00"
   },
+  "iip_monthly.parquet": {
+    "url": "https://api.mospi.gov.in/api/iip/getIIPMonthly",
+    "bytes": 79016,
+    "sha256": "8f0c9a90ba4eab3640305d4a4ea6f49c248148c8f252213c92ab51e66d260758",
+    "licence": "MoSPI official statistics, disseminated under MoSPI's Guidelines for Statistical Data Dissemination; GODL-India is the likely licence but was not confirmed for this API. Used only to derive aggregate calibration parameters; the raw series is not redistributed.",
+    "source": "Ministry of Statistics and Programme Implementation (MoSPI), Index of Industrial Production",
+    "rows": 17196,
+    "retrieved_at": "2026-11-17T13:07:38+00:00",
+    "note": "checksum of the tidy Parquet; the API serves the latest revision"
+  },
   "polish_bankruptcy.parquet": {
     "url": "https://archive.ics.uci.edu/dataset/365",
     "bytes": 20605588,

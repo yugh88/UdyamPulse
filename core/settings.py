@@ -14,6 +14,21 @@ INDIA_REGIONS = {"centralindia", "southindia", "westindia", "jioindiacentral", "
 # Public demo default; the production start-up guard refuses it.
 DEFAULT_JWT_SECRET = "change-me-local-demo-secret-please-rotate-0001"  # nosec B105
 
+# UP_DATASET picks the synthetic panel. demo is what `make demo` and the live walkthrough use; full trains and
+# evaluates the product model; scale is for performance benchmarks only.
+DATASETS = {
+    "demo": {"factories": 500, "months": 24, "lake": "lake", "suffix": ""},
+    "full": {"factories": 50_000, "months": 36, "lake": "lake_full", "suffix": "_full"},
+    "scale": {"factories": 100_000, "months": 36, "lake": "lake_scale", "suffix": "_scale"},
+}
+
+
+def _dataset() -> str:
+    name = os.environ.get("UP_DATASET", "demo").lower() or "demo"
+    if name not in DATASETS:
+        raise ValueError(f"UP_DATASET must be one of {sorted(DATASETS)}, not {name!r}")
+    return name
+
 
 def _load_dotenv(path: Path) -> None:
     """Minimal .env loader so we do not need python-dotenv. Existing env vars win."""
@@ -38,14 +53,15 @@ def _env(key: str, default: str) -> str:
 @dataclass(frozen=True)
 class Settings:
     seed: int = field(default_factory=lambda: int(_env("UP_SEED", "42")))
-    n_factories: int = field(default_factory=lambda: int(_env("UP_N_FACTORIES", "500")))
-    n_months: int = 24
+    dataset: str = field(default_factory=_dataset)
+    n_factories: int = field(default_factory=lambda: int(_env("UP_N_FACTORIES", str(DATASETS[_dataset()]["factories"]))))
+    n_months: int = field(default_factory=lambda: DATASETS[_dataset()]["months"])
     # Month 1 of the synthetic panel. Month 24 = Oct 2026.
     panel_start: date = date(2024, 11, 1)
     # The demo starts with data visible up to the end of month 20 (Jun 2026).
     sim_start: date = date(2026, 6, 30)
 
-    lake_dir: Path = field(default_factory=lambda: ROOT / _env("UP_LAKE_DIR", "lake"))
+    lake_dir: Path = field(default_factory=lambda: ROOT / _env("UP_LAKE_DIR", DATASETS[_dataset()]["lake"]))
     var_dir: Path = ROOT / "var"
     ml_dir: Path = ROOT / "ml"
     policy_dir: Path = ROOT / "policy"
@@ -144,11 +160,12 @@ class Settings:
 
     @property
     def artifacts(self) -> Path:
-        return self.ml_dir / "artifacts"
+        return self.ml_dir / f"artifacts{DATASETS[self.dataset]['suffix']}"
 
     @property
     def reports(self) -> Path:
-        return self.ml_dir / "reports"
+        """Demo reports at ml/reports; the full/scale panels write to ml/reports/full | scale."""
+        return self.ml_dir / "reports" if self.dataset == "demo" else self.ml_dir / "reports" / self.dataset
 
 
 @lru_cache

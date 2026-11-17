@@ -391,6 +391,19 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=None)
     parser.add_argument("--n", type=int, default=None, help="number of factories")
     args = parser.parse_args()
+    s = get_settings()
+    if s.dataset != "demo":  # the large calibrated panels come from the vectorised engine
+        import json
+        import logging
+
+        from data_gen import engine
+
+        logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+        stats = engine.build(args.n)
+        s.lake_dir.mkdir(parents=True, exist_ok=True)
+        (s.lake_dir / "build_stats.json").write_text(json.dumps({"generate": stats}, indent=2))
+        print("engine:", json.dumps(stats))
+        return
     tables = generate(args.seed, args.n)
     write_bronze(tables)
     print("bronze written:", {k: len(v) for k, v in tables.items()})

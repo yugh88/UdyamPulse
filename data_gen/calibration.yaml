@@ -1,0 +1,154 @@
+# Generator calibration (Tier B). Written by `python -m data_gen.calibrate`; every value names its source.
+# Fallback values are used, and logged, when the MoSPI file is not available.
+generated_at: '2026-11-17T13:08:11+00:00'
+shock_scale: 0.3
+shock_scale_source: 'design: a demand shock 30% as deep as April 2020, shaped like its recovery'
+targets:
+  default_rate_overall:
+    value:
+    - 0.06
+    - 0.09
+    source: 'design target from docs/DATA_STRATEGY.md: within the range of MSME stress rates in RBI Financial Stability
+      Reports; verify against the latest report before a pilot'
+  micro_vs_small_default_ratio:
+    value: 1.6
+    source: 'design: micro units default more often than small units in public MSME credit reports; exact ratio
+      not automated'
+  micro_share:
+    value: 0.6
+    source: 'design: lending-portfolio mix (Udyam registrations are mostly micro, but bank MSME books skew larger);
+      manual Udyam dashboard steps in data_real/README.md'
+source: MoSPI Index of Industrial Production via api.mospi.gov.in
+licence: MoSPI official statistics, disseminated under MoSPI's Guidelines for Statistical Data Dissemination; GODL-India
+  is the likely licence but was not confirmed for this API. Used only to derive aggregate calibration parameters;
+  the raw series is not redistributed.
+sectors:
+  auto_components:
+    season:
+    - 1.048
+    - 1.0284
+    - 1.0436
+    - 0.9823
+    - 1.0088
+    - 0.9752
+    - 1.0135
+    - 0.9852
+    - 1.0026
+    - 0.9903
+    - 0.9783
+    - 0.9437
+    growth: 0.0352
+    noise_sd: 0.0586
+    shock:
+      depth_apr2020_vs_apr2019: -0.994
+      months_to_95pct: 5
+    series: Manufacture of Motor Vehicles, Trailers and Semi-trailers
+    observations: 168
+    range:
+    - '2012-04-01'
+    - '2026-03-01'
+    source: MoSPI IIP base 2011-12, Manufacture of Motor Vehicles, Trailers and Semi-trailers, 2012-04-01 to 2026-03-01
+      (168 months), retrieved 2026-11-17T13:07:38+00:00
+  engineering:
+    season:
+    - 0.976
+    - 1.0254
+    - 1.2249
+    - 0.8796
+    - 0.9604
+    - 0.9996
+    - 0.9617
+    - 0.972
+    - 1.0548
+    - 0.9572
+    - 0.9493
+    - 1.0389
+    growth: 0.031
+    noise_sd: 0.0626
+    shock:
+      depth_apr2020_vs_apr2019: -0.913
+      months_to_95pct: 5
+    series: Manufacture of Machinery and Equipment n.e.c.
+    observations: 168
+    range:
+    - '2012-04-01'
+    - '2026-03-01'
+    source: MoSPI IIP base 2011-12, Manufacture of Machinery and Equipment n.e.c., 2012-04-01 to 2026-03-01 (168
+      months), retrieved 2026-11-17T13:07:38+00:00
+  textiles:
+    season:
+    - 1.0321
+    - 0.9821
+    - 1.022
+    - 0.9782
+    - 0.9839
+    - 0.9773
+    - 0.9974
+    - 1.0083
+    - 0.9999
+    - 1.0008
+    - 0.981
+    - 1.0368
+    growth: 0.0147
+    noise_sd: 0.0426
+    shock:
+      depth_apr2020_vs_apr2019: -0.908
+      months_to_95pct: 6
+    series: Manufacture of Textiles
+    observations: 168
+    range:
+    - '2012-04-01'
+    - '2026-03-01'
+    source: MoSPI IIP base 2011-12, Manufacture of Textiles, 2012-04-01 to 2026-03-01 (168 months), retrieved 2026-11-17T13:07:38+00:00
+  ceramics:
+    season:
+    - 1.0608
+    - 1.0177
+    - 1.1015
+    - 1.0241
+    - 1.0289
+    - 1.0248
+    - 0.9593
+    - 0.9275
+    - 0.9303
+    - 0.9694
+    - 0.927
+    - 1.0287
+    growth: 0.0364
+    noise_sd: 0.041
+    shock:
+      depth_apr2020_vs_apr2019: -0.866
+      months_to_95pct: 6
+    series: Manufacture of Other Non-metallic Mineral Products
+    observations: 168
+    range:
+    - '2012-04-01'
+    - '2026-03-01'
+    source: MoSPI IIP base 2011-12, Manufacture of Other Non-metallic Mineral Products, 2012-04-01 to 2026-03-01
+      (168 months), retrieved 2026-11-17T13:07:38+00:00
+  food_processing:
+    season:
+    - 1.2051
+    - 1.1202
+    - 1.0877
+    - 0.9585
+    - 0.8954
+    - 0.8663
+    - 0.8986
+    - 0.8917
+    - 0.8906
+    - 0.9317
+    - 1.0378
+    - 1.2163
+    growth: 0.0134
+    noise_sd: 0.0386
+    shock:
+      depth_apr2020_vs_apr2019: -0.223
+      months_to_95pct: 4
+    series: Manufacture of Food Products
+    observations: 168
+    range:
+    - '2012-04-01'
+    - '2026-03-01'
+    source: MoSPI IIP base 2011-12, Manufacture of Food Products, 2012-04-01 to 2026-03-01 (168 months), retrieved
+      2026-11-17T13:07:38+00:00
