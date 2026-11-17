@@ -1,8 +1,44 @@
 # System design decisions
 
-Architecture decision records (ADRs) for the prototype round. Each one states the context, the decision,
+How the prototype is built, what is design only, the capacity plan, and the architecture decision records
+(ADRs) for the prototype round. Each one states the context, the decision,
 what it costs, and how it is verified. Measured numbers are labelled as measured; the rest are design
 assumptions.
+
+## What is built and what is design only
+
+✅ Done (running and tested) · 🟡 Partial · 🔭 Future (designed and documented, deliberately not built for the
+prototype round: "don't overbuild").
+
+| Layer | Prototype | Production path | Status |
+|---|---|---|---|
+| Web | React SPA; served by FastAPI in the free container, or by nginx in the full stack | Same build behind Azure Front Door / App Gateway WAF | ✅ / 🔭 |
+| API | FastAPI, stateless, `/v1`, RFC 9457 errors, rate limits, idempotency | Horizontal pods behind a load balancer | ✅ |
+| Jobs | Transactional outbox → Dramatiq workers on Redis (in-process in the lite profile); SSE progress | KEDA-scaled worker pods | ✅ / 🔭 |
+| Storage | SQLite (lite demo); PostgreSQL 16 with migrations, a month-partitioned serving table and row-level security (full stack) | Azure Database for PostgreSQL Flexible Server, zone-redundant | ✅ / 🔭 |
+| Cache | Redis (full stack), in-memory fallback | Azure Cache for Redis | ✅ / 🔭 |
+| Lakehouse | DuckDB + Parquet medallion (bronze, silver, gold) | Databricks Delta, same layer contracts | ✅ / 🔭 |
+| Models | LightGBM + SHAP, monotone constraints, isotonic calibration; IsolationForest + rules for EWS | MLflow registry, champion/challenger, scheduled retraining | ✅ / 🔭 |
+| LLM | Deterministic template writer (default); Azure OpenAI / OpenAI adapters behind a resilient wrapper | Azure OpenAI in Central India | ✅ / 🟡 adapter untested live |
+| Data sources | Mock Account Aggregator, synthetic GST, e-way bill, bank, power and EPFO feeds | Sahamati AA (bank as FIU), GSP, DISCOM feeds | 🟡 mock / 🔭 live |
+| Observability | JSON logs, Prometheus metrics, OpenTelemetry traces, Grafana dashboard (compose profile) | Azure Monitor / managed Grafana | ✅ / 🔭 |
+| Orchestration | Docker Compose | **Kubernetes (AKS) with HPA, KEDA and PDBs** (`deploy/k8s`): lint and schema validated, never deployed | 🔭 |
+| Infrastructure as code | – | **Terraform for Central India** (`deploy/terraform`): `terraform validate` passes, never applied | 🔭 |
+| Event streaming | Outbox relay to a Redis stream | Azure Event Hubs | 🔭 |
+| Multi-region | – | Active/passive across Central and South India (both in India) | 🔭 |
+
+## Capacity plan: 10 lakh accounts per bank
+
+| Workload | Measured (prototype) | Extrapolation to 10 lakh accounts (**estimate**) |
+|---|---|---|
+| Nightly scoring + EWS batch | 915 accounts/s in one process, chunked and checkpointed (`ml/batch.py`, demo panel) | About 18 min in one process; about 5 min across 4 worker processes |
+| Feature build (gold) | 18 lakh factory-months in 118 s on 10 processes (`data_gen/build.py`) | Incremental nightly: only the latest month per account, a few minutes on one 8-core worker |
+| EWS rules over the full panel | 17.5 lakh account-months in 23 s (vectorised back-test) | Well under a minute per nightly run |
+| Portfolio read | 18 ms (SQLite) / 22 ms (PostgreSQL), indexed and cached per bank and scope (ADR-003) | Pre-aggregated by month and band; account lists paginated by cursor |
+| Synthetic data at scale | 50,000 × 36 panel in 2 min 12 s at 4.0 GB peak | The 1 lakh panel (`UP_DATASET=scale`) for benchmarks |
+| Public demo container | Ready in 7 s; 325 MB after the full story (512 MB cap) | n/a |
+
+The k6 load test of the API (p95 under concurrent users) is still to run, so API latency under load is 🟡.
 
 ## ADR-001 · Synchronous handlers, asynchronous where it matters
 
