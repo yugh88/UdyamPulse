@@ -15,6 +15,7 @@ import { cn } from "../lib/cn";
 import { crore, inr, signed } from "../lib/format";
 import { monthLabel } from "../lib/time";
 import type { AdvanceResult, AlertRow, Migration, Portfolio, PortfolioAccount, StaffUser } from "../lib/types";
+import { ProvenanceBadge } from "../components/provenance";
 
 const SEV_RANK: Record<string, number> = { high: 3, medium: 2, low: 1 };
 const STORY_WEEKS = 6;
@@ -229,7 +230,10 @@ export default function Cockpit() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-fg">Portfolio risk cockpit</h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-2xl font-semibold tracking-tight text-fg">Portfolio risk cockpit</h1>
+            <ProvenanceBadge value="Synthetic" />
+          </div>
           <p className="mt-0.5 text-sm text-fg-muted">
             {portfolio.data ? `${portfolio.data.kpis.accounts} monitored accounts · data through ${monthLabel(portfolio.data.data_month)}` : "Loading the monitored portfolio…"}
           </p>

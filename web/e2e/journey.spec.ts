@@ -141,6 +141,14 @@ for (const theme of ["light", "dark"] as const) {
       await expect(page.getByText(marker).first()).toBeVisible();
       await expectAccessible(page);
     }
+    // Data & Models: provenance of every dataset, real benchmarks kept apart from synthetic results.
+    await page.getByRole("tab", { name: "Data & Models" }).click();
+    await expect(page.getByRole("heading", { name: "Data provenance" })).toBeVisible();
+    await expect(page.getByText("Real public data").first()).toBeVisible();
+    await expect(page.getByText("U.S. SBA 7(a) FOIA loans, manufacturing FY2010+")).toBeVisible();
+    await expect(page.getByText(/Indian MSME accuracy will be proven in a lender pilot/)).toBeVisible();
+    await expectAccessible(page);
+    await shot(page, `governance-data-models-${theme}`);
     // The audit trail is filterable: the officer's decision is on record.
     await page.getByRole("tab", { name: "Audit trail" }).click();
     await page.getByLabel("Agent").selectOption("orchestrator");

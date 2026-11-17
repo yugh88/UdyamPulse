@@ -31,6 +31,7 @@ import { useAuth, type Role } from "../lib/auth";
 import { inr, pct } from "../lib/format";
 import { monthLabel } from "../lib/time";
 import type { AppDetail } from "../lib/types";
+import { ProvenanceBadge } from "../components/provenance";
 
 type Step = "consent" | "score" | "memo" | "disburse";
 
@@ -224,7 +225,7 @@ export default function ApplicationDetail() {
         <TabsContent value="assessment">
           <div className="grid gap-5 xl:grid-cols-[320px_minmax(0,1fr)_300px]">
             <div className="space-y-5">
-              <Card title="Factory Health Score">
+              <Card title="Factory Health Score" actions={<ProvenanceBadge value="Synthetic" />}>
                 <ScoreGauge score={app.score} band={app.band} />
                 {sd ? (
                   <dl className="mt-4 grid grid-cols-3 gap-2 text-center">

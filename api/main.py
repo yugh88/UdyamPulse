@@ -18,7 +18,7 @@ from api.middleware import IdempotencyMiddleware, RateLimitMiddleware
 from api.models.db import get_engine, init_db
 from api.observability import ObservabilityMiddleware
 from api.request_context import RequestIdMiddleware
-from api.routers import applications, auth, governance, insights, jobs, msme, portfolio, system
+from api.routers import applications, auth, data_models, governance, insights, jobs, msme, portfolio, system
 from api.security import SecurityHeadersMiddleware
 from core import metrics
 from core.logs import configure_logging
@@ -74,6 +74,7 @@ problems.install(app)
 
 v1 = APIRouter(prefix=f"/{API_VERSION}")
 for r in (auth.router, applications.router, insights.router, portfolio.router, msme.router, governance.router,
+          data_models.router,
           jobs.router, system.router):
     v1.include_router(r)
 app.include_router(v1)
@@ -146,3 +147,12 @@ def prometheus_metrics(request: Request) -> Response:
 @app.get("/health", tags=["meta"], include_in_schema=False)
 def health() -> dict:
     return {"status": "ok"}
+
+
+if get_settings().web_dist:  # free single-container demo: the API also serves the React build
+    from pathlib import Path
+
+    from api import webapp
+
+    webapp.install(app, Path(get_settings().web_dist))
+    app.add_middleware(webapp.ApiPrefixMiddleware)  # outermost: strips /api before anything else routes

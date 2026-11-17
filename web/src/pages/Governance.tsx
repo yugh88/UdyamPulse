@@ -6,6 +6,8 @@ import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis
 import { AXIS, ChartFrame, GRID, TOOLTIP } from "../components/charts";
 import { Badge, Button, Card, DataTable, EmptyState, ErrorState, Select, Skeleton, Stat, Tabs, TabsContent, TabsList, TabsTrigger, Timeline, type Tone } from "../components/ui";
 import { COMPLIANCE } from "../features/governance/compliance";
+import { DataModelsTab } from "../features/governance/DataModels";
+import { ProvenanceBadge } from "../components/provenance";
 import { api, post } from "../lib/api";
 import { PILLAR_COLORS, pct } from "../lib/format";
 import { dateTime } from "../lib/time";
@@ -162,7 +164,7 @@ function ModelTab() {
 
   return (
     <div className="space-y-5">
-      <Card title={m.name} description={`${m.type} · owner: ${m.owner}`} actions={<Badge tone="info">Synthetic data</Badge>}>
+      <Card title={m.name} description={`${m.type} · owner: ${m.owner}`} actions={<ProvenanceBadge value="Synthetic" />}>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <Stat
             label="AUC, out-of-time test"
@@ -583,6 +585,7 @@ export default function Governance() {
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
           <TabsTrigger value="model">Model</TabsTrigger>
+          <TabsTrigger value="data">Data &amp; Models</TabsTrigger>
           <TabsTrigger value="audit">Audit trail</TabsTrigger>
           <TabsTrigger value="consent">Consent ledger</TabsTrigger>
           <TabsTrigger value="ai">AI usage</TabsTrigger>
@@ -590,6 +593,9 @@ export default function Governance() {
         </TabsList>
         <TabsContent value="model">
           <ModelTab />
+        </TabsContent>
+        <TabsContent value="data">
+          <DataModelsTab />
         </TabsContent>
         <TabsContent value="audit">
           <AuditTab />
