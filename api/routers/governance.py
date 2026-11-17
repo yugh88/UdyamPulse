@@ -3,11 +3,12 @@ from __future__ import annotations
 import json
 import time
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy.orm import Session
 
 from agents.providers.lake import get_lake
 from agents.providers.llm import get_llm
+from api import pagination
 from api.auth import CurrentUser, require_roles
 from api.models.db import AiUsage, AuditLog, Consent, ConsentEvent, get_db
 from core.settings import get_settings
@@ -17,12 +18,19 @@ router = APIRouter(tags=["governance"])
 
 
 @router.get("/audit")
-def audit(application_id: int | None = None, limit: int = Query(default=200, le=2000), db: Session = Depends(get_db),
+def audit(request: Request, response: Response, application_id: int | None = None,
+          limit: int = Query(default=200, ge=1, le=2000), cursor: str | None = None, db: Session = Depends(get_db),
           user: CurrentUser = Depends(require_roles("risk"))) -> list[dict]:
+    """Audit trail, newest first. Paginated by cursor (see `Link`)."""
     q = db.query(AuditLog)
     if application_id is not None:
         q = q.filter(AuditLog.application_id == application_id)
-    rows = q.order_by(AuditLog.id.desc()).limit(limit).all()
+    after = pagination.decode(cursor, 1)
+    if after:
+        q = q.filter(AuditLog.id < after[0])
+    found = q.order_by(AuditLog.id.desc()).limit(limit + 1).all()
+    rows = found[:limit]
+    pagination.link_next(request, response, [rows[-1].id] if len(found) > limit else None)
     return [{"id": r.id, "ts": r.ts.isoformat(), "user": r.user, "role": r.role, "agent": r.agent, "tool": r.tool,
              "action": r.action, "application_id": r.application_id, "inputs": r.inputs,
              "output_hash": r.output_hash} for r in rows]
@@ -61,25 +69,40 @@ def factories(q: str = "", limit: int = Query(default=20, le=100),
 
 
 @router.get("/consent-ledger")
-def consent_ledger(limit: int = Query(default=300, le=2000), db: Session = Depends(get_db),
+def consent_ledger(request: Request, response: Response, limit: int = Query(default=300, ge=1, le=2000),
+                   cursor: str | None = None, db: Session = Depends(get_db),
                    user: CurrentUser = Depends(require_roles("risk"))) -> dict:
     """Portfolio-wide consent ledger: grants, data pulls, blocked pulls, expiries, revocations, deletion jobs."""
     lake = get_lake()
     counts = {st: db.query(Consent).filter_by(status=st).count() for st in ("ACTIVE", "REVOKED", "EXPIRED")}
-    rows = db.query(ConsentEvent).order_by(ConsentEvent.id.desc()).limit(limit).all()
+    q = db.query(ConsentEvent)
+    after = pagination.decode(cursor, 1)
+    if after:
+        q = q.filter(ConsentEvent.id < after[0])
+    found = q.order_by(ConsentEvent.id.desc()).limit(limit + 1).all()
+    rows = found[:limit]
+    next_cursor = pagination.link_next(request, response, [rows[-1].id] if len(found) > limit else None)
     return {
         "consents": counts,
         "events": [{"id": e.id, "ts": e.ts.isoformat(), "event": e.event, "consent_id": e.consent_id,
                     "factory_id": e.factory_id, "name": lake.profile(e.factory_id)["name"], "actor": e.actor,
                     "detail": e.detail} for e in rows],
+        "next_cursor": next_cursor,
     }
 
 
 @router.get("/ai-usage")
-def ai_usage(limit: int = Query(default=300, le=2000), db: Session = Depends(get_db),
+def ai_usage(request: Request, response: Response, limit: int = Query(default=300, ge=1, le=2000),
+             cursor: str | None = None, db: Session = Depends(get_db),
              user: CurrentUser = Depends(require_roles("risk"))) -> dict:
     """Every LLM-writer call: prompt template, provider, latency and a token estimate (characters / 4)."""
-    rows = db.query(AiUsage).order_by(AiUsage.id.desc()).limit(limit).all()
+    q = db.query(AiUsage)
+    after = pagination.decode(cursor, 1)
+    if after:
+        q = q.filter(AiUsage.id < after[0])
+    found = q.order_by(AiUsage.id.desc()).limit(limit + 1).all()
+    rows = found[:limit]
+    next_cursor = pagination.link_next(request, response, [rows[-1].id] if len(found) > limit else None)
     lat = sorted(r.latency_ms for r in rows)
     by_provider: dict[str, int] = {}
     for r in rows:
@@ -96,6 +119,7 @@ def ai_usage(limit: int = Query(default=300, le=2000), db: Session = Depends(get
                    "provider": r.provider, "location": "local" if r.provider == "template" else "cloud",
                    "latency_ms": r.latency_ms, "tokens_est": r.tokens_est, "fallback": r.fallback, "user": r.user,
                    "application_id": r.application_id} for r in rows],
+        "next_cursor": next_cursor,
     }
 
 

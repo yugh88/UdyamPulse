@@ -110,6 +110,7 @@
           "applications"
         ],
         "summary": "List Applications",
+        "description": "Applications in the pipeline (or in one `state`), oldest first. Paginated by cursor (see `Link`).",
         "operationId": "list_applications_v1_applications_get",
         "security": [
           {
@@ -131,6 +132,34 @@
                 }
               ],
               "title": "State"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 200,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
             }
           }
         ],
@@ -427,6 +456,22 @@
               "type": "integer",
               "title": "App Id"
             }
+          },
+          {
+            "name": "prefer",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Prefer"
+            }
           }
         ],
         "responses": {
@@ -439,6 +484,9 @@
                 }
               }
             }
+          },
+          "202": {
+            "description": "Queued as a background job (with `Prefer: respond-async`)"
           },
           "422": {
             "description": "Validation Error",
@@ -474,6 +522,22 @@
               "type": "integer",
               "title": "App Id"
             }
+          },
+          {
+            "name": "prefer",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Prefer"
+            }
           }
         ],
         "responses": {
@@ -481,13 +545,12 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response Draft Memo V1 Applications  App Id  Memo Post"
-                }
+                "schema": {}
               }
             }
+          },
+          "202": {
+            "description": "Queued as a background job (with `Prefer: respond-async`)"
           },
           "422": {
             "description": "Validation Error",
@@ -848,6 +911,7 @@
           "portfolio"
         ],
         "summary": "Portfolio",
+        "description": "Portfolio aggregates, cached per bank and invalidated by any change to its accounts (see api/cache.py).",
         "operationId": "portfolio_v1_portfolio_get",
         "responses": {
           "200": {
@@ -937,6 +1001,7 @@
           "portfolio"
         ],
         "summary": "List Alerts",
+        "description": "Alerts, highest severity first, then newest month. Paginated by cursor (see `Link`).",
         "operationId": "list_alerts_v1_alerts_get",
         "security": [
           {
@@ -959,6 +1024,34 @@
               ],
               "default": "OPEN",
               "title": "Status"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000,
+              "minimum": 1,
+              "default": 500,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
             }
           }
         ],
@@ -1133,7 +1226,7 @@
           "portfolio"
         ],
         "summary": "Advance",
-        "description": "Fast-forward the simulated clock, then let the early-warning agent process newly visible data.",
+        "description": "Fast-forward the simulated clock, then queue the early-warning batch for the newly visible data.\nReturns 202 with a job id; follow it at `/v1/events?job=<id>` or `/v1/jobs/<id>`.",
         "operationId": "advance_v1_sim_advance_post",
         "security": [
           {
@@ -1155,7 +1248,7 @@
           }
         ],
         "responses": {
-          "200": {
+          "202": {
             "description": "Successful Response",
             "content": {
               "application/json": {
@@ -1455,6 +1548,7 @@
           "governance"
         ],
         "summary": "Audit",
+        "description": "Audit trail, newest first. Paginated by cursor (see `Link`).",
         "operationId": "audit_v1_audit_get",
         "security": [
           {
@@ -1485,8 +1579,25 @@
             "schema": {
               "type": "integer",
               "maximum": 2000,
+              "minimum": 1,
               "default": 200,
               "title": "Limit"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
             }
           }
         ],
@@ -1633,8 +1744,25 @@
             "schema": {
               "type": "integer",
               "maximum": 2000,
+              "minimum": 1,
               "default": 300,
               "title": "Limit"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
             }
           }
         ],
@@ -1685,8 +1813,25 @@
             "schema": {
               "type": "integer",
               "maximum": 2000,
+              "minimum": 1,
               "default": 300,
               "title": "Limit"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
             }
           }
         ],
@@ -1765,6 +1910,161 @@
         }
       }
     },
+    "/v1/jobs/{job_id}": {
+      "get": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "Get Job",
+        "operationId": "get_job_v1_jobs__job_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Job V1 Jobs  Job Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/jobs": {
+      "get": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "List Jobs",
+        "operationId": "list_jobs_v1_jobs_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "default": 20,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "title": "Response List Jobs V1 Jobs Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/events": {
+      "get": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "Events",
+        "operationId": "events_v1_events_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "job",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Job"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/healthz": {
       "get": {
         "tags": [
@@ -1795,7 +2095,7 @@
           "meta"
         ],
         "summary": "Readyz",
-        "description": "Readiness: database, model artifact and lake are reachable. 503 takes the pod out of rotation.",
+        "description": "Readiness: database, model artifact, lake and (when configured) Redis. 503 takes the pod out of rotation.",
         "operationId": "readyz_readyz_get",
         "responses": {
           "200": {

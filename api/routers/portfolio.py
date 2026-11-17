@@ -2,13 +2,14 @@ from __future__ import annotations
 
 from datetime import timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from sqlalchemy import and_, case, or_
 from sqlalchemy.orm import Session
 
 from agents.base import set_sim_date, sim_date, visible_month
 from agents.memo_agent import AI_LABEL
 from agents.providers.lake import get_lake
-from api import serving
+from api import pagination, serving
 from api.audit import log_event
 from api.auth import CurrentUser, require_roles
 from api.cache import cached
@@ -140,13 +141,24 @@ def staff(db: Session = Depends(get_db), user: CurrentUser = Depends(require_rol
 
 
 @router.get("/alerts")
-def list_alerts(status_filter: str | None = Query(default="OPEN", alias="status"), db: Session = Depends(get_db),
-                user: CurrentUser = Depends(require_roles(*STAFF))) -> list[dict]:
+def list_alerts(request: Request, response: Response,
+                status_filter: str | None = Query(default="OPEN", alias="status"),
+                limit: int = Query(default=500, ge=1, le=1000), cursor: str | None = None,
+                db: Session = Depends(get_db), user: CurrentUser = Depends(require_roles(*STAFF))) -> list[dict]:
+    """Alerts, highest severity first, then newest month. Paginated by cursor (see `Link`)."""
     lake = get_lake()
-    q = db.query(Alert)
+    rank = case({"high": 3, "medium": 2, "low": 1}, value=Alert.severity, else_=0)
+    q = db.query(Alert, rank.label("rank"))
     if status_filter and status_filter != "ALL":
         q = q.filter(Alert.status == status_filter)
-    alerts = sorted(q.all(), key=lambda a: (-SEV_RANK[a.severity], -a.month, a.id))
+    after = pagination.decode(cursor, 3)
+    if after:  # keyset on (rank desc, month desc, id asc)
+        r, m, i = after
+        q = q.filter(or_(rank < r, and_(rank == r, or_(Alert.month < m, and_(Alert.month == m, Alert.id > i)))))
+    found = q.order_by(rank.desc(), Alert.month.desc(), Alert.id).limit(limit + 1).all()
+    page = found[:limit]
+    pagination.link_next(request, response, [page[-1][1], page[-1][0].month, page[-1][0].id] if len(found) > limit else None)
+    alerts = [a for a, _ in page]
     today = sim_date(db)
     app_ids = {a.application_id for a in alerts}
     exposure = {x.id: x.sanctioned_limit or 0 for x in db.query(Application).filter(Application.id.in_(app_ids))}

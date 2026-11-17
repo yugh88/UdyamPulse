@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response, status
 from fastapi.responses import FileResponse, JSONResponse
 from sqlalchemy.orm import Session
 
@@ -9,6 +9,7 @@ from agents.memo_agent import AI_LABEL
 from agents.orchestrator import Orchestrator
 from agents.providers.consent import get_consent_provider
 from agents.providers.lake import get_lake
+from api import pagination
 from api.audit import log_event
 from api.auth import CurrentUser, ensure_factory_access, get_current_user, require_roles
 from api.jobs import enqueue
@@ -103,15 +104,20 @@ def application_stats(db: Session = Depends(get_db), user: CurrentUser = Depends
 
 
 @router.get("")
-def list_applications(state: str | None = None, db: Session = Depends(get_db),
-                      user: CurrentUser = Depends(require_roles(*STAFF))) -> list[dict]:
+def list_applications(request: Request, response: Response, state: str | None = None,
+                      limit: int = Query(default=200, ge=1, le=500), cursor: str | None = None,
+                      db: Session = Depends(get_db), user: CurrentUser = Depends(require_roles(*STAFF))) -> list[dict]:
+    """Applications in the pipeline (or in one `state`), oldest first. Paginated by cursor (see `Link`)."""
     lake = get_lake()
     q = db.query(Application)
-    if state:
-        q = q.filter(Application.state == state)
-    else:
-        q = q.filter(Application.state != "MONITORING")
-    return [_summary(a, lake.profile(a.factory_id)) for a in q.order_by(Application.id).all()]
+    q = q.filter(Application.state == state) if state else q.filter(Application.state != "MONITORING")
+    after = pagination.decode(cursor, 1)
+    if after:
+        q = q.filter(Application.id > after[0])
+    rows = q.order_by(Application.id).limit(limit + 1).all()
+    page = rows[:limit]
+    pagination.link_next(request, response, [page[-1].id] if len(rows) > limit else None)
+    return [_summary(a, lake.profile(a.factory_id)) for a in page]
 
 
 @router.post("", status_code=201)
