@@ -49,6 +49,8 @@ def main() -> None:
              "peak_rss_mb_main": _mb(resource.RUSAGE_SELF), "peak_rss_mb_largest_worker": _mb(resource.RUSAGE_CHILDREN)}
     s.lake_dir.mkdir(parents=True, exist_ok=True)
     (s.lake_dir / "build_stats.json").write_text(json.dumps(stats, indent=2, default=str) + "\n")
+    s.reports.mkdir(parents=True, exist_ok=True)  # committed copy: the lake itself is not in git
+    (s.reports / "build_stats.json").write_text(json.dumps(stats, indent=2, default=str) + "\n")
     print(json.dumps({k: v for k, v in stats.items() if k != "generate"}))
 
 

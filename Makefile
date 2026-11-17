@@ -42,6 +42,15 @@ pipeline: data lake train backtest seed  ## Steps 1-5
 data-real: $(VENV)/.installed  ## Fetch real public datasets (SBA 7(a), UCI Polish, MoSPI IIP): resumable, checksummed
 	$(PY) -m data_real.fetch_sba
 	$(PY) -m data_real.fetch_uci
+	$(PY) -m data_real.fetch_india
+	$(PY) -m data_gen.calibrate
+
+data-full: $(VENV)/.installed  ## Build the 50,000-factory x 36-month calibrated panel into lake_full/ (~2-3 min)
+	UP_DATASET=full $(PY) -m data_gen.build
+
+train-full: $(VENV)/.installed  ## Product model on the full panel: group+time CV, hold-outs, ablation, leakage audit, EWS
+	UP_DATASET=full $(PY) -m ml.ews
+	UP_DATASET=full $(PY) -m ml.train_full
 
 bench-real: $(VENV)/.installed  ## Real-data methodology benchmarks with bootstrap CIs (needs data-real)
 	$(PY) -m ml.benchmark_real

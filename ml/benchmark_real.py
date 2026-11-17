@@ -175,7 +175,8 @@ def build_sba_features(df: pd.DataFrame, train_mask: np.ndarray, lender_counts: 
     for c, src in (("business_age", "BusinessAge"), ("business_type", "BusinessType"),
                    ("processing_method", "ProcessingMethod")):
         out[c] = df[src].fillna("Unknown").astype(str).str.strip().astype("category")
-    assert list(out.columns) == SBA_FEATURES
+    if list(out.columns) != SBA_FEATURES:
+        raise AssertionError("feature order changed")
     return out
 
 

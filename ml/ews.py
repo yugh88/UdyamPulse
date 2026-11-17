@@ -49,7 +49,9 @@ def rule_inputs(silver: pd.DataFrame) -> pd.DataFrame:
     g = df.groupby("factory_id")
 
     def base(col: str, w: int) -> pd.Series:
-        return g[col].transform(lambda x: x.shift(1).rolling(w, min_periods=1).mean())
+        prev = g[col].shift(1)
+        return (prev.groupby(df["factory_id"]).rolling(w, min_periods=1).mean()
+                .reset_index(level=0, drop=True).reindex(df.index))
 
     out = df[["factory_id", "month"]].copy()
     out["eway_chg"] = df["eway_value"] / base("eway_value", b) - 1
@@ -130,6 +132,20 @@ def next_best_action(row: pd.Series) -> str | None:
     return "call"
 
 
+def next_best_actions(hits: pd.DataFrame) -> pd.Series:
+    """Vectorised `next_best_action` for a whole frame (same rules, same order)."""
+    sev = hits["severity"]
+    has = sev.map(lambda x: isinstance(x, str)).to_numpy()
+    high, medium = (sev == "high").to_numpy(), (sev == "medium").to_numpy()
+    ol, cs, dv = hits["order_loss"].to_numpy(bool), hits["cash_squeeze"].to_numpy(bool), hits["diversion"].to_numpy(bool)
+    b3 = (hits["bounces"].fillna(0) >= 3).to_numpy()
+    out = np.select(
+        [~has, high & ol, cs & b3, high & dv, high, dv, medium & cs, medium],
+        [None, "visit + limit review", "restructure", "visit + limit review", "visit", "visit", "visit", "call"],
+        default="call")
+    return pd.Series(out, index=hits.index, dtype=object)
+
+
 def explain(row: pd.Series) -> list[str]:
     r = load_rules()["rules"]
     out = []
@@ -161,48 +177,52 @@ def to_result(row: pd.Series) -> EwsResult:
     )
 
 
-def backtest(hits: pd.DataFrame, truth: pd.DataFrame, n_months: int) -> dict:
+def backtest(hits: pd.DataFrame, truth: pd.DataFrame, n_months: int, min_severity: str | None = None,
+             min_points: int | None = None) -> dict:
+    """Lead time, recall and precision of the alerts against SMA-2 events. Vectorised (joins, no row loops),
+    so it runs on the 50,000-factory panel. `min_points` overrides the severity cut for operating-point sweeps."""
     cfg = load_rules()["backtest"]
-    min_sev = SEVERITY_ORDER[cfg["min_severity"]]
-    alerts = hits[hits.severity.map(lambda s: SEVERITY_ORDER.get(s, 0)) >= min_sev]
+    lookback, horizon = cfg["lookback_months"], cfg["precision_horizon_months"]
+    min_sev = min_severity or cfg["min_severity"]
+    if min_points is not None:
+        alerts = hits[hits.severity_points >= min_points][["factory_id", "month"]]
+    else:
+        alerts = hits[hits.severity.map(lambda x: SEVERITY_ORDER.get(x, 0)) >= SEVERITY_ORDER[min_sev]][["factory_id", "month"]]
 
-    sma2 = truth[truth.sma2_month.notna() & (truth.sma2_month <= n_months)]
-    leads, detected = [], 0
-    for _, t in sma2.iterrows():
-        s2 = int(t.sma2_month)
-        a = alerts[(alerts.factory_id == t.factory_id) & (alerts.month < s2) & (alerts.month >= s2 - cfg["lookback_months"])]
-        if a.empty:
-            continue
-        first = int(a.month.min())
-        lead = (month_end(s2) - month_end(first)).days
-        if lead >= 30:
-            detected += 1
-            leads.append(lead)
+    sma2 = truth[truth.sma2_month.notna() & (truth.sma2_month <= n_months)][["factory_id", "sma2_month"]]
+    j = alerts.merge(sma2, on="factory_id")
+    j = j[(j.month < j.sma2_month) & (j.month >= j.sma2_month - lookback)]
+    first = j.groupby("factory_id").agg(first=("month", "min"), s2=("sma2_month", "first")).reset_index()
+    ends = {m: month_end(m) for m in range(0, n_months + lookback + 2)}
+    first["lead"] = [(ends[int(s2)] - ends[int(f)]).days for f, s2 in zip(first["first"], first["s2"], strict=True)]
+    leads = first.loc[first["lead"] >= 30, "lead"].to_numpy()
 
-    # Precision at factory level: alerted accounts that hit SMA-2 within the horizon (or were genuinely stressed).
-    first_alert = alerts[alerts.month <= n_months - cfg["precision_horizon_months"]].groupby("factory_id").month.min()
-    tp = tp_stress = 0
-    for fid, m in first_alert.items():
-        tr = truth.loc[truth.factory_id == fid].iloc[0]
-        if pd.notna(tr.sma2_month) and m < tr.sma2_month <= m + cfg["precision_horizon_months"]:
-            tp += 1
-        if pd.notna(tr.stress_month) and tr.stress_month - 5 <= m <= tr.stress_month + 6:
-            tp_stress += 1
-    n_alerted = len(first_alert)
+    fa = alerts[alerts.month <= n_months - horizon].groupby("factory_id").month.min().rename("m").reset_index()
+    fa = fa.merge(truth[["factory_id", "sma2_month", "stress_month"]], on="factory_id", how="left")
+    tp = int(((fa.sma2_month > fa.m) & (fa.sma2_month <= fa.m + horizon)).sum())
+    tp_stress = int(((fa.m >= fa.stress_month - 5) & (fa.m <= fa.stress_month + 6)).sum())
+    n_alerted = len(fa)
+    detected = len(leads)
     return {
         "sma2_events_in_window": int(len(sma2)),
         "detected_30d_ahead": detected,
         "recall": round(detected / len(sma2), 3) if len(sma2) else None,
-        "median_lead_days": float(np.median(leads)) if leads else None,
-        "mean_lead_days": round(float(np.mean(leads)), 1) if leads else None,
-        "p25_lead_days": float(np.percentile(leads, 25)) if leads else None,
+        "median_lead_days": float(np.median(leads)) if detected else None,
+        "mean_lead_days": round(float(np.mean(leads)), 1) if detected else None,
+        "p25_lead_days": float(np.percentile(leads, 25)) if detected else None,
         "alerted_accounts": n_alerted,
         "precision_sma2_within_6m": round(tp / n_alerted, 3) if n_alerted else None,
         "precision_true_stress": round(tp_stress / n_alerted, 3) if n_alerted else None,
         "alert_rate_per_account_month": round(len(alerts) / len(hits), 4),
-        "min_severity": cfg["min_severity"],
-        "target_median_lead_days_met": bool(leads and np.median(leads) >= 60),
+        "min_severity": min_sev if min_points is None else f"points>={min_points}",
+        "target_median_lead_days_met": bool(detected and np.median(leads) >= 60),
     }
+
+
+def operating_points(hits: pd.DataFrame, truth: pd.DataFrame, n_months: int) -> list[dict]:
+    """The precision / recall / lead-time trade-off for every severity cut."""
+    max_pts = int(hits.severity_points.max()) if len(hits) else 1
+    return [{"min_points": k, **backtest(hits, truth, n_months, min_points=k)} for k in range(1, max_pts + 1)]
 
 
 def main() -> None:
@@ -219,7 +239,7 @@ def main() -> None:
     hits = evaluate(inputs, model)
     hits = hits.merge(labels[["factory_id", "month", "is_post_default"]], on=["factory_id", "month"])
     hits = hits[(hits.is_post_default == 0) & (hits.month >= 3)].drop(columns="is_post_default")
-    hits["next_best_action"] = hits.apply(next_best_action, axis=1)
+    hits["next_best_action"] = next_best_actions(hits)
     hits.to_parquet(s.gold / "ews_hits.parquet", index=False)
 
     report = backtest(hits, truth, s.n_months)
