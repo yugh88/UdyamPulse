@@ -38,7 +38,8 @@ class User(TenantScoped, Base):
     role: Mapped[str] = mapped_column(String(32))  # rm | credit_officer | risk | msme
     password_hash: Mapped[str] = mapped_column(String(256))
     factory_id: Mapped[str | None] = mapped_column(String(16), nullable=True)  # msme users only
-    branch: Mapped[str | None] = mapped_column(String(32), nullable=True)  # RM home cluster, for attribute checks
+    # Clusters this staff member covers, comma separated, or "*" for a zonal hub (api/authz.py)
+    branch: Mapped[str | None] = mapped_column(String(128), nullable=True)
 
 
 class RefreshToken(TenantScoped, Base):
@@ -60,9 +61,11 @@ class RefreshToken(TenantScoped, Base):
 class Application(TenantScoped, Base):
     __tablename__ = "applications"
     __table_args__ = (Index("ix_applications_tenant_state", "tenant_id", "state"),
-                      Index("ix_applications_tenant_factory", "tenant_id", "factory_id"))
+                      Index("ix_applications_tenant_factory", "tenant_id", "factory_id"),
+                      Index("ix_applications_tenant_cluster", "tenant_id", "cluster"))
     id: Mapped[int] = mapped_column(primary_key=True)
     factory_id: Mapped[str] = mapped_column(String(16), index=True)
+    cluster: Mapped[str | None] = mapped_column(String(32), nullable=True)  # factory's cluster: branch scope key
     state: Mapped[str] = mapped_column(String(24), default="APPLIED")
     channel: Mapped[str] = mapped_column(String(16), default="rm")
     requested_amount: Mapped[float] = mapped_column(Float)
@@ -90,6 +93,18 @@ class Application(TenantScoped, Base):
     plan_cache: Mapped[dict | None] = mapped_column(JSON, nullable=True)  # advisor plan for one data month
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+
+@event.listens_for(Application, "before_insert")
+def _stamp_cluster(_mapper, _conn, app: Application) -> None:
+    """Every application records its factory's cluster, which branch scope is checked against (api/authz.py)."""
+    if app.cluster is None:
+        from agents.providers.lake import get_lake
+
+        try:
+            app.cluster = get_lake().profile(app.factory_id)["cluster"]
+        except (KeyError, FileNotFoundError):
+            app.cluster = None
 
 
 class Consent(TenantScoped, Base):

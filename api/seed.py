@@ -23,20 +23,22 @@ from core.timeline import month_end
 
 DEMO_PASSWORD = "demo123"
 HERO = "UP-F0001"
+# (username, display name, role, factory, branch scope: clusters covered or "*" for the zonal hub)
 USERS = [
-    ("rm1", "Relationship Manager · Ludhiana", "rm", None),
-    ("co1", "Credit Officer · MSME Hub", "credit_officer", None),
-    ("risk1", "Chief Risk Office", "risk", None),
-    ("sharma", "Sharma Auto Components", "msme", HERO),
+    ("rm1", "Relationship Manager · Zonal hub", "rm", None, "*"),
+    ("rm3", "Relationship Manager · Morbi branch", "rm", None, "Morbi"),
+    ("co1", "Credit Officer · MSME Hub", "credit_officer", None, "*"),
+    ("risk1", "Chief Risk Office", "risk", None, None),
+    ("sharma", "Sharma Auto Components", "msme", HERO, None),
 ]
 PORTFOLIO_SIZE = 140
 # Two banks prove tenant isolation. Bank A carries the demo story; bank B is a small second portfolio.
 BANK_A, BANK_B = "bank-a", "bank-b"
 TENANTS = {BANK_A: "Sample Bank Ltd", BANK_B: "Second Bank Ltd"}
 USERS_B = [
-    ("rm2", "Relationship Manager · Rajkot", "rm", None),
-    ("co2", "Credit Officer · Second Bank", "credit_officer", None),
-    ("risk2", "Risk Office · Second Bank", "risk", None),
+    ("rm2", "Relationship Manager · Second Bank", "rm", None, "*"),
+    ("co2", "Credit Officer · Second Bank", "credit_officer", None, "*"),
+    ("risk2", "Risk Office · Second Bank", "risk", None, None),
 ]
 PORTFOLIO_SIZE_B = 20
 
@@ -66,8 +68,9 @@ def main() -> None:
         pending.append(str(rng.choice(cands)))
     watch_factory = pending[2]
 
-    for username, display, role, fid in USERS + [("msme2", profiles.loc[watch_factory, "name"], "msme", watch_factory)]:
-        db.add(User(username=username, display_name=display, role=role, factory_id=fid,
+    for username, display, role, fid, branch in USERS + [
+            ("msme2", profiles.loc[watch_factory, "name"], "msme", watch_factory, None)]:
+        db.add(User(username=username, display_name=display, role=role, factory_id=fid, branch=branch,
                     password_hash=hash_password(DEMO_PASSWORD)))
     db.commit()
     set_sim_date(db, s.sim_start)
@@ -109,8 +112,8 @@ def main() -> None:
 
     # ---- Bank B: its own users and accounts, drawn from factories bank A does not hold ----
     bind_tenant(db, BANK_B)
-    for username, display, role, fid in USERS_B:
-        db.add(User(username=username, display_name=display, role=role, factory_id=fid,
+    for username, display, role, fid, branch in USERS_B:
+        db.add(User(username=username, display_name=display, role=role, factory_id=fid, branch=branch,
                     password_hash=hash_password(DEMO_PASSWORD)))
     taken = set(chosen) | set(pending)
     free = [f for f in others if f not in taken]

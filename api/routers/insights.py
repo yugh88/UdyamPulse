@@ -12,6 +12,7 @@ from agents.providers.consent import ConsentError, get_consent_provider
 from agents.providers.lake import get_lake
 from agents.providers.search import get_search
 from api.auth import CurrentUser, require_roles
+from api.authz import ensure_branch_access
 from api.models.db import Application, get_db
 from api.models.schemas import SimulateRequest
 from core.timeline import month_label
@@ -46,6 +47,7 @@ def simulate(body: SimulateRequest, db: Session = Depends(get_db),
     app = db.get(Application, body.application_id)
     if app is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Application not found")
+    ensure_branch_access(user, app)
     unknown = sorted(set(body.adjustments) - set(LEVER_BY_KEY))
     if unknown:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, f"Unknown levers: {', '.join(unknown)}")

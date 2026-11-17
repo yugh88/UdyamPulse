@@ -92,7 +92,7 @@ def test_alert_bulk_assign_acknowledge_and_outcome(client):
     assert done["status"] == "ACTIONED" and done["outcome"] == "monitoring"
     # Actioned alerts are skipped by later bulk operations.
     assert client.post("/alerts/bulk", headers=rm, json={"ids": ids, "action": "acknowledge"}).json()["skipped"] == 1
-    assert {u["username"] for u in client.get("/staff", headers=rm).json()} == {"rm1", "co1"}
+    assert {u["username"] for u in client.get("/staff", headers=rm).json()} == {"rm1", "rm3", "co1"}
 
 
 def test_band_migration_matrix_adds_up(client):

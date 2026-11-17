@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
-from sqlalchemy import and_, case, or_
+from sqlalchemy import and_, case, or_, select
 from sqlalchemy.orm import Session
 
 from agents.base import set_sim_date, sim_date, visible_month
@@ -12,6 +12,7 @@ from agents.providers.lake import get_lake
 from api import pagination, serving
 from api.audit import log_event
 from api.auth import CurrentUser, require_roles
+from api.authz import branch_clusters, ensure_branch_access, scope_applications, scope_key
 from api.cache import cached
 from api.jobs import enqueue
 from api.models.db import AccountScore, Alert, Application, Consent, User, get_db, utcnow
@@ -28,16 +29,16 @@ LGD, EARLY_ACTION_EFFECT = 0.45, 0.40
 def portfolio(response: Response, db: Session = Depends(get_db),
               user: CurrentUser = Depends(require_roles(*STAFF))) -> dict:
     """Portfolio aggregates, cached per bank and invalidated by any change to its accounts (see api/cache.py)."""
-    value, hit = cached("portfolio", user.tenant_id, lambda: _portfolio(db))
+    value, hit = cached(f"portfolio:{scope_key(user)}", user.tenant_id, lambda: _portfolio(db, user))
     response.headers["X-Cache"] = "hit" if hit else "miss"
     return value
 
 
-def _portfolio(db: Session) -> dict:
+def _portfolio(db: Session, user: CurrentUser) -> dict:
     lake = get_lake()
     vm = visible_month(db)
     today = sim_date(db)
-    apps = db.query(Application).filter(Application.state == "MONITORING").all()
+    apps = scope_applications(db.query(Application), user).filter(Application.state == "MONITORING").all()
     open_alerts = db.query(Alert).filter(Alert.status == "OPEN").all()
     by_app: dict[int, list[Alert]] = {}
     for a in open_alerts:
@@ -100,15 +101,15 @@ BAND_ORDER = ("APPROVE", "WATCH", "HIGH_RISK")
 def migration(response: Response, db: Session = Depends(get_db),
               user: CurrentUser = Depends(require_roles(*STAFF))) -> dict:
     """Score-band migration of monitored accounts between the previous and the latest visible month."""
-    value, hit = cached("migration", user.tenant_id, lambda: _migration(db))
+    value, hit = cached(f"migration:{scope_key(user)}", user.tenant_id, lambda: _migration(db, user))
     response.headers["X-Cache"] = "hit" if hit else "miss"
     return value
 
 
-def _migration(db: Session) -> dict:
+def _migration(db: Session, user: CurrentUser) -> dict:
     lake = get_lake()
     vm = visible_month(db)
-    apps = db.query(Application).filter(Application.state == "MONITORING").all()
+    apps = scope_applications(db.query(Application), user).filter(Application.state == "MONITORING").all()
     by_factory = {a.factory_id: a for a in apps}
     rows = db.query(AccountScore).filter(AccountScore.month.in_([vm - 1, vm])).all()
     prev = {r.factory_id: r for r in rows if r.month == vm - 1 and r.factory_id in by_factory}
@@ -149,6 +150,9 @@ def list_alerts(request: Request, response: Response,
     lake = get_lake()
     rank = case({"high": 3, "medium": 2, "low": 1}, value=Alert.severity, else_=0)
     q = db.query(Alert, rank.label("rank"))
+    clusters = branch_clusters(user)
+    if clusters is not None:
+        q = q.filter(Alert.application_id.in_(select(Application.id).where(Application.cluster.in_(clusters))))
     if status_filter and status_filter != "ALL":
         q = q.filter(Alert.status == status_filter)
     after = pagination.decode(cursor, 3)
@@ -190,6 +194,7 @@ def action_alert(alert_id: int, body: AlertAction, db: Session = Depends(get_db)
     alert = db.get(Alert, alert_id)
     if alert is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Alert not found")
+    ensure_branch_access(user, db.get(Application, alert.application_id))
     alert.status, alert.action_taken, alert.action_note, alert.actioned_by = "ACTIONED", body.action, body.note, user.username
     alert.outcome = body.outcome
     alert.owner = alert.owner or user.username
@@ -209,6 +214,8 @@ def bulk_alerts(body: AlertBulk, db: Session = Depends(get_db),
         if owner is None or owner.role not in ("rm", "credit_officer"):
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Owner must be a relationship manager or credit officer")
     alerts = db.query(Alert).filter(Alert.id.in_(body.ids), Alert.status == "OPEN").all()
+    for a in alerts:
+        ensure_branch_access(user, db.get(Application, a.application_id))
     for a in alerts:
         if body.action == "assign":
             a.owner = body.owner

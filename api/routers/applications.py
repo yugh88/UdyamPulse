@@ -12,6 +12,7 @@ from agents.providers.lake import get_lake
 from api import pagination
 from api.audit import log_event
 from api.auth import CurrentUser, ensure_factory_access, get_current_user, require_roles
+from api.authz import ensure_branch_access, scope_applications
 from api.jobs import enqueue
 from api.models.db import Alert, Application, AuditLog, ConsentEvent, get_db, utcnow
 from api.models.schemas import ApplicationCreate, DecisionRequest, ReviewRequest, ScoreResponse
@@ -28,6 +29,7 @@ def _get_app(db: Session, app_id: int, user: CurrentUser) -> Application:
     if app is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Application not found")
     ensure_factory_access(user, app.factory_id)
+    ensure_branch_access(user, app)
     return app
 
 
@@ -84,7 +86,7 @@ def _peers(lake, factory_id: str, cluster: str, month: int, score: int | None) -
 @router.get("/stats")
 def application_stats(db: Session = Depends(get_db), user: CurrentUser = Depends(require_roles(*STAFF))) -> dict:
     """KPI tiles for the console. Decision figures count only decisions made in this system (not seed data)."""
-    apps = db.query(Application).all()
+    apps = scope_applications(db.query(Application), user).all()
     pending = [a for a in apps if a.state != "MONITORING" and a.decision is None]
     decided = [a for a in apps if a.decided_at is not None]
     approved = sum(1 for a in decided if a.decision == "APPROVED")
@@ -109,7 +111,7 @@ def list_applications(request: Request, response: Response, state: str | None = 
                       db: Session = Depends(get_db), user: CurrentUser = Depends(require_roles(*STAFF))) -> list[dict]:
     """Applications in the pipeline (or in one `state`), oldest first. Paginated by cursor (see `Link`)."""
     lake = get_lake()
-    q = db.query(Application)
+    q = scope_applications(db.query(Application), user)
     q = q.filter(Application.state == state) if state else q.filter(Application.state != "MONITORING")
     after = pagination.decode(cursor, 1)
     if after:
