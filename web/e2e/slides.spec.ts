@@ -9,7 +9,7 @@ test.use({ viewport: { width: 1920, height: 1080 } });
 const OUT = "../docs/media/slides";
 let n = 0;
 const snap = async (page: Page, name: string) => {
-  await page.waitForTimeout(400); // let charts finish drawing
+  await page.waitForTimeout(1500); // let charts finish drawing
   // No toasts on slides: hide them only while the picture is taken (the steps still wait on them).
   const hide = await page.addStyleTag({ content: "[data-sonner-toaster]{display:none!important}" });
   n += 1;

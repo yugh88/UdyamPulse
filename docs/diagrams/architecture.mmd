@@ -1,59 +1,31 @@
 flowchart TB
-    subgraph SRC["1 · DATA SOURCES (consent-based)"]
-        direction LR
-        GST["GST e-invoice<br/>& e-way bills"]
-        AA["Account Aggregator<br/>bank statements"]
-        ERP["Tally / D365<br/>Business Central"]
-        PWR["Electricity bills<br/>(production proxy)"]
-        PO["POs, invoices<br/>(IoT in v2)"]
+    subgraph FE["Frontend (React)"]
+        RM["RM console"]; CO["Credit officer"]; RK["Risk cockpit · Governance"]; MS["MSME app (EN / हिन्दी)"]
     end
-
-    subgraph ING["2 · INGEST & TRUST"]
-        direction LR
-        CON["AA + GST connectors<br/>(sandbox mocks, FIU-style consent)"]
-        API["API gateway<br/>(FastAPI · Azure APIM in prod)"]
-        OCR["Doc parser<br/>(Azure AI Document Intelligence adapter)"]
+    subgraph BE["Backend (FastAPI /v1)"]
+        API["REST API · auth · RBAC · rate limits · idempotency"]
+        SM["Application state machine"]
+        Q["Outbox → job queue (Dramatiq)"]
     end
-
-    subgraph DML["3 · DATA & ML (Databricks-style medallion)"]
-        direction LR
-        BR["Bronze: raw events"]
-        SV["Silver: cleaned, reconciled"]
-        GD["Gold: monthly factory features (60+)"]
-        MOD["LightGBM PD model<br/>+ SHAP reasons"]
-        EWS["EWS rules + Isolation Forest"]
-        FC["Cash-flow forecast (Prophet)"]
-        REG["MLflow registry + drift check"]
+    subgraph AG["Agent layer"]
+        OR["Orchestrator (planner)"]; DA["Data agent (tool)"]; ME["Memo agent (tool + generation)"]
+        GU["Guard / policy engine (review)"]; EW["EWS agent"]; AD["Advisor agent"]
     end
-
-    subgraph AGT["4 · AGENT LAYER (Semantic Kernel · Azure OpenAI adapter)"]
-        direction LR
-        ORC["Orchestrator agent"]
-        DA["Data agent"]
-        CMA["Credit-memo agent<br/>(RAG over bank policy)"]
-        EWA["Early-warning agent"]
-        ADV["MSME advisor agent"]
+    subgraph DM["Data & ML"]
+        LK["Lakehouse · DuckDB + Parquet<br/>bronze → silver → gold"]
+        ML["LightGBM + SHAP · IsolationForest · Prophet"]
+        DB[("SQLite (demo) / PostgreSQL + RLS")]
+        RD[("Redis: cache · limits · queue")]
     end
-
-    subgraph EXP["5 · EXPERIENCE"]
-        direction LR
-        RM["RM / credit console<br/>(React · D365 CRM in prod)"]
-        DASH["Portfolio risk cockpit<br/>(React charts · Power BI in prod)"]
-        APP["MSME app (PWA)<br/>+ WhatsApp-style notifications"]
-        LOS["LOS / core banking<br/>REST stubs"]
+    subgraph EXT["Providers (adapters)"]
+        AA["Account Aggregator (mock)"]; LLM["Template writer (default) / Azure OpenAI 🔭"]
+        SRCH["Policy search (TF-IDF) / Azure AI Search 🔭"]
     end
-
-    GOV["SECURITY & GOVERNANCE: auth (Entra ID in prod) · secrets (Key Vault) · consent ledger · audit log · data stays in India region"]
-
-    SRC --> ING --> DML --> AGT --> EXP
-    MOD --> CMA
-    EWS --> EWA
-    FC --> ADV
-    GOV -.-> ING
-    GOV -.-> DML
-    GOV -.-> AGT
-
-    classDef gov fill:#E5397A,stroke:#E5397A,color:#ffffff
-    classDef ml fill:#EAE5FF,stroke:#7B5CFF,color:#0B1033
-    class GOV gov
-    class MOD,EWS,FC ml
+    FE -->|HTTPS + JWT| API --> SM --> OR
+    OR --> DA & ME & EW & AD
+    ME --> GU
+    DA --> AA
+    ME --> LLM & SRCH
+    DA & EW & AD --> LK & ML
+    API --> DB & RD
+    Q --> OR

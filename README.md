@@ -4,466 +4,572 @@
 
 ### Credit backed by your production, not your property.
 
-**A decision-intelligence platform that helps banks lend to small manufacturers based on how their factory is actually running, and warns them early if a borrower starts to struggle.**
+**Decision intelligence that helps banks lend to small manufacturers based on how their factory is actually running, and warns them early when a borrower starts to struggle.**
 
 [![CI](https://github.com/yugh88/UdyamPulse/actions/workflows/ci.yml/badge.svg)](https://github.com/yugh88/UdyamPulse/actions/workflows/ci.yml)
-![Python](https://img.shields.io/badge/python-3.11+-0B1033)
-![React](https://img.shields.io/badge/react-19-7B5CFF)
-![Data](https://img.shields.io/badge/data-100%25%20synthetic-2FA866)
-![No API keys](https://img.shields.io/badge/runs%20offline-no%20API%20keys-E5397A)
+![Tests](https://img.shields.io/badge/tests-backend%20%2B%20web%20%2B%20browser-2FA866)
+![Python](https://img.shields.io/badge/python-3.11-0B1033)
+![React](https://img.shields.io/badge/react-19-4F5BC4)
+![Data](https://img.shields.io/badge/data-synthetic%20%2B%20real%20public%20benchmarks-5B6475)
+![Live demo](https://img.shields.io/badge/live%20demo-link%20pending-lightgrey)
 
-Visionet Talent Quest 2026 · Techthon · Data and Decision Intelligence (BFSI)
+Visionet Techthon 2026 · Round 2 · BFSI: Data & Decision Intelligence
 **Team Legit · VIT Bhopal University**
 
+<img src="docs/media/slides/03-score-and-reasons.png" alt="Application screen: Factory Health Score 742 (Approve) with its top reasons and consented operating signals" width="900">
+
 </div>
+
+> **Status markers on every claim:** ✅ Done (built and tested) · 🟡 Partial · 🔭 Future (designed, not built).
+> Numbers say where they come from: *synthetic* (our generated data), *real* (public data), *measured* or *estimate*.
+> This is a prototype on synthetic data. Nothing here is a lending decision.
 
 ---
 
 ## Contents
 
-1. [The problem](#1-the-problem)
-2. [Our solution in one minute](#2-our-solution-in-one-minute)
-3. [See it](#3-see-it)
-4. [Run it on your machine](#4-run-it-on-your-machine)
-5. [Demo walkthrough (5 minutes)](#5-demo-walkthrough-5-minutes)
-6. [How it works](#6-how-it-works)
-7. [Results](#7-results)
-8. [Trust, safety and compliance](#8-trust-safety-and-compliance)
-9. [Project structure](#9-project-structure)
-10. [Configuration and Azure](#10-configuration-and-azure)
-11. [Testing](#11-testing)
-12. [Troubleshooting](#12-troubleshooting)
-13. [Glossary](#13-glossary)
-14. [Limitations and next steps](#14-limitations-and-next-steps)
+**A · Story**
+1. [Team and project](#1-team-and-project)
+2. [The problem](#2-the-problem)
+3. [Users and beneficiaries](#3-users-and-beneficiaries)
+4. [Existing solutions and gaps](#4-existing-solutions-and-gaps)
+
+**B · Solution**
+5. [How it works](#5-how-it-works)
+6. [Key features](#6-key-features)
+7. [Innovation](#7-innovation)
+8. [Architecture](#8-architecture)
+
+**C · Proof**
+9. [Tech stack and why](#9-tech-stack-and-why)
+10. [Prototype and progress](#10-prototype-and-progress)
+11. [Feasibility and plan](#11-feasibility-and-plan)
+12. [Testing, validation and results](#12-testing-validation-and-results)
+
+**D · Future and team**
+13. [Scalability and sustainability](#13-scalability-and-sustainability)
+14. [Risks, security and privacy](#14-risks-security-and-privacy)
+15. [Expected impact](#15-expected-impact)
+16. [Who built what](#16-who-built-what)
+
+[Evaluation map](#evaluation-map) · [Quick start](#quick-start) · [FAQ for reviewers](#faq-for-reviewers) · [Acknowledgements](#acknowledgements) · [Licence](#licence)
 
 ---
 
-## 1. The problem
+# A · Story
 
-India has over six crore MSMEs, and many small manufacturers cannot get a fair bank loan. Banks mostly ask:
-*"What property can you pledge?"* and *"What did your balance sheet say last year?"*
+## 1. Team and project
 
-That approach misses the point for a factory:
+**UdyamPulse**, Team Legit, VIT Bhopal University.
 
-- 🏭 **A busy factory with no spare property** gets rejected, even though it ships goods every day.
-- 📄 **Annual financials are old news.** By the time a bank sees them, the business may already be very different.
-- ⏰ **Banks find out about trouble too late.** They usually notice only when EMIs stop, when the account is already a Special Mention Account (SMA) and close to becoming a bad loan.
-
-Yet the evidence of a healthy (or struggling) factory already exists every month in digital form: GST invoices,
-e-way bills for every truck that leaves the gate, bank-account cash flows, the electricity meter and payroll filings.
-
-## 2. Our solution in one minute
-
-UdyamPulse reads that live evidence, **with the MSME's consent**, and turns it into decisions a bank can act on.
-
-| Step | What happens | Who benefits |
+| Member | Branch | Ownership area (PROPOSED, team to confirm) |
 |---|---|---|
-| **1. Consent** | The MSME agrees to share data through India's **Account Aggregator** network and GST. The purpose is stated clearly, and consent can be withdrawn with one tap. | MSME stays in control |
-| **2. Score** | A machine-learning model reads 67 signals and gives a **Factory Health Score from 300 to 900**, with the **top 5 reasons in plain English**. | Credit officer understands *why* |
-| **3. Credit memo** | An AI agent drafts the credit memo: recommended loan limit, interest band, risks, conditions, and citations from the bank's policy. **It never invents a number**: every figure comes from the model or the database. | Hours of paperwork become seconds |
-| **4. Human decision** | Only a **credit officer** can approve or reject. The system only recommends. | Accountability stays with the bank |
-| **5. Early warning** | After the loan, the platform keeps watching. If orders, electricity use or cash flow drop sharply, it raises an **alert about 3 months before** the loan would normally show trouble, and suggests the next step (call, visit, limit review, restructure). | Bank acts early; MSME gets help early |
-| **6. Advice to the MSME** | The MSME sees its own score, a 3-month cash-flow forecast and a **90-day improvement plan**, also available in Hindi. | MSME knows how to become loan-ready |
+| _Name (to add)_ | _Branch_ | Data & ML |
+| _Name (to add)_ | _Branch_ | Backend & agents |
+| _Name (to add)_ | _Branch_ | Frontend & UX |
+| _Name (to add)_ | _Branch_ | Deployment & docs |
 
-> **In short:** banks lend based on *production*, not *property*, and spot stress months earlier.
+| | Link |
+|---|---|
+| Live demo | _pending: publish with `deploy/huggingface/push.sh` (see [Deployment](docs/DEPLOYMENT.md))_ |
+| Demo video | _to add_ |
+| Deck | _to add_ ([outline](docs/PRESENTATION_OUTLINE.md)) |
+| Repository | https://github.com/yugh88/UdyamPulse |
 
-## 3. See it
+## 2. The problem
 
-| Credit console (bank staff) | Risk cockpit (portfolio) | MSME app (mobile) |
-|:---:|:---:|:---:|
-| ![Credit console](docs/images/screenshots/credit_console.jpg) | ![Risk cockpit](docs/images/screenshots/risk_cockpit.jpg) | ![MSME app](docs/images/screenshots/msme_app.png) |
-| Score gauge, top-5 reasons, pillar breakdown, consent status | Portfolio KPIs, cluster × sector heat-map, alert queue with RM briefings | Loan-readiness score, cash-flow forecast, 90-day plan, consent control |
+**Small manufacturers are lent to on stale paper and property, and their stress is spotted too late.**
 
-### Architecture
+- **8.7 crore** registered MSMEs, and only **41%** have ever accessed formal credit (TransUnion CIBIL–SIDBI
+  *MSME Pulse*, Jul 2026).
+- About **₹30 lakh crore** MSME credit gap (SIDBI).
+- MSMEs make up **35.4% of manufacturing** (Union Budget 2026-27).
+- **Stale-paper underwriting:**
+  - Banks judge a factory on last year's audited statements and collateral.
+  - Many small units have neither, even when their order book, dispatches and power use show a healthy
+    business.
+- **Late stress detection:**
+  - Lenders learn of trouble at SMA-1/SMA-2 (30–90 days overdue), when options are fewer and costlier.
+  - The early signs (falling e-way bills, power use and bank inflows) were visible months earlier.
 
-![UdyamPulse architecture](docs/images/architecture.png)
+## 3. Users and beneficiaries
 
-Five layers, from bottom-up evidence to front-end decisions, wrapped in a security and governance layer.
-Details: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+| Persona | Needs | Pain today |
+|---|---|---|
+| **Relationship Manager** | Bring good loans in fast; know which accounts are slipping | Paper chasing; alerts without reasons |
+| **Credit Officer** | Decide fast and defensibly, within policy | Rewriting memos; untraceable numbers |
+| **Risk Head** | See portfolio risk; prove models are fair and auditable | Quarterly, lagging views; model-risk audits |
+| **MSME owner** | Working capital without property; understand where they stand, in their language | Rejected without reasons; English-only jargon |
 
-### Loan lifecycle
+**Beneficiaries:**
+- **Lenders:** faster decisions and earlier warnings.
+- **MSMEs:** credit based on operations.
+- **MSME employees:** jobs kept when stress is caught early.
+- **The economy:** a smaller credit gap.
 
-<p align="center"><img src="docs/images/loan_lifecycle.png" alt="Loan lifecycle flowchart" width="420"></p>
+| User need | Feature | Status |
+|---|---|---|
+| Score without paper | Consented data pull → Factory Health Score with 5 plain-language reasons | ✅ |
+| Know who is slipping, and why | Early-warning alerts with reasons and a next-best action | ✅ |
+| Defensible memo, fast | Credit-memo agent with policy citations and a number guard | ✅ |
+| Test scenarios | What-if simulator (read-only) | ✅ |
+| Portfolio and governance view | Cockpit, model card, fairness, drift, data provenance, audit chain | ✅ |
+| Owner understands, in Hindi | MSME app: readiness, cash-flow forecast, 90-day plan | ✅ |
+| Owner controls data | Consent view, one-tap revoke, my-data, erasure request | ✅ |
+
+More: [docs/USERS.md](docs/USERS.md).
+
+## 4. Existing solutions and gaps
+
+| Approach | What it does | Gap |
+|---|---|---|
+| Collateral loans + CGTMSE guarantee | Lends against property or a guarantee cover | Excludes units without property; the guarantee does not fix poor information |
+| GST / bank-statement fintech scoring | Scores one or two sources at origination | Single-source (easy to inflate); little monitoring after disbursal; often a black box |
+| TReDS invoice discounting | Finances invoices raised to large buyers | Only receivables from registered large buyers; not working-capital limits |
+| Quarterly stock statements | Monitors drawing power through self-declared stock | Self-reported, lagging and rarely verified |
+| Informal lenders | Fast money | 24–36%+ interest, no credit history built |
+| **UdyamPulse** | **Reconciles GST, e-way bills, bank inflows, power and EPFO under consent; explains every score; keeps monitoring after disbursal** | **The bank decides; we make the decision faster, explainable and continuously informed** |
 
 ---
 
-## 4. Run it on your machine
+# B · Solution
 
-Everything runs **locally and offline**. You do **not** need any API key, cloud account or real data.
+## 5. How it works
 
-### 4.1 Prerequisites
+```mermaid
+flowchart LR
+    A["1 · Apply<br/>RM opens the case"] --> B["2 · Consent & pull<br/>Account Aggregator style consent;<br/>GST, e-way bills, bank, power, EPFO"]
+    B --> C["3 · Score & explain<br/>Factory Health Score 300–900<br/>+ top 5 reasons"]
+    C --> D["4 · Memo & decide<br/>memo with policy citations;<br/>credit officer approves or rejects"]
+    D --> E["5 · Monitor<br/>nightly early warning;<br/>alert, action, outcome"]
+    E -. "stress caught ~90 days before SMA-2 (synthetic back-test)" .-> A
+```
 
-| Tool | Version | Check with | Install |
+| Step | Who | Screen |
+|---|---|---|
+| 1–3 | Relationship Manager | <img src="docs/media/slides/02-rm-console.png" width="260" alt="RM console"> <img src="docs/media/slides/03-score-and-reasons.png" width="260" alt="Score and reasons"> |
+| 4 | Credit Officer | <img src="docs/media/slides/04-credit-memo.png" width="260" alt="Credit memo"> <img src="docs/media/slides/06-officer-decision-kfs.png" width="260" alt="Decision and KFS"> |
+| 5 | Risk Head / RM | <img src="docs/media/slides/07-risk-cockpit.png" width="260" alt="Risk cockpit"> <img src="docs/media/slides/08-early-warning-alert.png" width="260" alt="Early-warning alert"> |
+| Owner | MSME owner | <img src="docs/media/slides/09-msme-app-hindi.png" width="260" alt="MSME app in Hindi"> <img src="docs/media/slides/10-msme-90-day-plan-hindi.png" width="260" alt="90-day plan"> |
+
+## 6. Key features
+
+| Feature | What it does | Status |
+|---|---|---|
+| **Factory Health Score** | LightGBM PD model mapped to 300–900, with SHAP reasons in plain language, pillar points and monotone constraints, so signals move the score the sensible way | ✅ |
+| **Credit-memo agent** | Drafts the memo with limit, pricing band, strengths, risks, covenants and **policy citations**; numbers come only from the engines; PDF export | ✅ |
+| **Early-warning engine** | Configurable rules + IsolationForest; severity, reasons, next-best action; RM action and outcome logging | ✅ |
+| **MSME advisor (Hindi)** | Readiness score, helping and hurting factors, cash-flow forecast, 90-day plan in English or हिन्दी | ✅ |
+| **Consent ledger** | AA-style consent artefact, expiry, one-tap revocation that blocks pulls and deletes snapshots | ✅ (mock AA) |
+| **Audit trail** | Every action and agent tool call, PII-masked, **hash-chained**, with "Verify chain" | ✅ |
+| **What-if simulator** | Re-scores with changed signals; read-only and labelled as a simulation | ✅ |
+| **Portfolio cockpit** | Heatmap by cluster and sector, band migration, alert queue, playable simulated clock | ✅ |
+| **Governance** | Model card with CIs, fairness, drift, Data & Models provenance, AI usage log, compliance map | ✅ |
+| **Guided demo mode** | 7 steps that sign in the right persona and open the right screen, with talking points | ✅ |
+| Live Account Aggregator, GST and DISCOM connectors | Provider interfaces exist; live integrations need a regulated FIU partner | 🔭 |
+
+<details>
+<summary>More screenshots</summary>
+
+| | |
+|---|---|
+| <img src="docs/media/slides/05-what-if-simulator.png" alt="What-if simulator"> | <img src="docs/media/slides/11-governance-model.png" alt="Governance: model card"> |
+| <img src="docs/media/slides/12-governance-data-and-models.png" alt="Data & Models provenance"> | <img src="docs/media/slides/13-audit-chain-verified.png" alt="Audit chain verified"> |
+| <img src="docs/media/slides/14-guided-demo.png" alt="Guided demo"> | <img src="docs/media/slides/01-login.png" alt="Login with personas"> |
+
+</details>
+
+## 7. Innovation
+
+- **What is new:**
+  - Credit decisions and monitoring based on *how the factory runs*: dispatches, power, bank inflows, payroll
+    and orders, reconciled across sources.
+  - Explained in plain language and Hindi.
+  - Continuous after disbursal, not only at origination.
+- **UVP:** *Credit backed by your production, not your property.*
+- **Innovation type:** a **new approach** (multi-source operating signals and continuous monitoring) for an
+  **underserved need** (credit-invisible small manufacturers).
+- **Built on India's public digital infrastructure:** Account Aggregator consent, GST e-invoicing and e-way bills,
+  Udyam registration.
+- **Honest by design:**
+  - The LLM never produces numbers.
+  - Real and synthetic results are never blended.
+  - Every score is explainable and every decision is human.
+
+**Emerging tech that could make it stronger** (🔭):
+- federated learning across banks, so models improve without sharing raw data;
+- ULI (Unified Lending Interface) integration;
+- machine IoT signals from the shop floor;
+- a voice-first vernacular advisor;
+- OCEN-based embedded credit.
+
+## 8. Architecture
+
+### High level
+
+```mermaid
+flowchart TB
+    subgraph FE["Frontend (React)"]
+        RM["RM console"]; CO["Credit officer"]; RK["Risk cockpit · Governance"]; MS["MSME app (EN / हिन्दी)"]
+    end
+    subgraph BE["Backend (FastAPI /v1)"]
+        API["REST API · auth · RBAC · rate limits · idempotency"]
+        SM["Application state machine"]
+        Q["Outbox → job queue (Dramatiq)"]
+    end
+    subgraph AG["Agent layer"]
+        OR["Orchestrator (planner)"]; DA["Data agent (tool)"]; ME["Memo agent (tool + generation)"]
+        GU["Guard / policy engine (review)"]; EW["EWS agent"]; AD["Advisor agent"]
+    end
+    subgraph DM["Data & ML"]
+        LK["Lakehouse · DuckDB + Parquet<br/>bronze → silver → gold"]
+        ML["LightGBM + SHAP · IsolationForest · Prophet"]
+        DB[("SQLite (demo) / PostgreSQL + RLS")]
+        RD[("Redis: cache · limits · queue")]
+    end
+    subgraph EXT["Providers (adapters)"]
+        AA["Account Aggregator (mock)"]; LLM["Template writer (default) / Azure OpenAI 🔭"]
+        SRCH["Policy search (TF-IDF) / Azure AI Search 🔭"]
+    end
+    FE -->|HTTPS + JWT| API --> SM --> OR
+    OR --> DA & ME & EW & AD
+    ME --> GU
+    DA --> AA
+    ME --> LLM & SRCH
+    DA & EW & AD --> LK & ML
+    API --> DB & RD
+    Q --> OR
+```
+
+### Agent layer
+
+| Agent | Panel role | Tools it calls | Inputs → outputs | Guardrails |
+|---|---|---|---|---|
+| Orchestrator | **Planner** | State machine, all agents | Application + actor → next state | Role checks; illegal transitions refused; every step audited |
+| Data agent | **Tool agent** | Consent provider, lake | Consent + factory → snapshot + reconciliation checks | No pull without active consent; data minimisation |
+| Scoring engine | Tool | LightGBM, SHAP | Features → PD, score, reasons | Monotone constraints; calibrated; leakage-audited |
+| Memo agent | **Tool + generation** | Policy engine, policy search, LLM writer, ReportLab | Score + facts → memo + PDF | Numbers injected from engines only |
+| Guard / policy engine | **Review agent** | Number guard, citation check | Draft → accepted text or template | Rejects any number not in the facts; template fallback |
+| EWS agent | Monitor | Rules, IsolationForest, LLM writer | Monthly signals → alerts + briefing | Severity tiers; RM feedback logged |
+| Advisor agent | Coach | Prophet forecast, SHAP | Factory → plan (EN / हिन्दी) | Recommendations only |
+
+### How the parts talk
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant UI as Web app
+    participant API as FastAPI
+    participant SM as State machine
+    participant OB as Outbox
+    participant W as Worker
+    participant AG as Agents
+    participant AU as Audit chain
+    UI->>API: POST /v1/applications/{id}/score (Prefer: respond-async)
+    API->>SM: check role + state
+    API->>OB: job row + outbox event (one transaction)
+    API-->>UI: 202 Accepted + job URL
+    OB->>W: relay publishes the job
+    W->>AG: Data agent (consent check) → scoring engine
+    AG->>AU: every tool call: masked inputs + output hash, chained
+    W-->>UI: progress over Server-Sent Events
+    UI->>API: GET result → score, reasons
+```
+
+Full design, ADRs and the built-vs-future table: [docs/SYSTEM_DESIGN.md](docs/SYSTEM_DESIGN.md). Security
+architecture: [docs/SECURITY.md](docs/SECURITY.md).
+
+---
+
+# C · Proof
+
+## 9. Tech stack and why
+
+| Layer | Tool | Why this, not the alternative | Status |
 |---|---|---|---|
-| Python | 3.11 or newer | `python3 --version` | [python.org](https://www.python.org/downloads/) or `brew install python@3.11` |
-| Node.js | 20.19 or newer | `node --version` | [nodejs.org](https://nodejs.org/) or `nvm install 20` |
-| make | any | `make --version` | Preinstalled on macOS/Linux. On Windows use WSL, or follow [4.3](#43-without-make-windows-or-manual) |
-| libomp *(macOS only)* | any | `brew list libomp` | `brew install libomp` (needed by LightGBM) |
+| API | **FastAPI**, Uvicorn, Pydantic | Typed, fast, automatic OpenAPI docs; chosen over Django because we need a lean API, not a CMS | ✅ |
+| Persistence | **SQLAlchemy 2** + **Alembic** | One ORM for SQLite (one-command demo) and PostgreSQL (full stack), with versioned migrations | ✅ |
+| Database | **SQLite → PostgreSQL 16** (psycopg 3) | SQLite needs zero setup for the demo; PostgreSQL adds row-level security for bank isolation and partitioning for scale | ✅ |
+| Cache, limits, queue | **Redis** | One fast store for cache, rate limits, idempotency keys and the queue; in-memory fallback, so it is never a single point of failure | ✅ |
+| Background jobs | **Dramatiq** | Simple, reliable retries and dead-lettering on Redis; lighter than Celery for our scale | ✅ |
+| Lakehouse | **DuckDB + Parquet** (PyArrow) | A zero-ops local lakehouse mirroring the Databricks Delta medallion; same SQL, swaps to Databricks in production | ✅ |
+| Data wrangling | **pandas**, NumPy | Standard, well understood; vectorised where scale matters | ✅ |
+| PD model | **LightGBM** | Best accuracy-to-speed on tabular credit data, native missing values, monotone constraints, exact TreeSHAP; chosen over deep learning because the data is tabular and explainability is mandatory | ✅ |
+| Calibration, anomalies | **scikit-learn** (isotonic, IsolationForest) | Proven, explainable building blocks for calibration and unsupervised early warning | ✅ |
+| Forecast | **Prophet** | Robust monthly seasonality on short, noisy series for the MSME cash-flow forecast; fits the free tier (measured 325 MB total) | ✅ |
+| Model artefacts | **joblib** | Saves the IsolationForest; native to scikit-learn | ✅ |
+| Experiment tracking | **MLflow** (training only) | Local run history; not shipped in the runtime image | ✅ |
+| Memo PDF | **ReportLab** | Pure-Python PDFs, no browser needed in the container | ✅ |
+| Policy retrieval | **TF-IDF + NumPy cosine** | Dozens of policy clauses need exact search, not a vector index (FAISS was removed); Azure AI Search adapter for scale | ✅ / 🔭 |
+| LLM writer | **Template writer** (default); **Semantic Kernel** adapters for Azure OpenAI / OpenAI | Demo needs no keys; SK is Microsoft's SDK for Azure OpenAI; cloud extras live in `requirements-cloud.txt` | ✅ / 🟡 |
+| Config | **PyYAML** | Readable rules (`ml/rules.yaml`) and calibration (`data_gen/calibration.yaml`) | ✅ |
+| Auth and crypto | **PyJWT**, **argon2-cffi**, **cryptography** (Fernet) | Short-lived tokens; modern password hashing (RFC 9106); field-level encryption with key rotation | ✅ |
+| Observability | **Prometheus client**, **OpenTelemetry** | Open standards; dashboards and traces locally, Azure Monitor later | ✅ |
+| Testing (Python) | **pytest**, **httpx** (FastAPI TestClient), **ruff**, bandit, pip-audit | Fast tests, one linter, blocking security scans | ✅ |
+| Web | **React 19** + **TypeScript** + **Vite** | Mature ecosystem, fast builds, typed UI | ✅ |
+| Styling | **Tailwind CSS v4** + design tokens, tailwind-merge, clsx | Consistent, themeable UI with WCAG-checked colours | ✅ |
+| Components | **Radix UI**, cmdk, sonner, lucide-react | Accessible primitives (dialogs, tabs, menus), command palette, toasts, icons | ✅ |
+| Data and tables | **TanStack Query / Table / Virtual** | Caching, sorting and virtualised tables for large portfolios | ✅ |
+| Charts | **Recharts** | Declarative charts with accessible wrappers | ✅ |
+| Routing, i18n | React Router, **i18next** | Role-guarded routes; Hindi for MSME owners | ✅ |
+| Fonts | Inter, Noto Sans Devanagari (@fontsource) | Self-hosted (no third-party calls), readable Hindi | ✅ |
+| Testing (web) | **Vitest**, Testing Library, **Playwright** + **axe-core**, ESLint, Prettier | Unit, browser and accessibility tests on every change | ✅ |
+| Packaging | **Docker** (multi-stage, non-root), nginx | One image for the free demo; same image family for the full stack | ✅ |
+| Production design | AKS (Helm, HPA, KEDA), Terraform, Key Vault, Event Hubs | Documented and validated, deliberately not deployed | 🔭 |
 
-### 4.2 One command
+## 10. Prototype and progress
 
-```bash
-git clone https://github.com/yugh88/UdyamPulse.git
-cd UdyamPulse
-make demo
-```
+- **Live demo:** _link pending_. Demo personas, password `demo123`: `rm1`, `co1`, `risk1`, `sharma`.
+- **Guided demo:** click **Guided demo** on the login page; 7 steps, about 5 minutes. Script:
+  [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md).
+- **Video:** _to add_.
 
-The first run installs dependencies (a few minutes). After that, `make demo`:
+| Area | Done ✅ | Partial 🟡 | Future 🔭 |
+|---|---|---|---|
+| Lifecycle | Consent, scoring, memo, decision, disbursal stub, monitoring | KFS and LOS are stubs | Live LOS / CBS connectors |
+| Data | 500-factory demo; 50,000-factory calibrated panel; SBA and UCI benchmarks | Indian GST / power statistics not yet automated | Pilot on consented real data |
+| Models | Monotone LightGBM, calibration, SHAP, EWS operating point, fairness, drift, leakage audit | | Champion/challenger, scheduled retraining |
+| Platform | Tenancy + RLS, jobs + outbox, SSE, caching, rate limits, security hardening, observability | | AKS autoscaling, Event Hubs, multi-region |
+| Delivery | Free single-container image tested; CI with security gates; guided demo | Public URL needs the team's account | Azure pilot |
 
-1. **Generates data:** 500 synthetic factories × 24 months of signals.
-2. **Builds the data lake:** cleans and joins the data, then computes 67 features per factory per month.
-3. **Trains the model** and writes the model card plus fairness and drift reports.
-4. **Back-tests the early-warning system** on historical stress events.
-5. **Seeds the database** with demo users, 140 monitored loans and 4 new applications.
-6. **Starts the app:** API on `http://localhost:8000`, website on **http://localhost:5173**.
+<details>
+<summary>Round 2 changelog</summary>
 
-Steps 1–5 take about **20 seconds**. Open **http://localhost:5173** and click a persona to sign in.
-Every demo password is `demo123`.
+1. **Audit:** a full audit of the Round 1 build ([docs/UPGRADE_AUDIT.md](docs/UPGRADE_AUDIT.md)).
+2. **Design system and screens:** calm design system, every screen rebuilt, dark mode, Hindi, accessibility checks.
+3. **Scale backbone:** multi-tenant PostgreSQL with RLS, Redis, background jobs with an outbox, SSE progress,
+   cursor pagination, a chunked nightly batch.
+4. **Ops and security:** OpenTelemetry and Prometheus; argon2id with rotating sessions; field encryption;
+   hash-chained audit; branch-scoped access; LLM resilience; threat model; blocking CI scans.
+5. **Data scale and honesty:**
+   - 50,000-factory panel calibrated to MoSPI;
+   - real SBA and UCI benchmarks with CIs, including a leak found in public data;
+   - monotone constraints;
+   - group + time evaluation;
+   - Data & Models tab.
+6. **Guidelines compliance:** free single-container deployment, guided demo, this README and the docs set.
 
-| Persona | Username | What they can do |
+</details>
+
+## 11. Feasibility and plan
+
+- **Build and deploy today (₹0):**
+  - One Docker container (FastAPI serves the API and the React app) on a free host.
+  - Measured: ready **7 s** after start, **325 MB** after the full story (512 MB cap), all browser tests pass
+    against it ([docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)).
+- **Azure pilot (🔭):** AKS + PostgreSQL Flexible Server + Azure Cache for Redis + Key Vault in **Central India**.
+  Helm chart and Terraform are written and validated, not deployed.
+
+| Resource | Prototype | Pilot (one bank) | Production (10 lakh accounts) |
+|---|---|---|---|
+| Team | 4 students | 4–6 engineers + bank SMEs | Bank IT + vendor team |
+| Compute | 1 free container | 3 small AKS nodes, managed PostgreSQL and Redis | 3–6 nodes, zone-redundant PostgreSQL, Premium Redis |
+| Monthly cost | **₹0** | **about ₹42,000** (*estimate*) | **about ₹1–1.7 lakh** (*estimate*) |
+
+**Roadmap (pilot → production):**
+1. **Partner:** a bank registers as Account Aggregator FIU; sign the data-sharing agreements.
+2. **Back-book:** score the bank's consented historical book; re-learn coefficients and thresholds; re-prove
+   the uplift from production signals.
+3. **Validate:** independent model validation, fairness review and model-risk approval.
+4. **Shadow:** run scores in shadow for 90 days, then go live with read-only LOS integration.
+
+Dependencies: the bank partner as FIU, data-sharing agreements, model-risk approval, GSP and DISCOM feeds.
+
+## 12. Testing, validation and results
+
+**Tests:**
+
+| Layer | Count | Where |
 |---|---|---|
-| Relationship Manager | `rm1` | Open applications, request consent, run scoring, draft memos, act on alerts |
-| Credit Officer | `co1` | Everything the RM can, plus **approve or reject** (the only role allowed to) |
-| Risk team | `risk1` | Portfolio cockpit, model card, fairness and drift, **full audit log** |
-| MSME owner | `sharma` | Own readiness score, forecast, 90-day plan, consent control, messages |
+| Backend: unit + API (SQLite) | 155 passed (+ 7 PostgreSQL-only) | `tests/` |
+| Backend on PostgreSQL + Redis | 160 passed | `make test-full` |
+| Web unit | 23 | `web/src/**/*.test.ts(x)` |
+| Browser end-to-end (both themes, axe accessibility) | 21 (+ 1 screenshot spec run on demand) | `web/e2e/` |
 
-Press `Ctrl + C` to stop. Run `make seed` any time to reset the demo to its starting point.
+CI runs all of these plus the blocking security gates: gitleaks, pip-audit, bandit, npm audit and Trivy.
 
-### 4.3 Without make (Windows or manual)
+**Model results, kept apart:**
+
+| Result | Data | Value (95% CI) |
+|---|---|---|
+| Product model, out of time and out of group | **synthetic** (50,000 factories) | AUC **0.848** (0.842–0.854); ECE 0.012 |
+| Unseen sectors / unseen clusters | synthetic | 0.814–0.864 / 0.831–0.860 |
+| Early warning (alert at ≥ 3 points) | synthetic | recall 0.866, median lead **90 days**, precision 0.314 |
+| Leakage audit / 8 shuffled-label runs | synthetic | passed / mean AUC 0.466, scattered around 0.5 |
+| Demo model (live walkthrough) | synthetic (500 factories) | AUC 0.831 on 121 test defaults (wide interval) |
+| U.S. SBA 7(a) manufacturing loans, 60-month default | **real** (public domain) | AUC **0.687** (0.658–0.713); unseen states 0.681 |
+| UCI Polish bankruptcies | **real** (CC BY 4.0) | AUC **0.958** (0.952–0.964) |
+
+- **Not inflated:** in the SBA data we found that loan term is revised for loans that go bad. With it the AUC
+  read 0.915; we report 0.687.
+- **Not oversold:** the +0.015 AUC from production signals reflects how the generator was built and must be
+  re-proven in a pilot.
+
+Details: [model card](ml/MODEL_CARD.md) · [data strategy](docs/DATA_STRATEGY.md) ·
+[SBA report](ml/reports/real_sba_benchmark.md) · [Polish report](ml/reports/real_polish_benchmark.md).
+
+**Performance (measured):**
+- nightly batch at 915 accounts/s per process;
+- portfolio read in 18–22 ms;
+- 50,000-factory panel built in 2 min 12 s.
+
+The k6 load test is still to run (🟡).
+
+**User validation:** 0 sessions recorded (team to update). See [docs/VALIDATION.md](docs/VALIDATION.md).
+
+---
+
+# D · Future and team
+
+## 13. Scalability and sustainability
+
+- **Scaling path:**
+  - stateless API → horizontal pods;
+  - queue + workers;
+  - month-partitioned PostgreSQL;
+  - Redis cache;
+  - Databricks lakehouse (🔭);
+  - Kubernetes autoscaling with HPA and KEDA (🔭).
+- **Capacity plan (10 lakh accounts):** the nightly batch takes about 18 min in one process, about 5 min on
+  four (*estimate* from the measured 915 accounts/s). See [docs/SYSTEM_DESIGN.md](docs/SYSTEM_DESIGN.md).
+- **Business model:** about ₹500 per credit memo plus ₹50 per monitored account per month, paid by the lender
+  (*estimates* for discussion).
+- **Operational sustainability:**
+  - MLOps: model card per run, drift and fairness checks, retraining cadence and champion/challenger (🔭).
+  - Monitoring: dashboards and alert rules.
+- **Green compute:** nightly batch scheduling, right-sized containers (the demo fits in 325 MB), no GPU needed.
+- **Next steps:**
+  - 23 Nov: feature freeze.
+  - 24 Nov: deployment, video and deck final.
+  - After Round 2: pilot conversations with a lender.
+
+## 14. Risks, security and privacy
+
+| Top risk | Mitigation | Status |
+|---|---|---|
+| Synthetic training data | MoSPI calibration, real public benchmarks, results labelled, lender pilot | 🟡 |
+| No live AA / GST access | Provider interfaces + mocks; the bank as FIU in a pilot | 🟡 |
+| LLM hallucination or outage | Numbers from engines only, guard, template fallback, circuit breaker | ✅ |
+| Alert fatigue | Tuned operating point (precision 0.314 at a 90-day lead, synthetic), severity tiers, feedback loop | ✅ |
+| Privacy and regulation | Consent ledger, revocation, minimisation, India-only residency, PII masking, encryption | ✅ |
+
+All 20 risks with mitigations and status: [docs/LIMITATIONS_AND_RISKS.md](docs/LIMITATIONS_AND_RISKS.md).
+
+- **Security:**
+  - argon2id passwords and 15-minute tokens with rotating refresh cookies.
+  - RBAC plus branch scope, and bank isolation with PostgreSQL row-level security.
+  - Field encryption, a hash-chained audit trail, rate limits and a strict CSP.
+  - Blocking security scans in CI.
+  - See [docs/SECURITY.md](docs/SECURITY.md) and [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md).
+- **Privacy:**
+  - DPDP Act: purpose-bound consent, one-tap revocation with deletion, data minimisation, access and erasure
+    requests.
+  - India-only data residency is enforced at start-up.
+  - See [docs/COMPLIANCE.md](docs/COMPLIANCE.md) and [docs/RESPONSIBLE_AI.md](docs/RESPONSIBLE_AI.md).
+
+## 15. Expected impact
+
+| Outcome | Number | Basis |
+|---|---|---|
+| Credit-memo drafting | Seconds instead of hours | *measured* in the prototype (template writer); hours today is an *estimate* from bank practice |
+| Stress lead time | Median **90 days** before SMA-2 | *synthetic* back-test on 50,000 factories |
+| Approval uplift for thin-file manufacturers | Target +10–15% at the same risk | *estimate*, to be proven in a pilot |
+| Example ROI | 1 avoided ₹3 Cr default covers years of fees for a branch | *illustrative estimate* |
+| Credit unlocked | If 1% of the ₹30 lakh crore gap moves to operating-signal lending: ₹30,000 crore | *scenario, not a forecast* |
+| Jobs supported | The hero factory alone employs 118 people | *synthetic example* |
+
+## 16. Who built what
+
+| Member | Ownership areas | Key files | Will explain |
+|---|---|---|---|
+| _Name (to add)_ | Data & ML | `data_gen/`, `data_real/`, `ml/` | Data, features, model, EWS, metrics |
+| _Name (to add)_ | Backend & agents | `api/`, `agents/`, `worker/` | API, agents, guard, consent, audit |
+| _Name (to add)_ | Frontend & UX | `web/src/` | Screens, design system, accessibility, Hindi |
+| _Name (to add)_ | Deployment & docs | `deploy/`, `.github/`, `docs/` | Deployment, CI/CD, docs, deck |
+
+**PROPOSED, team to confirm.** Explainers per area: [docs/TEAM.md](docs/TEAM.md). Q&A prep:
+[docs/QA_PREP.md](docs/QA_PREP.md).
+
+---
+
+## Evaluation map
+
+| Panel criterion | Evidence | Status |
+|---|---|---|
+| Problem & solution fit | §2–5, [users](docs/USERS.md), [validation](docs/VALIDATION.md) | ✅ / 🟡 validation |
+| Innovation & differentiation | §4, §7 | ✅ |
+| Technical architecture | §8–9, [system design](docs/SYSTEM_DESIGN.md), [security](docs/SECURITY.md) | ✅ |
+| Feasibility & scalability | §11, §13, [deployment](docs/DEPLOYMENT.md) | ✅ / 🟡 public URL |
+| Prototype & validation | §10, §12, CI | ✅ / 🟡 video |
+| Impact & team ownership | §15–16, [team](docs/TEAM.md) | 🟡 team to confirm |
+
+Full map: [docs/EVALUATION_MAP.md](docs/EVALUATION_MAP.md).
+
+## Quick start
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate            # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-
-python -m data_gen.generate          # 1. synthetic data
-python -m data_gen.lake              # 2. data lake + features
-python -m ml.train                   # 3. model
-python -m ml.ews                     # 4. early-warning back-test
-python -m api.seed                   # 5. demo database
-
-uvicorn api.main:app --port 8000     # terminal 1: API
-cd web && npm install && npm run dev # terminal 2: website → http://localhost:5173
+git clone https://github.com/yugh88/UdyamPulse && cd UdyamPulse
+make demo                      # Python 3.11 + Node 20: builds data and model, seeds, opens http://localhost:5173
 ```
 
-### 4.4 With Docker
-
-```bash
-docker compose up --build                     # API :8000 + web :5173
-docker compose --profile https up --build     # optional: HTTPS through Caddy at https://localhost
-```
-
-### 4.5 Useful commands
+<details>
+<summary>More ways to run it</summary>
 
 | Command | What it does |
 |---|---|
-| `make help` | List every command |
-| `make demo` | Build everything and start the app |
-| `make seed` | Reset the demo database and clock |
-| `make api` / `make web` | Start only the API or only the website |
-| `make test` | Run the 29 automated tests |
-| `make lint` | Check Python (ruff) and TypeScript |
-| `make openapi` | Export the API specification to `docs/openapi.json` |
-| `make clean` | Delete generated data, models and the database |
-
----
-
-## 5. Demo walkthrough (5 minutes)
-
-The story follows **Sharma Auto Components, Ludhiana**, a small auto-parts maker asking for a ₹3 Cr working-capital loan.
-The app has a **simulated clock** starting on 30 June 2026, so you can "fast-forward" weeks during the demo.
-
-| # | Sign in as | Click | What you should see |
-|---|---|---|---|
-| 1 | **RM** | *Credit console* → **Sharma Auto Components** → *Request consent & pull data* | Consent becomes **Active**; four data checks pass (GST vs bank, invoices vs e-way bills, completeness, filings). |
-| 2 | RM | *Run scoring* | Score **723 · Approve**, 12-month default probability 0.67%, top-5 reasons, pillar bars, 24-month signal chart. |
-| 3 | RM | *Generate memo* → *Preview PDF* | A full credit memo in under a second: limit **₹3.00 Cr**, pricing **EBLR + 2.50–3.00%**, strengths, risks, covenants, policy citations such as **[§4.1]**. |
-| 4 | **Credit Officer** | Open the application → write a comment → **Approve** → **Disburse via LOS** | Key Fact Statement appears; the loan moves to *Monitoring*. (An RM trying to approve gets "not allowed".) |
-| 5 | Credit Officer or RM | *Risk cockpit* → **+6 weeks** | Sharma's biggest buyer cuts orders: **e-way bills ↓42%, electricity ↓32%**. |
-| 6 | RM | Open the **HIGH** alert | Reasons, an RM briefing and the suggested action **"visit + limit review"**; log the action with one click. |
-| 7 | **MSME** (`sharma`) | *Readiness* → *90-day plan* (toggle **हिंदी**) → *Consent* → **Revoke** | Score has dropped to **626 · Watch**, with a forecast and an action plan. After revoking, the app shows that data pulls have stopped. |
-| 8 | **Risk** | *Governance* | Every action in the audit log, the model card, and fairness and drift checks. |
-
-Presenter notes and a recording checklist: [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md).
-
----
-
-## 6. How it works
-
-### 6.1 The data (synthetic, realistic)
-
-`data_gen/generate.py` creates **500 factories across 5 industrial clusters** (auto parts in Ludhiana, engineering in Rajkot,
-textiles in Tiruppur, ceramics in Morbi, food processing in Indore). Each factory gets 24 months of the signals a bank
-would see with consent:
-
-| Source | Signals |
-|---|---|
-| GST e-invoices and returns | invoice count and value, top-buyer share, days-to-pay, filing delay |
-| E-way bills | count and value of goods shipped |
-| Account Aggregator (bank) | money in, money out, average balance, cheque/NACH bounces |
-| Electricity | kWh consumed (a direct proxy for production) |
-| ERP / Tally | raw-material purchases, open purchase orders |
-| EPFO | employee headcount |
-
-About **12% of factories** experience a hidden **stress event**: the top buyer cuts orders, payments get delayed, or
-money is diverted. Some recover; others default a few months later. The realistic ranges and the noise (missing months,
-duplicates, mismatches) are documented in [`data_gen/CALIBRATION.md`](data_gen/CALIBRATION.md).
-**No real company or person appears anywhere.**
-
-### 6.2 From raw data to features (data lake)
-
-We follow the **bronze → silver → gold** pattern used on Databricks, built locally with **DuckDB**:
-
-- **Bronze:** raw events per source, exactly as received.
-- **Silver:** duplicates removed, gaps filled and flagged, GST turnover reconciled against bank credits.
-- **Gold:** **67 features** per factory per month over 1, 3, 6 and 12-month windows, for example
-  *"e-way bill value vs 3-month average"* or *"cheque bounces in the last 6 months"*.
-
-Features are grouped into **five pillars**:
-
-| Pillar | Weight | Example question it answers |
-|---|---|---|
-| Order book & dispatch | 25% | Are orders and shipments growing or shrinking? |
-| Cash-flow health | 25% | Is more money coming in than going out? Any bounces? |
-| Production intensity | 20% | Is the factory actually running (electricity, raw material)? |
-| Receivable quality | 15% | Does it depend on one buyer? Are buyers paying late? |
-| Compliance discipline | 15% | Are GST and EPFO filings on time? |
-
-### 6.3 The Factory Health Score
-
-- A **LightGBM** model predicts the **probability of default within 12 months (PD)**.
-- It is trained on earlier months and tested on **later months it has never seen**, the way a bank would use it.
-- PD is converted to a **score from 300 to 900** (higher is safer):
-
-| Score | Band | Meaning |
-|---|---|---|
-| **650 – 900** | 🟢 Approve | Credit officer may sanction |
-| **550 – 649** | 🟠 Watch | Reduced limit plus conditions |
-| **300 – 549** | 🔴 High risk | Decline, and offer an improvement plan |
-
-- **SHAP** explains every score: each feature's contribution is converted into *score points*, so the top-5 reasons
-  and the pillar bars add up exactly to the final score.
-
-### 6.4 The early-warning system
-
-After disbursal, every month of new data is checked against **five rules** (editable in [`ml/rules.yaml`](ml/rules.yaml)) plus an anomaly detector:
-
-| Rule | Fires when |
-|---|---|
-| Order loss | e-way bills ↓40% **and** electricity ↓30% vs the last 8 weeks |
-| Cash squeeze | 2+ bounces in a month, **or** balance ↓50% in 30 days |
-| Buyer risk | top buyer > 50% of sales **and** buyers paying 20+ days slower |
-| Possible diversion | GST turnover and bank credits differ by > 25% |
-| Compliance slip | GST return late 2 months in a row |
-| Anomaly (Isolation Forest) | an unusual combination of month-on-month changes |
-
-Fired rules are combined into a **severity** (low, medium, high) and a **next-best action** (call, visit, limit review, restructure).
-
-### 6.5 The AI agents
-
-| Agent | Job |
-|---|---|
-| **Orchestrator** | Runs the loan journey `APPLIED → CONSENTED → SCORED → MEMO_DRAFTED → DECIDED → DISBURSED → MONITORING` and blocks invalid steps |
-| **Data agent** | Requests Account Aggregator consent, pulls data only while consent is active, runs reconciliation checks |
-| **Credit-memo agent** | Finds relevant clauses in the bank's [credit policy](policy/credit_policy.md) (RAG), fills in numbers from the model, writes the memo, exports a PDF |
-| **Early-warning agent** | Turns rule hits into alert cards with an RM briefing and a next step |
-| **MSME advisor agent** | Builds a 90-day plan from the score reasons and the cash-flow forecast (Prophet), in simple English and Hindi |
-
-**No API key needed.** By default the agents use a deterministic **template writer**. If you add Azure OpenAI keys,
-the prose is written by GPT through **Semantic Kernel**. A **number guard** then rejects any sentence containing a
-number that does not appear in the source data, and falls back to the template.
-
-### 6.6 Tech stack
-
-| Layer | Prototype (runs locally) | Production (Azure, same interfaces) |
-|---|---|---|
-| API | FastAPI, Pydantic v2 | Azure API Management |
-| Data lake | Parquet + DuckDB | Azure Databricks, Delta Lake, Unity Catalog |
-| Database | SQLite (SQLAlchemy) | Azure Database for PostgreSQL |
-| ML | LightGBM, SHAP, scikit-learn, Prophet, MLflow | Databricks MLflow |
-| Agents and LLM | Semantic Kernel, template fallback | Azure OpenAI / Foundry Agent Service |
-| Policy search | TF-IDF + FAISS | Azure AI Search |
-| Frontend | React, Vite, TypeScript, Tailwind, Recharts (PWA) | Dynamics 365, Power BI Embedded |
-| Auth | JWT with 4 roles | Microsoft Entra ID |
-| Ops | Docker Compose, Makefile, GitHub Actions | AKS, Key Vault, Azure Monitor (India regions) |
-
----
-
-## 7. Results
-
-All results are on **synthetic data**, measured on months the model never saw during training.
-
-| What we measured | Target | Result | What it means |
-|---|---|---|---|
-| Model accuracy (AUC) | ≥ 0.80 | **0.81** | The model ranks a future defaulter above a healthy firm 81% of the time |
-| Default rate inside each band | increasing | Approve **1.5%** · Watch **5.8%** · High risk **51.8%** | The bands separate risk clearly |
-| Early-warning lead time | ≥ 60 days | **91 days** (median) | Alerts arrive about 3 months before a loan reaches SMA-2 |
-| Early-warning recall | high | **22 of 22** SMA-2 cases caught | No stressed borrower slipped through in the back-test |
-| Early-warning precision | — | **49%** of alerted firms had real stress | Some false alarms, which is why a human reviews each alert |
-| Credit memo speed | < 10 s | **~0.3 s** | — |
-| Invented numbers in memos | 0 | **0** (enforced by a test) | — |
-
-Full reports: [`ml/MODEL_CARD.md`](ml/MODEL_CARD.md) and [`ml/reports/`](ml/reports/) (metrics, fairness, drift, early-warning back-test).
-
-> These numbers show the pipeline works end to end. Real performance must be re-measured on a lender's real,
-> consented data before any production use.
-
----
-
-## 8. Trust, safety and compliance
-
-| Principle | How it is built in |
-|---|---|
-| **Human decides** | Only the `credit_officer` role can approve or reject, and a written comment is mandatory |
-| **Explainable** | Every score shows its top-5 reasons and pillar contributions |
-| **Honest AI** | Every AI output is labelled *"AI-generated recommendation · final decision by credit officer"* |
-| **No made-up numbers** | The LLM only writes prose; a guard rejects any unsupported number |
-| **Consent first** (DPDP Act 2023) | Clear purpose, consent ledger, one-tap revoke, automatic deletion of fetched data |
-| **Right to challenge** | The MSME can press *Request a human review* |
-| **Digital lending rules** (RBI 2025) | Key Fact Statement, direct disbursal to the borrower, no biometrics, data stays in India |
-| **Fair** | Disparity checks across sectors and micro vs small units; no gender, religion or caste data exists |
-| **Auditable** | Every agent action is logged with user, time, masked inputs and a hash of the output; only the risk team can read the log |
-
-Full mapping to RBI Digital Lending Directions 2025, the DPDP Act and RBI FREE-AI: [`docs/COMPLIANCE.md`](docs/COMPLIANCE.md).
-
----
-
-## 9. Project structure
-
-```
-UdyamPulse/
-├── data_gen/        synthetic data generator, CALIBRATION.md, DuckDB lake builder
-├── lake/            bronze/ silver/ gold/ data (created by make; not in git)
-├── ml/              features, model training, scoring, early warning (+ rules.yaml), forecast,
-│                    MODEL_CARD.md, reports/
-├── agents/          orchestrator, data, credit-memo, early-warning and advisor agents
-│   └── providers/   swappable adapters: LLM, policy search, consent, data lake, document parser
-├── api/             FastAPI app, routes, database models, login/roles, audit log, demo seed
-├── policy/          sample bank credit policy (the memo agent cites this)
-├── web/             React app: credit console, risk cockpit, MSME app, governance
-├── docs/            ARCHITECTURE.md, COMPLIANCE.md, DEMO_SCRIPT.md, openapi.json, images/
-├── tests/           automated tests
-├── Makefile         one-command workflow
-└── docker-compose.yml
-```
-
-### Main API endpoints
-
-Interactive docs at **http://localhost:8000/docs** while the API is running.
-
-| Method | Endpoint | Purpose | Who |
-|---|---|---|---|
-| POST | `/auth/login` | Get a login token | everyone |
-| POST | `/applications` | Create a loan application | RM, MSME |
-| POST / DELETE | `/applications/{id}/consent` | Grant or revoke consent | RM, MSME |
-| POST | `/applications/{id}/score` | Score + reasons + pillars | RM, credit officer |
-| POST | `/applications/{id}/memo` | Draft the credit memo (JSON + PDF) | RM, credit officer |
-| POST | `/applications/{id}/decision` | Approve or reject | **credit officer only** |
-| POST | `/applications/{id}/disburse` | Disburse through the LOS stub | credit officer, RM |
-| GET | `/portfolio` | All monitored loans with score and trend | bank staff |
-| GET / POST | `/alerts`, `/alerts/{id}/action` | Alert queue and logging an action | bank staff |
-| POST | `/sim/advance?days=7` | Fast-forward the simulated clock | bank staff |
-| GET | `/msme/{factory_id}/readiness` | Score, forecast and 90-day plan | MSME, RM |
-| GET | `/audit` | Full audit trail | **risk only** |
-
----
-
-## 10. Configuration and Azure
-
-Configuration comes from environment variables; copy `.env.example` to `.env` to change them.
-**Every setting defaults to the local, offline option.**
-
-| Variable | Default | Production option |
-|---|---|---|
-| `UP_LLM_PROVIDER` | `template` | `azure_openai` (set the `AZURE_OPENAI_*` keys) |
-| `UP_SEARCH_PROVIDER` | `local` | `azure_ai_search` |
-| `UP_CONSENT_PROVIDER` | `mock_aa` | `sahamati_aa` |
-| `UP_LAKE_STORE` | `duckdb` | `databricks` |
-| `UP_DOC_PARSER` | `stub` | `azure_docintel` |
-| `UP_DATA_REGION` | `local` | `centralindia` / `southindia` (the API refuses non-India regions) |
-
-Every Azure service sits behind a Python interface (`LLMProvider`, `SearchProvider`, `ConsentProvider`, `LakeStore`,
-`DocParser`), so moving to Azure means switching a setting rather than rewriting the app.
-
----
-
-## 11. Testing
-
-```bash
-make test    # 29 tests, about 7 seconds
-make lint    # ruff + TypeScript type-check
-```
-
-| Test file | Proves that |
-|---|---|
-| `tests/test_scoring.py` | 60+ features exist; the score mapping is monotonic and bounded; SHAP points add up to the score; AUC ≥ 0.80 |
-| `tests/test_ews.py` | Each early-warning rule fires only when it should; the demo factory gets a HIGH alert; lead time ≥ 60 days |
-| `tests/test_api_roles_consent.py` | Only credit officers can approve; every step is in the audit log; revoking consent blocks data pulls |
-| `tests/test_memo.py` | Memo is under 10 s with ≥ 2 citations and **no number missing from the source facts**; invented LLM numbers are rejected |
-
-GitHub Actions runs linting, the full data/model pipeline, the tests, the web build and dependency scans on every push.
-
----
-
-## 12. Troubleshooting
-
-| Problem | Fix |
-|---|---|
-| `Library not loaded: libomp.dylib` (macOS) | `brew install libomp`, then rerun |
-| `pip install` fails on `prophet` | Upgrade pip (`pip install -U pip`) and use Python 3.11 or 3.12 |
-| Vite says Node is too old | Install Node 20.19+ (`nvm install 20`) |
-| `Port 5173/8000 is already in use` | Stop the other process, or run `make api` / `make web` separately after freeing the port |
-| Login fails in the browser | The API is not running; start it with `make api` and check http://localhost:8000/health |
-| Demo state is messy after practice | `make seed` resets the database and the clock to 30 Jun 2026 |
-| Score/alerts look different from this README | Run `make clean && make demo` to rebuild from the fixed seed (42) |
-
----
-
-## 13. Glossary
-
-| Term | Meaning |
-|---|---|
-| **MSME** | Micro, Small and Medium Enterprise. *Udyam* is the government's MSME registration. |
-| **GST e-invoice** | A sales invoice reported to the government's GST system in real time. |
-| **E-way bill** | A permit generated whenever goods worth over ₹50,000 move by road, so it tracks real dispatches. |
-| **Account Aggregator (AA)** | RBI-regulated network that lets a person or business share bank data with a lender, with explicit consent. |
-| **EPFO** | Employees' Provident Fund Organisation; its filings show how many people a firm employs. |
-| **PD** | Probability of Default: the chance a borrower stops paying within 12 months. |
-| **SMA-0 / 1 / 2** | Special Mention Account: a loan 1–30, 31–60 or 61–90 days overdue. SMA-2 is the last stage before a bad loan (NPA). |
-| **NPA** | Non-Performing Asset: a loan more than 90 days overdue. |
-| **AUC** | Model-quality measure from 0.5 (random) to 1.0 (perfect). |
-| **SHAP** | A method that shows how much each input pushed a prediction up or down. |
-| **RAG** | Retrieval-Augmented Generation: the AI looks up the relevant policy text before writing. |
-| **EBLR** | External Benchmark Lending Rate; MSME loan interest is set as EBLR + a spread. |
-| **KFS** | Key Fact Statement: a one-page summary of the loan's total cost, which RBI requires before signing. |
-| **LOS** | Loan Origination System: the bank's core system that books and disburses loans. |
-| **TReDS** | Online platforms where MSMEs can sell unpaid invoices to get paid faster. |
-| **DPDP Act** | Digital Personal Data Protection Act, 2023, India's data-privacy law. |
-| **FREE-AI** | RBI's Framework for Responsible and Ethical Enablement of AI in finance. |
-
----
-
-## 14. Limitations and next steps
-
-**Prototype limits**
-
-- All data is synthetic, so real performance must be re-measured on a lender's consented data.
-- Monthly signals only; weekly e-way bill and electricity data would make warnings even earlier.
-- Account Aggregator, GST, LOS and Azure services are mocked behind interfaces, not live integrations.
-
-**Next steps**
-
-1. Pilot with one lender in one cluster (for example Ludhiana auto parts) on real consented data.
-2. Plug in live Account Aggregator (Sahamati) and GST sandbox connectors.
-3. Move the lake to Azure Databricks and the agents to Azure OpenAI in the Central India region.
-4. Add IoT machine-uptime signals and WhatsApp Business notifications for MSMEs.
-
----
-
-<div align="center">
-
-**Team Legit · VIT Bhopal University** · Visionet Talent Quest 2026
-
-*Prototype for demonstration. Uses synthetic data only. Not a lending product. All credit decisions remain with the regulated lender.*
-
-</div>
+| `make demo` | One command, offline, no keys: SQLite and the in-process worker |
+| `make up` | Full stack in Docker: PostgreSQL, Redis, API, worker, nginx |
+| `docker build -f deploy/huggingface/Dockerfile -t udyampulse-demo . && docker run -p 7860:7860 udyampulse-demo` | The free public-demo container locally (http://localhost:7860) |
+| `make test` / `make test-full` / `make test-web` / `make e2e` | Test suites (SQLite / PostgreSQL + Redis / web unit / browser) |
+| `make data-real && make bench-real` | Download the real public datasets and run the benchmarks |
+| `make data-full && make train-full` | 50,000-factory panel and product model (about 2 + 11 minutes) |
+| `make security` / `make deploy-check` | The CI security gates / Helm and Terraform validation |
+
+</details>
+
+## FAQ for reviewers
+
+<details><summary><b>Is the data real?</b></summary>
+
+The product model and the demo use synthetic data, calibrated to real MoSPI production statistics. The method is
+validated on **real** public data: U.S. SBA loans (AUC 0.687) and Polish bankruptcies (0.958). The two kinds of
+results are reported separately.
+</details>
+
+<details><summary><b>Why synthetic?</b></summary>
+
+No public Indian dataset links firm-level GST, Account Aggregator or power data to loan outcomes. That data is
+protected by the DPDP Act and the AA framework. A pilot with a lender, on consented data, is how accuracy gets
+proven.
+</details>
+
+<details><summary><b>What happens without an LLM key?</b></summary>
+
+Everything works. The default writer is a deterministic template. With a key, the LLM only rewrites prose, numbers
+always come from the engines, and any failure falls back to the template.
+</details>
+
+<details><summary><b>How does consent work?</b></summary>
+
+An AA-style consent artefact records purpose, data types, date range and expiry. No pull happens without an
+active consent. Revocation blocks pulls and deletes stored snapshots, and every event is in the consent ledger.
+</details>
+
+<details><summary><b>What is done vs future?</b></summary>
+
+Every claim above carries ✅ / 🟡 / 🔭. In short:
+- **Done:** the full lifecycle, models, early warning, governance, security, the free-deploy image and tests.
+- **Future:** live AA, GST and LOS connectors, and the Azure deployment.
+</details>
+
+## Acknowledgements
+
+Datasets, statistics, regulations, libraries and fonts are credited in
+[docs/ACKNOWLEDGEMENTS.md](docs/ACKNOWLEDGEMENTS.md). Licence inventories: [Python](docs/licenses/python-runtime.md),
+[web](docs/licenses/web-direct.md). Problem framing and Round 2 guidelines: Visionet Systems.
+
+## Licence
+
+To be chosen by the team before submission (no `LICENSE` file yet). Third-party licences are listed above.
+
+<div align="center"><sub>Team Legit · VIT Bhopal University · Visionet Techthon 2026</sub></div>
