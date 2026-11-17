@@ -142,3 +142,89 @@ story, which scores, drafts the memo and plays six weeks through jobs.
   Redis, and returns 503 to leave the load-balancer rotation.
 
 **Verified.** `tests/test_api_contract.py`.
+
+## ADR-009 · Observability: OpenTelemetry traces, Prometheus metrics, JSON logs
+
+**Decision.**
+- **Traces:** OTLP over HTTP, off unless `UP_OTEL_ENDPOINT` is set, so the demo needs no collector. Spans cover
+  the request, each SQL statement and the background job. The job row stores the request's W3C `traceparent`,
+  so one trace crosses the queue, and the API echoes `traceparent` so a user report leads straight to the trace.
+- **Metrics:** RED metrics labelled by route template, never by raw path, job id, tenant or user. Queue depth
+  and outbox backlog are read from PostgreSQL at scrape time, so every replica reports the same number and KEDA
+  can scale workers on it. Two uvicorn processes in one container share counters through
+  `PROMETHEUS_MULTIPROC_DIR`. That variable is set only in the API's start command, because prometheus_client
+  switches mode whenever it exists, even when empty.
+- **Logs:** one JSON object per line with the request id, trace id and tenant. Phone, email, PAN, Aadhaar,
+  bearer tokens and secret fields are masked before the line is written.
+- **Local stack:** `docker compose --profile observability up` adds Prometheus with six alert rules, Grafana
+  with the service dashboard (`ops/grafana`) and Jaeger.
+
+**Verified.** `tests/test_ops.py`, including a single trace from HTTP request to job. In the compose stack, one
+async score produced a 27-span trace across `udyampulse-api` and `udyampulse-worker`. Both Prometheus
+targets were up and the dashboard rendered under load (`docs/images/ops-grafana-overview.png`).
+
+## ADR-010 · Sessions: short access tokens, rotating refresh cookies
+
+**Decision.**
+- Access tokens are JWTs that live 15 minutes, held in browser memory only.
+- The refresh token is an opaque value in an httpOnly, SameSite=Strict cookie (Secure in production). Only its
+  SHA-256 is stored, and it rotates on every use.
+- A replayed refresh token revokes its whole family. There is a 15-second grace window for two tabs that share
+  one cookie jar: the late tab is told to retry instead.
+- Passwords use argon2id with RFC 9106 parameters. Legacy PBKDF2 hashes are upgraded at the next login.
+- **Rejected:** long-lived access tokens in localStorage, which is the previous design (XSS exfiltration lasts
+  8 hours).
+
+**Verified.** `tests/test_auth.py`, and e2e tests for reload with the cookie, an ended session and sign-out
+revocation.
+
+## ADR-011 · Field-level encryption and a hash-chained audit trail
+
+**Decision.**
+- **Field encryption:** personal data, free-text notes and consented data snapshots are Fernet-encrypted in
+  the ORM type layer. Keys are newest first in `UP_FIELD_KEYS`, and `python -m api.crypto rotate` re-encrypts
+  in place.
+- **Audit chain:** each bank's audit rows form a SHA-256 chain written inside the same transaction, ordered by
+  a per-bank advisory lock on PostgreSQL. A PostgreSQL trigger refuses UPDATE and DELETE on chained rows.
+  `POST /v1/audit/verify` recomputes the chain. Anchoring the head hash in immutable Blob storage is
+  provisioned in Terraform; the daily anchoring job is the open item.
+
+**Verified.** `tests/test_crypto.py` and `tests/test_audit_chain.py`, covering tampering on SQLite,
+trigger refusal on PostgreSQL and concurrent writers.
+
+## ADR-012 · Authorisation: roles plus branch scope
+
+**Decision.** Role checks per endpoint, plus attribute checks on the account's cluster:
+- Relationship managers see only the clusters they cover; an RM with no branch sees nothing.
+- Risk always sees the whole bank.
+- Portfolio caches are keyed by scope.
+
+Bank isolation (ADR-002) sits underneath, so branch scope only ever narrows.
+
+**Verified.** `tests/test_authz.py`.
+
+## ADR-013 · Deployment: AKS with HPA, KEDA and PDBs; Terraform restricted to India
+
+**Decision.**
+- **Helm chart (`deploy/k8s`):**
+  - A migration hook runs before rollout.
+  - The API scales on CPU (HPA, 3 to 20 pods).
+  - Workers scale on queued jobs (KEDA, 2 to 30 pods).
+  - PodDisruptionBudgets keep capacity through node drains.
+  - Pods run non-root with a read-only root filesystem, all capabilities dropped and seccomp RuntimeDefault,
+    behind default-deny network policies.
+- **Terraform (`deploy/terraform`):**
+  - AKS with workload identity and the KEDA add-on.
+  - Private PostgreSQL 16 with zone-redundant HA and geo-backup inside India.
+  - Private Premium Redis, Key Vault and Storage, including a 7-year immutable `audit-anchors` container.
+  - `location` validation rejects any non-Indian region at plan time.
+- **Image:** the hosted-LLM SDK and MLflow moved out of the runtime image, and pip and the bundled test suites
+  were stripped. The image went from 1.95 GB to 1.38 GB.
+
+**Verified.**
+- `helm lint`, `helm template` and `kubeconform -strict` against Kubernetes 1.30: 16 of 17 resources valid;
+  the KEDA ScaledObject has no published schema and is skipped.
+- `terraform validate` passes, and a plan with `location=eastus` is rejected.
+- The API image ran with `--read-only --cap-drop ALL` and completed login, consent, scoring, memo, PDF and
+  refresh. All of this runs in CI (`deploy`, `images`, `security` jobs).
+- The Terraform has not been applied to a live subscription.
