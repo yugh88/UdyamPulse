@@ -146,5 +146,23 @@ def main() -> None:
     db.close()
 
 
-if __name__ == "__main__":
+def seed_if_empty() -> bool:
+    """Container start-up: seed a fresh database, leave an existing demo state alone."""
+    from sqlalchemy import inspect
+
+    from api.models.db import get_engine, init_db
+
+    init_db()
+    if inspect(get_engine()).has_table("tenants"):
+        with get_engine().connect() as conn:
+            if conn.exec_driver_sql("SELECT count(*) FROM tenants").scalar():
+                print("database already seeded; leaving it as it is")
+                return False
     main()
+    return True
+
+
+if __name__ == "__main__":
+    import sys
+
+    seed_if_empty() if "--if-empty" in sys.argv else main()

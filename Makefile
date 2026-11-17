@@ -5,7 +5,7 @@ VENV := .venv
 PY := $(VENV)/bin/python
 export MLFLOW_DISABLE_AGENT_HINT := 1
 
-.PHONY: help setup data lake train backtest seed pipeline api web demo demo-lite test test-web test-pg test-full pg-up pg-down redis-up redis-down e2e lint openapi clean
+.PHONY: help setup data lake train backtest seed pipeline api web demo demo-lite test test-web test-pg test-full pg-up pg-down redis-up redis-down up down e2e lint openapi clean
 
 help:  ## Show targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-10s %s\n", $$1, $$2}'
@@ -78,6 +78,13 @@ test-full: $(VENV)/.installed pg-up redis-up  ## Run pytest against PostgreSQL a
 
 test-pg: $(VENV)/.installed pg-up  ## Run pytest against PostgreSQL (migrations, partitions, row-level security)
 	UP_TEST_DB_URL=postgresql+psycopg://udyam_app@127.0.0.1:55432/udyampulse_test $(PY) -m pytest -q
+
+up:  ## Full stack in Docker: PostgreSQL, Redis, API, worker, web on http://localhost:5173 (UP_WEB_PORT to change)
+	docker compose up -d --build
+	@echo "  UdyamPulse (full stack) → http://localhost:$${UP_WEB_PORT:-5173}"
+
+down:  ## Stop the Docker stack (add -v by hand to also delete its database volume)
+	docker compose down
 
 lint: $(VENV)/.installed web/node_modules/.installed  ## Ruff, ESLint, Prettier, TypeScript and contrast checks
 	$(VENV)/bin/ruff check .
