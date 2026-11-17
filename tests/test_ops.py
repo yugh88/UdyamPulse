@@ -125,7 +125,8 @@ def test_trace_continues_from_request_into_background_job(client, spans):
 
 
 def test_production_guard_refuses_demo_configuration():
-    demo = replace(get_settings(), env="production", data_region="centralindia")
+    demo = replace(get_settings(), env="production", data_region="centralindia", db_url="sqlite:///var/x.db",
+                   jwt_secret=DEFAULT_JWT_SECRET)
     problems = production_problems(demo)
     assert any("UP_JWT_SECRET" in p for p in problems)
     assert any("SQLite" in p for p in problems)

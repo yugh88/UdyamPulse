@@ -9,6 +9,7 @@ from functools import lru_cache
 from sqlalchemy import JSON, Date, DateTime, Float, ForeignKey, Index, Integer, String, Text, create_engine, event
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
+from api.crypto import EncryptedJSON, EncryptedText
 from api.tenancy import ENFORCE_KEY, TenantScoped
 from core.settings import get_settings
 
@@ -33,7 +34,7 @@ class User(TenantScoped, Base):
     __tablename__ = "users"
     id: Mapped[int] = mapped_column(primary_key=True)
     username: Mapped[str] = mapped_column(String(64), unique=True)
-    display_name: Mapped[str] = mapped_column(String(128))
+    display_name: Mapped[str] = mapped_column(EncryptedText)  # personal data: encrypted at rest
     role: Mapped[str] = mapped_column(String(32))  # rm | credit_officer | risk | msme
     password_hash: Mapped[str] = mapped_column(String(256))
     factory_id: Mapped[str | None] = mapped_column(String(16), nullable=True)  # msme users only
@@ -76,7 +77,7 @@ class Application(TenantScoped, Base):
     recommended_limit: Mapped[float | None] = mapped_column(Float, nullable=True)
     pricing_band: Mapped[str | None] = mapped_column(String(64), nullable=True)
     decision: Mapped[str | None] = mapped_column(String(16), nullable=True)  # APPROVED | REJECTED
-    decision_comment: Mapped[str | None] = mapped_column(Text, nullable=True)
+    decision_comment: Mapped[str | None] = mapped_column(EncryptedText, nullable=True)  # free text: encrypted
     decided_by: Mapped[str | None] = mapped_column(String(64), nullable=True)
     decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     kfs: Mapped[dict | None] = mapped_column(JSON, nullable=True)
@@ -85,7 +86,7 @@ class Application(TenantScoped, Base):
     disbursed_on: Mapped[date | None] = mapped_column(Date, nullable=True)
     last_ews_month: Mapped[int | None] = mapped_column(Integer, nullable=True)
     review_requested: Mapped[bool] = mapped_column(default=False)
-    review_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    review_note: Mapped[str | None] = mapped_column(EncryptedText, nullable=True)
     plan_cache: Mapped[dict | None] = mapped_column(JSON, nullable=True)  # advisor plan for one data month
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
@@ -130,7 +131,7 @@ class DataSnapshot(TenantScoped, Base):
     application_id: Mapped[int] = mapped_column(ForeignKey("applications.id"), index=True)
     factory_id: Mapped[str] = mapped_column(String(16), index=True)
     upto_month: Mapped[int] = mapped_column(Integer)
-    payload: Mapped[dict] = mapped_column(JSON)
+    payload: Mapped[dict] = mapped_column(EncryptedJSON)  # consented financial data: encrypted at rest
     pulled_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
@@ -148,7 +149,7 @@ class Alert(TenantScoped, Base):
     briefing: Mapped[str] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(16), default="OPEN")  # OPEN | ACTIONED
     action_taken: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    action_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    action_note: Mapped[str | None] = mapped_column(EncryptedText, nullable=True)
     actioned_by: Mapped[str | None] = mapped_column(String(64), nullable=True)
     outcome: Mapped[str | None] = mapped_column(String(32), nullable=True)  # set when the action is logged
     owner: Mapped[str | None] = mapped_column(String(64), nullable=True)  # staff user responsible
