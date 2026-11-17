@@ -45,12 +45,21 @@ class Agent:
         AI usage log with the prompt template id, provider, latency and a token estimate."""
         llm = get_llm()
         t0 = time.perf_counter()
-        text = self.tool("llm.write", llm.write, audit_app=audit_app, **{"task": task, "facts": facts, "draft": draft})
+        outcome: dict[str, str] = {}
+
+        def llm_write(task: str, facts: dict, draft: str) -> str:
+            result = llm.write_result(task, facts, draft, tenant=self.actor.tenant_id)
+            outcome["value"] = result.outcome
+            return result.text
+
+        text = self.tool("llm.write", llm_write, audit_app=audit_app, **{"task": task, "facts": facts, "draft": draft})
         chars = len(task) + len(json.dumps(facts, ensure_ascii=False, default=str)) + len(draft) + len(text)
+        result_outcome = outcome.get("value", "template")
         self.db.add(AiUsage(
             agent=self.name, template_id=template_id, provider=llm.name,
             latency_ms=round((time.perf_counter() - t0) * 1000, 2), tokens_est=chars // 4,
-            fallback=llm.name != "template" and text == draft, user=self.actor.username, application_id=audit_app,
+            fallback=result_outcome not in ("template", "ok", "cached"), outcome=result_outcome,
+            user=self.actor.username, application_id=audit_app,
         ))
         return text
 

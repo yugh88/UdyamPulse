@@ -220,6 +220,8 @@ class AiUsage(TenantScoped, Base):
     latency_ms: Mapped[float] = mapped_column(Float)
     tokens_est: Mapped[int] = mapped_column(Integer)  # estimate: characters / 4
     fallback: Mapped[bool] = mapped_column(default=False)  # provider failed or was rejected by the number guard
+    # template | ok | cached | timeout | error | guard_rejected | breaker_open | busy (agents/providers/llm.py)
+    outcome: Mapped[str | None] = mapped_column(String(24), nullable=True)
     user: Mapped[str] = mapped_column(String(64))
     application_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
 

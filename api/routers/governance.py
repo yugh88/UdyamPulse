@@ -119,8 +119,10 @@ def ai_usage(request: Request, response: Response, limit: int = Query(default=30
     next_cursor = pagination.link_next(request, response, [rows[-1].id] if len(found) > limit else None)
     lat = sorted(r.latency_ms for r in rows)
     by_provider: dict[str, int] = {}
+    by_outcome: dict[str, int] = {}
     for r in rows:
         by_provider[r.provider] = by_provider.get(r.provider, 0) + 1
+        by_outcome[r.outcome or "template"] = by_outcome.get(r.outcome or "template", 0) + 1
     return {
         "summary": {
             "calls": len(rows), "by_provider": by_provider, "fallbacks": sum(1 for r in rows if r.fallback),
@@ -128,10 +130,13 @@ def ai_usage(request: Request, response: Response, limit: int = Query(default=30
             "p95_latency_ms": lat[min(len(lat) - 1, int(len(lat) * 0.95))] if lat else None,
             "tokens_est": sum(r.tokens_est for r in rows),
             "provider_in_use": get_llm().name,
+            "by_outcome": by_outcome,
+            "breaker": get_llm().breaker.state,
         },
         "calls": [{"id": r.id, "ts": r.ts.isoformat(), "agent": r.agent, "template_id": r.template_id,
                    "provider": r.provider, "location": "local" if r.provider == "template" else "cloud",
-                   "latency_ms": r.latency_ms, "tokens_est": r.tokens_est, "fallback": r.fallback, "user": r.user,
+                   "latency_ms": r.latency_ms, "tokens_est": r.tokens_est, "fallback": r.fallback,
+                   "outcome": r.outcome or "template", "user": r.user,
                    "application_id": r.application_id} for r in rows],
         "next_cursor": next_cursor,
     }
