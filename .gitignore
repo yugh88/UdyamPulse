@@ -33,3 +33,12 @@ web/*.tsbuildinfo
 # Web tests
 web/test-results/
 web/playwright-report/
+
+# Real public datasets: raw downloads and derived files stay local (scripts, checksums and samples are committed)
+data_real/raw/
+data_real/cache/
+# Large synthetic panels (UP_DATASET=full | scale) and their model artifacts
+lake_full/
+lake_scale/
+ml/artifacts_full/
+ml/artifacts_scale/

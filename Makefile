@@ -5,7 +5,7 @@ VENV := .venv
 PY := $(VENV)/bin/python
 export MLFLOW_DISABLE_AGENT_HINT := 1
 
-.PHONY: help setup data lake train backtest seed pipeline api web demo demo-lite test test-web test-pg test-full pg-up pg-down redis-up redis-down up down e2e lint openapi clean security deploy-check
+.PHONY: help setup data lake train backtest seed pipeline api web demo demo-lite test test-web test-pg test-full pg-up pg-down redis-up redis-down up down e2e lint openapi clean security deploy-check data-real bench-real data-full train-full
 
 help:  ## Show targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-10s %s\n", $$1, $$2}'
@@ -38,6 +38,13 @@ seed: $(VENV)/.installed  ## 5. Seed the demo database
 	$(PY) -m api.seed
 
 pipeline: data lake train backtest seed  ## Steps 1-5
+
+data-real: $(VENV)/.installed  ## Fetch real public datasets (SBA 7(a), UCI Polish, MoSPI IIP): resumable, checksummed
+	$(PY) -m data_real.fetch_sba
+	$(PY) -m data_real.fetch_uci
+
+bench-real: $(VENV)/.installed  ## Real-data methodology benchmarks with bootstrap CIs (needs data-real)
+	$(PY) -m ml.benchmark_real
 
 api: $(VENV)/.installed  ## Run the API on :8000
 	$(VENV)/bin/uvicorn api.main:app --host 127.0.0.1 --port 8000
