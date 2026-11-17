@@ -1,12 +1,12 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Bot, CircleCheck, Cloud, HardDrive, TriangleAlert } from "lucide-react";
+import { Bot, CircleCheck, Cloud, HardDrive, Link2, ShieldAlert, ShieldCheck, TriangleAlert } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { AXIS, ChartFrame, GRID, TOOLTIP } from "../components/charts";
 import { Badge, Button, Card, DataTable, EmptyState, ErrorState, Select, Skeleton, Stat, Tabs, TabsContent, TabsList, TabsTrigger, Timeline, type Tone } from "../components/ui";
 import { COMPLIANCE } from "../features/governance/compliance";
-import { api } from "../lib/api";
+import { api, post } from "../lib/api";
 import { PILLAR_COLORS, pct } from "../lib/format";
 import { dateTime } from "../lib/time";
 
@@ -58,6 +58,8 @@ interface AuditRow {
   application_id: number | null;
   inputs: Record<string, unknown> | null;
   output_hash: string | null;
+  chain_seq: number | null;
+  row_hash: string | null;
 }
 interface LedgerEvent {
   id: number;
@@ -289,6 +291,58 @@ function ModelTab() {
   );
 }
 
+interface ChainResult {
+  ok: boolean;
+  rows_checked: number;
+  unchained_rows: number;
+  head_seq?: number;
+  head_hash?: string;
+  first_break: { seq: number | null; audit_id: number | null; reason: string } | null;
+  verified_in_ms: number;
+}
+
+function ChainCheck() {
+  const qc = useQueryClient();
+  const verify = useMutation({
+    mutationFn: () => post<ChainResult>("/audit/verify"),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["audit"] }),
+  });
+  const r = verify.data;
+  return (
+    <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-edge bg-panel-2 p-3">
+      <Link2 className="h-4 w-4 shrink-0 text-fg-muted" aria-hidden />
+      <p className="min-w-0 flex-1 text-sm text-fg-muted">
+        Entries are hash-chained per bank. Verifying recomputes every hash, so any edited, deleted or reordered entry shows up.
+      </p>
+      <Button variant="primary" loading={verify.isPending} onClick={() => verify.mutate()}>
+        Verify chain
+      </Button>
+      <div className="w-full" role="status" aria-live="polite">
+        {verify.isError && <p className="text-sm text-danger">Could not verify: {(verify.error as Error).message}</p>}
+        {r?.ok && (
+          <p className="flex flex-wrap items-center gap-2 text-sm">
+            <ShieldCheck className="h-4 w-4 text-success" aria-hidden />
+            <span className="font-medium">Chain intact</span>
+            <span className="tabular text-fg-muted">
+              {r.rows_checked.toLocaleString("en-IN")} entries checked in {r.verified_in_ms} ms · head #{r.head_seq} · sha256 {r.head_hash?.slice(0, 16)}…
+            </span>
+          </p>
+        )}
+        {r && !r.ok && (
+          <p className="flex flex-wrap items-center gap-2 text-sm">
+            <ShieldAlert className="h-4 w-4 text-danger" aria-hidden />
+            <span className="font-medium text-danger">Chain broken</span>
+            <span className="text-fg-muted">
+              {r.first_break?.seq != null && `at entry #${r.first_break.seq}: `}
+              {r.first_break?.reason}. {r.rows_checked.toLocaleString("en-IN")} entries before it are intact.
+            </span>
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function AuditTab() {
   const q = useQuery({ queryKey: ["audit"], queryFn: () => api<AuditRow[]>("/audit?limit=500") });
   const [agent, setAgent] = useState("");
@@ -302,6 +356,7 @@ function AuditTab() {
   if (q.isError) return <ErrorState error={q.error} onRetry={() => q.refetch()} />;
   return (
     <Card title="Audit trail" description="Every API action and agent tool call, newest first. Inputs are PII-masked; outputs are stored as a SHA-256 hash.">
+      <ChainCheck />
       <div className="mb-4 flex flex-wrap items-end gap-3">
         <label className="text-xs font-medium text-fg-muted">
           Agent
@@ -344,6 +399,7 @@ function AuditTab() {
                 <span className="tabular">
                   #{r.id} · {r.user} ({r.role}){r.application_id != null && ` · application #${r.application_id}`}
                   {r.output_hash && <> · output sha256 {r.output_hash.slice(0, 12)}…</>}
+                  {r.chain_seq != null && <> · chain #{r.chain_seq}</>}
                 </span>
               ),
             }))}

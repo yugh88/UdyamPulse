@@ -145,6 +145,10 @@ for (const theme of ["light", "dark"] as const) {
     await page.getByRole("tab", { name: "Audit trail" }).click();
     await page.getByLabel("Agent").selectOption("orchestrator");
     await expect(page.getByText(/orchestrator · credit_decision/)).toBeVisible();
+    // The whole story so far is on one unbroken hash chain.
+    await page.getByRole("button", { name: "Verify chain" }).click();
+    await expect(page.getByText("Chain intact")).toBeVisible();
+    await expectAccessible(page);
     await shot(page, `governance-audit-${theme}`);
     await page.getByRole("tab", { name: "Consent ledger" }).click();
     await page.getByRole("searchbox").fill("Sharma");

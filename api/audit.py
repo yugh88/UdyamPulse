@@ -13,6 +13,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
+from api import audit_chain  # noqa: F401  (chains every new audit row inside its transaction)
 from api.models.db import AuditLog
 from core.pii import PII_KEYS, mask_pii  # noqa: F401  (re-exported)
 

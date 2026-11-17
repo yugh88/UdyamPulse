@@ -9,6 +9,8 @@ from sqlalchemy.orm import Session
 from agents.providers.lake import get_lake
 from agents.providers.llm import get_llm
 from api import pagination
+from api.audit import log_event
+from api.audit_chain import verify_chain
 from api.auth import CurrentUser, require_roles
 from api.models.db import AiUsage, AuditLog, Consent, ConsentEvent, get_db
 from core.settings import get_settings
@@ -33,7 +35,19 @@ def audit(request: Request, response: Response, application_id: int | None = Non
     pagination.link_next(request, response, [rows[-1].id] if len(found) > limit else None)
     return [{"id": r.id, "ts": r.ts.isoformat(), "user": r.user, "role": r.role, "agent": r.agent, "tool": r.tool,
              "action": r.action, "application_id": r.application_id, "inputs": r.inputs,
-             "output_hash": r.output_hash} for r in rows]
+             "output_hash": r.output_hash, "chain_seq": r.chain_seq, "row_hash": r.row_hash} for r in rows]
+
+
+@router.post("/audit/verify")
+def verify_audit_chain(db: Session = Depends(get_db), user: CurrentUser = Depends(require_roles("risk"))) -> dict:
+    """Recompute this bank's audit hash chain end to end. `ok: false` names the first broken entry.
+    Publish `head_hash` outside the database (immutable storage, a signed report) to anchor the chain."""
+    t0 = time.perf_counter()
+    result = verify_chain(db)
+    log_event(db, user, agent="api", tool="audit_chain", action="verify",
+              inputs={"ok": result["ok"], "rows": result["rows_checked"]})
+    db.commit()
+    return {**result, "verified_in_ms": round((time.perf_counter() - t0) * 1000, 1)}
 
 
 @router.get("/model")

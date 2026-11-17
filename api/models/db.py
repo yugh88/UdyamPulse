@@ -173,8 +173,11 @@ class Notification(TenantScoped, Base):
 
 
 class AuditLog(TenantScoped, Base):
+    """Append-only, hash-chained per tenant (api/audit_chain.py)."""
+
     __tablename__ = "audit_log"
-    __table_args__ = (Index("ix_audit_log_tenant_id_id", "tenant_id", "id"),)
+    __table_args__ = (Index("ix_audit_log_tenant_id_id", "tenant_id", "id"),
+                      Index("ux_audit_log_tenant_chain_seq", "tenant_id", "chain_seq", unique=True))
     id: Mapped[int] = mapped_column(primary_key=True)
     ts: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
     user: Mapped[str] = mapped_column(String(64))
@@ -185,6 +188,9 @@ class AuditLog(TenantScoped, Base):
     application_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
     inputs: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     output_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    chain_seq: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    prev_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    row_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
 
 class AiUsage(TenantScoped, Base):
