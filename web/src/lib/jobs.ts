@@ -75,4 +75,3 @@ export async function runJob<R = Record<string, unknown>>(
   if (job.status !== "succeeded") throw new ApiError(job.status === "failed" ? 409 : 500, job.error ?? `The job ${job.status}`);
   return job.result as R;
 }
-
