@@ -6,7 +6,7 @@ import pytest
 
 from api.kv import MemoryKV
 from core.settings import get_settings
-from tests.conftest import hero_app_id, login
+from tests.conftest import advance, hero_app_id, login
 
 
 @pytest.fixture
@@ -104,7 +104,7 @@ def test_portfolio_cache_hits_and_is_invalidated_by_writes(client):
         client.post(f"/alerts/{alert_b[0]['id']}/action", headers=rm_b, json={"action": "call"})
     assert client.get("/portfolio", headers=rm).headers["x-cache"] == "hit"
 
-    client.post("/sim/advance?days=7", headers=rm)  # the clock is global
+    advance(client, rm, 7)  # the clock is global
     assert client.get("/portfolio", headers=rm).headers["x-cache"] == "miss"
 
 

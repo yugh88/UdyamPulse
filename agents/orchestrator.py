@@ -17,6 +17,7 @@ from agents.policy_engine import inr
 from agents.providers.lake import get_lake
 from api import serving
 from api.audit import Actor, log_event
+from api.jobs import emit
 from api.models.db import Application, Notification, utcnow
 from ml.scoring import get_scorer
 
@@ -87,6 +88,7 @@ class Orchestrator(Agent):
 
     def revoke(self, app: Application) -> dict:
         artefact = self.data_agent.revoke_consent(app)
+        emit(self.db, "consent.revoked", {"application_id": app.id, "factory_id": app.factory_id})
         self._notify(app.factory_id, "Your data-sharing consent has been revoked. The bank will not fetch new data "
                                      "and previously fetched copies are being deleted.",
                      "आपकी डेटा साझा करने की सहमति वापस ले ली गई है। बैंक अब नया डेटा नहीं लेगा और पहले लिया गया डेटा "
@@ -139,6 +141,8 @@ class Orchestrator(Agent):
                                          "main reasons and your 90-day improvement plan, or request a human review.",
                          "इस बार आपका आवेदन मंज़ूर नहीं हुआ। मुख्य कारण और 90 दिन की सुधार योजना ऐप में देखें, "
                          "या किसी अधिकारी से समीक्षा का अनुरोध करें।")
+        emit(self.db, "application.decided", {"application_id": app.id, "factory_id": app.factory_id, "decision": decision,
+                                              "sanctioned_limit": app.sanctioned_limit, "by": self.actor.username})
         log_event(self.db, self.actor, agent=self.name, tool="credit_decision", action=decision.lower(),
                   inputs={"comment": comment, "sanctioned_limit": app.sanctioned_limit},
                   output={"decision": decision}, application_id=app.id)
@@ -156,6 +160,8 @@ class Orchestrator(Agent):
                   output={"ref": app.disbursement_ref}, application_id=app.id)
         self._transition(app, "MONITORING")
         app.last_ews_month = app.score_month
+        emit(self.db, "application.disbursed", {"application_id": app.id, "factory_id": app.factory_id,
+                                                "amount": app.sanctioned_limit, "ref": app.disbursement_ref})
         serving.write_scores(self.db, app, range(1, (app.score_month or 0) + 1))  # history seen under consent
         self._notify(app.factory_id, f"Your limit of {inr(app.sanctioned_limit or 0)} is now active in your "
                                      f"account (ref {app.disbursement_ref}).",

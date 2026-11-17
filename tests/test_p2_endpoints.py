@@ -2,7 +2,7 @@
 alert ownership, band migration, governance logs, plan progress and the demo reset."""
 
 from api.models.db import Application, AuditLog, ConsentEvent, DataSnapshot, SessionLocal
-from tests.conftest import hero_app_id, login
+from tests.conftest import advance, hero_app_id, login
 
 
 def _consented_hero(client) -> tuple[dict, int]:
@@ -131,7 +131,7 @@ def test_plan_progress_persists(client):
 
 def test_demo_reset_restores_seed_state_quickly(client):
     rm = login(client, "rm1")
-    client.post("/sim/advance?days=40", headers=rm)
+    advance(client, rm, 40)
     assert client.get("/sim/clock", headers=rm).json()["sim_date"] != "2026-06-30"
     r = client.post("/demo/reset").json()
     assert r["status"] == "reset" and r["took_ms"] < 3000

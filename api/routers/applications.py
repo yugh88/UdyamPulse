@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi.responses import FileResponse, JSONResponse
 from sqlalchemy.orm import Session
 
 from agents.base import sim_date, visible_month
@@ -11,6 +11,7 @@ from agents.providers.consent import get_consent_provider
 from agents.providers.lake import get_lake
 from api.audit import log_event
 from api.auth import CurrentUser, ensure_factory_access, get_current_user, require_roles
+from api.jobs import enqueue
 from api.models.db import Alert, Application, AuditLog, ConsentEvent, get_db, utcnow
 from api.models.schemas import ApplicationCreate, DecisionRequest, ReviewRequest, ScoreResponse
 from core.settings import get_settings
@@ -190,17 +191,36 @@ def consent_ledger(app_id: int, db: Session = Depends(get_db),
              "detail": r.detail} for r in rows]
 
 
-@router.post("/{app_id}/score", response_model=ScoreResponse)
-def score_application(app_id: int, db: Session = Depends(get_db),
-                      user: CurrentUser = Depends(require_roles("rm", "credit_officer"))) -> dict:
-    result = Orchestrator(db, user).score(_get_app(db, app_id, user))
+def _wants_async(prefer: str | None) -> bool:
+    """RFC 7240: `Prefer: respond-async` asks for 202 + a job instead of waiting for the result."""
+    return bool(prefer) and "respond-async" in prefer.lower()
+
+
+def _accepted(db: Session, user: CurrentUser, kind: str, app: Application) -> JSONResponse:
+    job = enqueue(db, user, kind, application_id=app.id)
+    db.commit()
+    return JSONResponse(status_code=202, headers={"Location": f"/v1/jobs/{job.id}", "Preference-Applied": "respond-async"},
+                        content={"job_id": job.id, "status": "queued", "status_url": f"/v1/jobs/{job.id}"})
+
+
+@router.post("/{app_id}/score", response_model=ScoreResponse,
+             responses={202: {"description": "Queued as a background job (with `Prefer: respond-async`)"}})
+def score_application(app_id: int, prefer: str | None = Header(default=None), db: Session = Depends(get_db),
+                      user: CurrentUser = Depends(require_roles("rm", "credit_officer"))):
+    app = _get_app(db, app_id, user)
+    if _wants_async(prefer):
+        return _accepted(db, user, "application.score", app)
+    result = Orchestrator(db, user).score(app)
     return {**result, "ai_label": AI_LABEL}
 
 
-@router.post("/{app_id}/memo")
-def draft_memo(app_id: int, db: Session = Depends(get_db),
-               user: CurrentUser = Depends(require_roles("rm", "credit_officer"))) -> dict:
-    memo = Orchestrator(db, user).draft_memo(_get_app(db, app_id, user))
+@router.post("/{app_id}/memo", responses={202: {"description": "Queued as a background job (with `Prefer: respond-async`)"}})
+def draft_memo(app_id: int, prefer: str | None = Header(default=None), db: Session = Depends(get_db),
+               user: CurrentUser = Depends(require_roles("rm", "credit_officer"))):
+    app = _get_app(db, app_id, user)
+    if _wants_async(prefer):
+        return _accepted(db, user, "application.memo", app)
+    memo = Orchestrator(db, user).draft_memo(app)
     return {**{k: v for k, v in memo.items() if k != "facts"}, "pdf_url": f"/applications/{app_id}/memo.pdf"}
 
 

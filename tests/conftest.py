@@ -16,6 +16,10 @@ if os.environ.get("UP_TEST_REDIS_URL"):
     import redis as _redis
 
     _redis.Redis.from_url(os.environ["UP_REDIS_URL"]).flushdb()
+    os.environ.setdefault("UP_INPROCESS_WORKER", "on")  # jobs run in the test process, through Redis
+# Fast retries for the job tests.
+os.environ.setdefault("UP_JOB_MIN_BACKOFF_MS", "50")
+os.environ.setdefault("UP_JOB_MAX_BACKOFF_MS", "200")
 # The suite logs in hundreds of times from one address; rate limits get their own tests.
 for _k in ("UP_RATE_LIMIT_USER_PER_MIN", "UP_RATE_LIMIT_TENANT_PER_MIN", "UP_RATE_LIMIT_LOGIN_PER_MIN"):
     os.environ[_k] = "100000"
@@ -67,3 +71,25 @@ def login(client, username: str) -> dict:
 def hero_app_id(client, headers: dict) -> int:
     apps = client.get("/applications", headers=headers).json()
     return next(a["id"] for a in apps if a["factory_id"] == "UP-F0001")
+
+
+def wait_job(client, headers: dict, job_id: str, timeout: float = 30.0) -> dict:
+    """Poll a background job until it reaches a terminal state."""
+    import time
+
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        job = client.get(f"/jobs/{job_id}", headers=headers).json()
+        if job["terminal"]:
+            return job
+        time.sleep(0.05)
+    raise AssertionError(f"job {job_id} did not finish: {job}")
+
+
+def advance(client, headers: dict, days: int) -> dict:
+    """Fast-forward the clock and wait for the early-warning batch; returns the batch result."""
+    r = client.post(f"/sim/advance?days={days}", headers=headers)
+    assert r.status_code == 202, r.text
+    job = wait_job(client, headers, r.json()["job_id"])
+    assert job["status"] == "succeeded", job
+    return job["result"]

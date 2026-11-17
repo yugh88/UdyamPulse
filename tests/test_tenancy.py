@@ -79,6 +79,9 @@ def test_token_for_another_tenant_is_rejected(client):
 
 
 def test_session_layer_filters_stamps_and_fails_closed(client):
+    with SessionLocal() as other:
+        bind_tenant(other, "bank-a")
+        foreign_id = other.query(Application.id).first()[0]
     with SessionLocal() as db:
         total = db.query(Application).count()
         bind_tenant(db, "bank-b")
@@ -86,9 +89,6 @@ def test_session_layer_filters_stamps_and_fails_closed(client):
         assert 0 < len(mine) < total and {a.tenant_id for a in mine} == {"bank-b"}
 
         # Primary-key lookups and bulk statements are filtered too.
-        with SessionLocal() as other:
-            bind_tenant(other, "bank-a")
-            foreign_id = other.query(Application.id).first()[0]
         assert db.get(Application, foreign_id) is None
         assert db.query(Alert).filter(Alert.application_id == foreign_id).update({"owner": "rm2"}) == 0
         assert db.query(Alert).filter(Alert.application_id == foreign_id).delete() == 0

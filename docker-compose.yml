@@ -41,6 +41,19 @@ services:
       interval: 10s
       retries: 30
 
+  # Background jobs: outbox relay + Dramatiq workers. Scale with `docker compose up --scale worker=4`.
+  worker:
+    build: .
+    command: ["python", "-m", "worker"]
+    env_file: [.env.example]
+    environment:
+      UP_DB_URL: postgresql+psycopg://udyam_app:udyam_app_local@postgres:5432/udyampulse
+      UP_REDIS_URL: redis://redis:6379/0
+      UP_WORKER_THREADS: "4"
+    depends_on:
+      api:
+        condition: service_healthy
+
   web:
     build: ./web
     ports: ["5173:5173"]

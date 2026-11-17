@@ -6,7 +6,7 @@ from collections.abc import Iterator
 from datetime import UTC, date, datetime
 from functools import lru_cache
 
-from sqlalchemy import JSON, Date, DateTime, Float, ForeignKey, Index, Integer, String, Text, create_engine
+from sqlalchemy import JSON, Date, DateTime, Float, ForeignKey, Index, Integer, String, Text, create_engine, event
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
 from api.tenancy import ENFORCE_KEY, TenantScoped
@@ -216,6 +216,47 @@ class AccountScore(TenantScoped, Base):
     pd_12m: Mapped[float] = mapped_column(Float)
 
 
+class Job(TenantScoped, Base):
+    """Background job (scoring, memo, early-warning batch). Clients follow it via SSE or polling.
+
+    queued → running → succeeded, or running → failed (a retry is scheduled) → … → dead (retries exhausted)."""
+
+    __tablename__ = "jobs"
+    __table_args__ = (Index("ix_jobs_tenant_updated", "tenant_id", "updated_at"),)
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    kind: Mapped[str] = mapped_column(String(32))
+    status: Mapped[str] = mapped_column(String(16), default="queued")
+    progress: Mapped[int] = mapped_column(Integer, default=0)  # 0-100
+    message: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    params: Mapped[dict] = mapped_column(JSON, default=dict)
+    result: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    created_by: Mapped[str] = mapped_column(String(64))
+    role: Mapped[str] = mapped_column(String(32))
+    application_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+
+class OutboxEvent(TenantScoped, Base):
+    """Transactional outbox: written in the same transaction as the state change it announces, then
+    published by the relay (`worker/relay.py`). No event is lost if the process dies after the commit,
+    and none is published for a change that rolled back."""
+
+    __tablename__ = "outbox"
+    __table_args__ = (Index("ix_outbox_unpublished", "published_at", "id"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    topic: Mapped[str] = mapped_column(String(64))
+    payload: Mapped[dict] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
 class SimClock(Base):
     __tablename__ = "sim_clock"
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -229,7 +270,18 @@ def get_engine():
         from pathlib import Path
 
         Path(s.db_url.removeprefix("sqlite:///")).parent.mkdir(parents=True, exist_ok=True)
-    return create_engine(s.db_url, connect_args={"check_same_thread": False} if s.db_url.startswith("sqlite") else {})
+    if not s.db_url.startswith("sqlite"):
+        return create_engine(s.db_url, pool_size=10, max_overflow=20, pool_pre_ping=True)
+    engine = create_engine(s.db_url, connect_args={"check_same_thread": False, "timeout": 15})
+
+    @event.listens_for(engine, "connect")
+    def _sqlite_pragmas(conn, _record) -> None:  # the lite demo runs a worker thread beside the API
+        cur = conn.cursor()
+        cur.execute("PRAGMA journal_mode=WAL")
+        cur.execute("PRAGMA busy_timeout=15000")
+        cur.close()
+
+    return engine
 
 
 @lru_cache

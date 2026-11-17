@@ -66,6 +66,19 @@ class Settings:
     rate_limit_user_per_min: int = field(default_factory=lambda: int(_env("UP_RATE_LIMIT_USER_PER_MIN", "600")))
     rate_limit_tenant_per_min: int = field(default_factory=lambda: int(_env("UP_RATE_LIMIT_TENANT_PER_MIN", "6000")))
     rate_limit_login_per_min: int = field(default_factory=lambda: int(_env("UP_RATE_LIMIT_LOGIN_PER_MIN", "30")))
+    # Background jobs (Dramatiq). The in-process worker runs inside the API when Redis is not configured.
+    inprocess_worker_raw: str = field(default_factory=lambda: _env("UP_INPROCESS_WORKER", "auto"))
+    worker_threads: int = field(default_factory=lambda: int(_env("UP_WORKER_THREADS", "4")))
+    job_max_retries: int = field(default_factory=lambda: int(_env("UP_JOB_MAX_RETRIES", "3")))
+    job_min_backoff_ms: int = field(default_factory=lambda: int(_env("UP_JOB_MIN_BACKOFF_MS", "1000")))
+    job_max_backoff_ms: int = field(default_factory=lambda: int(_env("UP_JOB_MAX_BACKOFF_MS", "60000")))
+    job_time_limit_ms: int = field(default_factory=lambda: int(_env("UP_JOB_TIME_LIMIT_MS", "600000")))
+
+    @property
+    def inprocess_worker(self) -> bool:
+        raw = self.inprocess_worker_raw.lower()
+        return raw in ("1", "on", "true") or (raw == "auto" and not self.redis_url)
+
     # Demo conveniences (one-click reset). On by default only for the local, synthetic-data deployment.
     demo_mode_raw: str = field(default_factory=lambda: _env("UP_DEMO_MODE", "auto"))
 

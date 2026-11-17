@@ -3,6 +3,7 @@ alert cards with reasons, next-best action and an RM briefing. Stops pulling dat
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from agents.base import Agent, sim_date
@@ -10,6 +11,7 @@ from agents.policy_engine import inr
 from agents.providers.consent import ConsentError, get_consent_provider
 from agents.providers.lake import get_lake
 from api import serving
+from api.jobs import emit
 from api.models.db import Alert, Application, Notification
 from core.timeline import last_visible_month, month_label
 from ml.ews import explain, next_best_action
@@ -47,7 +49,7 @@ class EwsRun:
 class EarlyWarningAgent(Agent):
     name = "early_warning_agent"
 
-    def run(self) -> EwsRun:
+    def run(self, on_progress: Callable[[int, int], None] | None = None) -> EwsRun:
         today = sim_date(self.db)
         visible = last_visible_month(today)
         run = EwsRun(as_of=str(today))
@@ -57,7 +59,9 @@ class EarlyWarningAgent(Agent):
         provider.expire_due(today)
         self.db.commit()
         apps = self.db.query(Application).filter(Application.state == "MONITORING").all()
-        for app in apps:
+        for i, app in enumerate(apps, start=1):
+            if on_progress and (i % 10 == 0 or i == len(apps)):
+                on_progress(i, len(apps))
             start = (app.last_ews_month or 0) + 1
             months = list(range(start, visible + 1))
             if not months:
@@ -84,6 +88,8 @@ class EarlyWarningAgent(Agent):
                 self.db.add(alert)
                 self.db.flush()
                 run.new_alerts.append(alert.id)
+                emit(self.db, "alert.raised", {"alert_id": alert.id, "application_id": app.id, "factory_id": app.factory_id,
+                                               "severity": alert.severity, "rules": alert.rules})
                 if row["severity"] in MSME_MESSAGE:
                     self.db.add(Notification(factory_id=app.factory_id, text=MSME_MESSAGE[row["severity"]],
                                              text_hi=MSME_MESSAGE_HI[row["severity"]], sim_date=today))

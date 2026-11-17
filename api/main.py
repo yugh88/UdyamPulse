@@ -17,7 +17,7 @@ from api.kv import get_kv
 from api.middleware import IdempotencyMiddleware, RateLimitMiddleware
 from api.models.db import get_engine, init_db
 from api.request_context import RequestIdMiddleware
-from api.routers import applications, auth, governance, insights, msme, portfolio
+from api.routers import applications, auth, governance, insights, jobs, msme, portfolio
 from core.settings import assert_data_residency, get_settings
 
 API_VERSION = "v1"
@@ -27,7 +27,16 @@ API_VERSION = "v1"
 async def lifespan(_: FastAPI):
     assert_data_residency()
     init_db()
-    yield
+    runtime = None
+    if get_settings().inprocess_worker:  # lite demo: no Redis, so the API runs the relay and one worker thread
+        from worker.runtime import WorkerRuntime
+
+        runtime = WorkerRuntime(threads=1).start()
+    try:
+        yield
+    finally:
+        if runtime:
+            runtime.stop()
 
 
 app = FastAPI(
@@ -53,7 +62,8 @@ app.add_middleware(RequestIdMiddleware)
 problems.install(app)
 
 v1 = APIRouter(prefix=f"/{API_VERSION}")
-for r in (auth.router, applications.router, insights.router, portfolio.router, msme.router, governance.router):
+for r in (auth.router, applications.router, insights.router, portfolio.router, msme.router, governance.router,
+          jobs.router):
     v1.include_router(r)
 app.include_router(v1)
 

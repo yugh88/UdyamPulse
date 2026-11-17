@@ -9,6 +9,7 @@ import { AlertDrawer, RULE_LABEL } from "../features/cockpit/AlertDrawer";
 import { Heatmap, type CellFilter } from "../features/cockpit/Heatmap";
 import { MigrationMatrix } from "../features/cockpit/MigrationMatrix";
 import { api, post } from "../lib/api";
+import { runJob } from "../lib/jobs";
 import { useAuth } from "../lib/auth";
 import { cn } from "../lib/cn";
 import { crore, inr, signed } from "../lib/format";
@@ -55,8 +56,10 @@ export default function Cockpit() {
 
   const refresh = () => Promise.all(["portfolio", "alerts", "migration", "clock", "palette"].map((k) => qc.invalidateQueries({ queryKey: [k] })));
 
+  const [jobNote, setJobNote] = useState<string | null>(null);
   const advance = useMutation({
-    mutationFn: (days: number) => post<AdvanceResult>(`/sim/advance?days=${days}`),
+    mutationFn: (days: number) => runJob<AdvanceResult>(`/sim/advance?days=${days}`, (j) => setJobNote(j.message)),
+    onSettled: () => setJobNote(null),
     onSuccess: async (r) => {
       await refresh();
       const blocked = r.blocked.length ? ` ${r.blocked.length} account(s) skipped: consent revoked.` : "";
@@ -71,7 +74,7 @@ export default function Cockpit() {
     setStory({ week: 0, newAlerts: 0 });
     try {
       for (let week = 1; week <= STORY_WEEKS && !storyStop.current; week++) {
-        const r = await post<AdvanceResult>("/sim/advance?days=7");
+        const r = await runJob<AdvanceResult>("/sim/advance?days=7");
         total += r.new_alerts.length;
         setStory({ week, newAlerts: total });
         await refresh();
@@ -243,6 +246,12 @@ export default function Cockpit() {
           </Button>
         </div>
       </div>
+
+      {advance.isPending && jobNote && (
+        <p role="status" className="text-13 text-fg-muted">
+          Early-warning batch: {jobNote}
+        </p>
+      )}
 
       {story && (
         <div role="status" className="rounded-card border border-edge bg-primary-tint px-4 py-3">

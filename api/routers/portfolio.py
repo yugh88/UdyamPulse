@@ -6,13 +6,13 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
 
 from agents.base import set_sim_date, sim_date, visible_month
-from agents.ews_agent import EarlyWarningAgent
 from agents.memo_agent import AI_LABEL
 from agents.providers.lake import get_lake
 from api import serving
 from api.audit import log_event
 from api.auth import CurrentUser, require_roles
 from api.cache import cached
+from api.jobs import enqueue
 from api.models.db import AccountScore, Alert, Application, Consent, User, get_db, utcnow
 from api.models.schemas import AlertAction, AlertBulk
 from core.timeline import month_label
@@ -215,14 +215,16 @@ def clock(db: Session = Depends(get_db), user: CurrentUser = Depends(require_rol
     return {"sim_date": str(sim_date(db)), "data_month": month_label(visible_month(db))}
 
 
-@router.post("/sim/advance")
+@router.post("/sim/advance", status_code=202)
 def advance(days: int = Query(default=7, ge=1, le=120), db: Session = Depends(get_db),
             user: CurrentUser = Depends(require_roles(*STAFF))) -> dict:
-    """Fast-forward the simulated clock, then let the early-warning agent process newly visible data."""
+    """Fast-forward the simulated clock, then queue the early-warning batch for the newly visible data.
+    Returns 202 with a job id; follow it at `/v1/events?job=<id>` or `/v1/jobs/<id>`."""
     before = sim_date(db)
     after = set_sim_date(db, before + timedelta(days=days))
-    run = EarlyWarningAgent(db, user).run()
+    job = enqueue(db, user, "ews.run", {"days": days, "from": str(before), "to": str(after)})
     log_event(db, user, agent="api", tool="sim_clock", action="advance",
-              inputs={"days": days, "from": str(before)}, output={"to": str(after), **run.to_dict()})
+              inputs={"days": days, "from": str(before)}, output={"to": str(after), "job_id": job.id})
     db.commit()
-    return {"sim_date": str(after), "data_month": month_label(visible_month(db)), **run.to_dict()}
+    return {"job_id": job.id, "status": "queued", "status_url": f"/v1/jobs/{job.id}",
+            "sim_date": str(after), "data_month": month_label(visible_month(db))}

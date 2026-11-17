@@ -26,10 +26,11 @@ import { PillarBars, ReasonCards } from "../features/application/Score";
 import { SignalExplorer } from "../features/application/SignalExplorer";
 import { WhatIf } from "../features/application/WhatIf";
 import { api, ApiError, del, post } from "../lib/api";
+import { ASYNC, runJob } from "../lib/jobs";
 import { useAuth, type Role } from "../lib/auth";
 import { inr, pct } from "../lib/format";
 import { monthLabel } from "../lib/time";
-import type { AppDetail, Memo } from "../lib/types";
+import type { AppDetail } from "../lib/types";
 
 type Step = "consent" | "score" | "memo" | "disburse";
 
@@ -93,14 +94,14 @@ export default function ApplicationDetail() {
     onError: fail("Consent"),
   });
   const score = useMutation({
-    mutationFn: () => post<{ score: number; band: string }>(`/applications/${appId}/score`),
+    mutationFn: () => runJob<{ score: number; band: string }>(`/applications/${appId}/score`, undefined, { headers: ASYNC }),
     onSuccess: (r) => (toast.success(`Scored ${r.score}`), refresh()),
     onError: fail("Scoring"),
   });
   const memo = useMutation({
-    mutationFn: () => post<Memo>(`/applications/${appId}/memo`),
+    mutationFn: () => runJob<{ generated_in_ms: number; citations: number }>(`/applications/${appId}/memo`, undefined, { headers: ASYNC }),
     onSuccess: (r) => {
-      toast.success(`Memo drafted in ${r.generated_in_ms ?? "<1000"} ms with ${r.citations.length} policy citations`);
+      toast.success(`Memo drafted in ${r.generated_in_ms} ms with ${r.citations} policy citations`);
       setTab("memo");
       return refresh();
     },
