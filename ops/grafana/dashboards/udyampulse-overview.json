@@ -96,7 +96,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(udyam_http_requests_total{status=~\"5..\"}[5m])) / clamp_min(sum(rate(udyam_http_requests_total[5m])), 1e-9)",
+          "expr": "(sum(rate(udyam_http_requests_total{status=~\"5..\"}[5m])) or vector(0)) / clamp_min(sum(rate(udyam_http_requests_total[5m])), 1e-9)",
           "legendFormat": "5xx"
         }
       ],
@@ -645,7 +645,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(increase(udyam_jobs_total{status=\"dead\"}[24h]))",
+          "expr": "sum(increase(udyam_jobs_total{status=\"dead\"}[24h])) or vector(0)",
           "legendFormat": "dead"
         }
       ],
@@ -792,7 +792,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max(udyam_llm_breaker_open)",
+          "expr": "max(udyam_llm_breaker_open) or vector(0)",
           "legendFormat": "open"
         }
       ],

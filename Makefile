@@ -5,15 +5,15 @@ VENV := .venv
 PY := $(VENV)/bin/python
 export MLFLOW_DISABLE_AGENT_HINT := 1
 
-.PHONY: help setup data lake train backtest seed pipeline api web demo demo-lite test test-web test-pg test-full pg-up pg-down redis-up redis-down up down e2e lint openapi clean
+.PHONY: help setup data lake train backtest seed pipeline api web demo demo-lite test test-web test-pg test-full pg-up pg-down redis-up redis-down up down e2e lint openapi clean security deploy-check
 
 help:  ## Show targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-10s %s\n", $$1, $$2}'
 
-$(VENV)/.installed: requirements.txt
+$(VENV)/.installed: requirements.txt requirements-train.txt
 	$(PY_BOOT) -m venv $(VENV)
 	$(PY) -m pip install -q --upgrade pip
-	$(PY) -m pip install -q -r requirements.txt
+	$(PY) -m pip install -q -r requirements-train.txt
 	touch $@
 
 web/node_modules/.installed: web/package.json
@@ -89,6 +89,19 @@ down:  ## Stop the Docker stack (add -v by hand to also delete its database volu
 lint: $(VENV)/.installed web/node_modules/.installed  ## Ruff, ESLint, Prettier, TypeScript and contrast checks
 	$(VENV)/bin/ruff check .
 	cd web && npx tsc -b --noEmit && npm run lint && npm run format:check && npm run check:contrast
+
+security: $(VENV)/.installed web/node_modules/.installed  ## Secret scan, dependency audits and bandit (as CI)
+	docker run --rm -v "$(CURDIR):/repo" zricethezav/gitleaks:v8.28.0 git /repo --redact --no-banner
+	$(VENV)/bin/pip install -q pip-audit==2.10.1 bandit==1.9.4
+	$(VENV)/bin/pip-audit -r requirements.txt --progress-spinner off --strict
+	$(VENV)/bin/bandit -q -r api agents core worker ml data_gen
+	cd web && npm audit --audit-level=moderate
+
+deploy-check:  ## Validate the Helm chart (kubeconform) and Terraform, using Docker images
+	docker run --rm -v "$(CURDIR)/deploy/k8s/udyampulse:/chart" alpine/helm:3.18.4 lint /chart
+	docker run --rm -v "$(CURDIR)/deploy/k8s/udyampulse:/chart" alpine/helm:3.18.4 template up /chart -f /chart/values-prod.yaml > var/rendered.yaml
+	docker run --rm -v "$(CURDIR)/var:/w" ghcr.io/yannh/kubeconform:v0.7.0 -strict -summary -ignore-missing-schemas -kubernetes-version 1.30.0 /w/rendered.yaml
+	docker run --rm -v "$(CURDIR)/deploy/terraform:/tf" -w /tf -e TF_DATA_DIR=/tmp/tf --entrypoint sh hashicorp/terraform:1.12.2 -c "terraform fmt -check && terraform init -backend=false -input=false >/dev/null && terraform validate"
 
 test-web: web/node_modules/.installed  ## Web unit tests (Vitest)
 	cd web && npm test

@@ -1,0 +1,79 @@
+# Defaults are production-shaped. values-prod.yaml shows an AKS Central India override.
+image:
+  app: ghcr.io/example/udyampulse-app   # API and worker share one image (same model version everywhere)
+  web: ghcr.io/example/udyampulse-web
+  tag: "1.0.0"
+  pullPolicy: IfNotPresent
+
+env: production
+dataRegion: centralindia
+
+# Secrets are never in values: point at a Kubernetes Secret (synced from Azure Key Vault by the CSI driver or
+# External Secrets). Required keys: UP_DB_URL, UP_REDIS_URL, UP_JWT_SECRET, UP_FIELD_KEYS, UP_METRICS_TOKEN.
+existingSecret: udyampulse-secrets
+
+serviceAccount:
+  create: true
+  annotations: {}   # azure.workload.identity/client-id: <managed identity for Key Vault, Blob, OpenAI>
+
+config:
+  UP_LOG_FORMAT: json
+  UP_JWT_TTL_MINUTES: "15"
+  UP_REFRESH_TTL_HOURS: "12"
+  UP_COOKIE_SECURE: "on"
+  UP_DEMO_MODE: "off"
+  UP_INPROCESS_WORKER: "off"
+  UP_LLM_PROVIDER: template
+  UP_OTEL_ENDPOINT: ""   # e.g. http://otel-collector.observability:4318
+
+api:
+  replicas: 3
+  # One uvicorn process per pod: Kubernetes scales pods, so metrics need no multiprocess mode.
+  resources:
+    requests: {cpu: 500m, memory: 768Mi}
+    limits: {cpu: "2", memory: 1536Mi}
+  hpa:
+    minReplicas: 3
+    maxReplicas: 20
+    targetCPUUtilization: 65
+  pdb:
+    minAvailable: 2
+
+worker:
+  replicas: 2
+  threads: 4
+  resources:
+    requests: {cpu: 500m, memory: 1Gi}
+    limits: {cpu: "2", memory: 2Gi}
+  # KEDA scales workers on queued jobs (udyam_job_queue_depth, scraped from the API by Prometheus).
+  keda:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 30
+    prometheusServer: http://prometheus-server.observability.svc:80
+    queuedPerWorker: "20"
+  pdb:
+    minAvailable: 1
+
+web:
+  replicas: 2
+  resources:
+    requests: {cpu: 50m, memory: 64Mi}
+    limits: {cpu: 250m, memory: 128Mi}
+  pdb:
+    minAvailable: 1
+
+ingress:
+  enabled: true
+  className: azure-application-gateway   # WAF v2 policy attached at the gateway
+  host: udyampulse.example.in
+  tlsSecret: udyampulse-tls
+
+migrations:
+  enabled: true   # pre-install / pre-upgrade hook runs Alembic before new pods start
+
+networkPolicy:
+  enabled: true
+
+serviceMonitor:
+  enabled: false   # set true with the Prometheus Operator

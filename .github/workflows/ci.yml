@@ -4,6 +4,10 @@ on:
     branches: [main]
   pull_request:
 
+# Least privilege: no job needs to write to the repository.
+permissions:
+  contents: read
+
 jobs:
   python:
     runs-on: ubuntu-latest
@@ -21,7 +25,7 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
-      - run: pip install -r requirements.txt
+      - run: pip install -r requirements-train.txt
       - name: Lint
         run: ruff check .
       - name: Build lake, train model, run EWS back-test
@@ -32,17 +36,13 @@ jobs:
           python -m ml.ews
       - name: Tests (SQLite)
         run: python -m pytest -q
-      - name: Tests (PostgreSQL: migrations, partitions, row-level security)
+      - name: "Tests (PostgreSQL: migrations, partitions, row-level security)"
         env:
           PGPASSWORD: postgres
         run: |
           psql -h localhost -U postgres -c "CREATE ROLE udyam_app LOGIN PASSWORD 'udyam_app' NOSUPERUSER NOBYPASSRLS"
           psql -h localhost -U postgres -c "CREATE DATABASE udyampulse_test OWNER udyam_app"
           UP_TEST_DB_URL=postgresql+psycopg://udyam_app:udyam_app@localhost:5432/udyampulse_test python -m pytest -q
-      - name: Dependency scan (pip-audit)
-        run: |
-          pip install pip-audit
-          pip-audit -r requirements.txt --progress-spinner off || echo "::warning::pip-audit reported advisories"
 
   web:
     runs-on: ubuntu-latest
@@ -68,8 +68,6 @@ jobs:
       - name: Unit tests
         run: npm test
       - run: npm run build
-      - name: Dependency scan (npm audit)
-        run: npm audit --audit-level=high || echo "::warning::npm audit reported advisories"
 
   e2e:
     runs-on: ubuntu-latest
@@ -87,7 +85,7 @@ jobs:
       - name: Install Python deps into .venv
         run: |
           python -m venv .venv
-          .venv/bin/pip install -r requirements.txt
+          .venv/bin/pip install -r requirements-train.txt
       - name: Build lake and model
         run: |
           .venv/bin/python -m data_gen.generate
@@ -106,3 +104,84 @@ jobs:
         with:
           name: playwright-report
           path: web/playwright-report
+
+  # Security gates. Every step blocks the merge on a finding.
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history, so the secret scan covers every commit
+      - name: Secret scan (gitleaks, whole history)
+        run: docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:v8.28.0 git /repo --redact --no-banner
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install pip-audit==2.10.1 bandit==1.9.4
+      - name: Python dependency audit (pip-audit)
+        run: |
+          pip-audit -r requirements.txt --progress-spinner off --strict
+          pip-audit -r requirements-train.txt --progress-spinner off --strict
+      - name: Hosted-LLM extras audit (known werkzeug pin via semantic-kernel ignored, see requirements-cloud.txt)
+        run: >-
+          pip-audit -r requirements-cloud.txt --progress-spinner off
+          --ignore-vuln PYSEC-2026-2044 --ignore-vuln PYSEC-2026-2046
+          --ignore-vuln PYSEC-2026-2320 --ignore-vuln PYSEC-2026-4312
+      - name: Static analysis (bandit)
+        run: bandit -q -r api agents core worker ml data_gen
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: JavaScript dependency audit (npm audit)
+        working-directory: web
+        run: |
+          npm audit --omit=dev --audit-level=low
+          npm audit --audit-level=moderate
+
+  # The production images: build both, scan for fixable HIGH/CRITICAL CVEs, verify they run as non-root.
+  images:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build API/worker image
+        run: docker build -t udyampulse-app:ci .
+      - name: Build web image
+        run: docker build -t udyampulse-web:ci web
+      - name: Non-root check
+        run: |
+          test "$(docker run --rm --entrypoint id udyampulse-app:ci -u)" = "10001"
+          test "$(docker run --rm --entrypoint id udyampulse-web:ci -u)" != "0"
+      - name: Image scan (Trivy)
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          image-ref: udyampulse-app:ci
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
+      - name: Image scan (Trivy, web)
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          image-ref: udyampulse-web:ci
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
+
+  # Deployment assets stay valid: Helm chart renders and passes Kubernetes schemas, Terraform validates.
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Helm lint and kubeconform
+        run: |
+          docker run --rm -v "$PWD/deploy/k8s/udyampulse:/chart" alpine/helm:3.18.4 lint /chart
+          docker run --rm -v "$PWD/deploy/k8s/udyampulse:/chart" alpine/helm:3.18.4 template up /chart \
+            -f /chart/values-prod.yaml > rendered.yaml
+          docker run --rm -v "$PWD:/w" ghcr.io/yannh/kubeconform:v0.7.0 -strict -summary \
+            -ignore-missing-schemas -kubernetes-version 1.30.0 /w/rendered.yaml
+      - name: Terraform fmt and validate
+        run: |
+          docker run --rm -v "$PWD/deploy/terraform:/tf" -w /tf -e TF_DATA_DIR=/tmp/tf --entrypoint sh \
+            hashicorp/terraform:1.12.2 -c "terraform fmt -check && terraform init -backend=false -input=false && terraform validate"

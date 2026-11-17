@@ -36,6 +36,7 @@ services:
       UP_DB_URL: postgresql+psycopg://udyam_app:udyam_app_local@postgres:5432/udyampulse
       UP_REDIS_URL: redis://redis:6379/0
       UP_OTEL_ENDPOINT: ${UP_OTEL_ENDPOINT:-}
+    restart: unless-stopped
     depends_on:
       postgres:
         condition: service_healthy
@@ -56,7 +57,11 @@ services:
       UP_REDIS_URL: redis://redis:6379/0
       UP_WORKER_THREADS: "4"
       UP_OTEL_ENDPOINT: ${UP_OTEL_ENDPOINT:-}
-      PROMETHEUS_MULTIPROC_DIR: ""  # one process: plain registry, served on :9191
+    restart: unless-stopped
+    healthcheck:  # the image's check targets the API port; the worker serves metrics on :9191
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9191/metrics')"]
+      interval: 10s
+      retries: 6
     depends_on:
       api:
         condition: service_healthy

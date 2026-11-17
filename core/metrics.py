@@ -1,8 +1,11 @@
 """Prometheus metrics shared by the API and the worker.
 
-With several uvicorn workers in one container, set `PROMETHEUS_MULTIPROC_DIR` (the Docker image does) so
-every process writes to shared files and one scrape sees the whole container. Labels are low-cardinality on
-purpose: the route template, never the raw path; the job kind, never the job id; no tenant or user labels.
+With several uvicorn workers in one container, set `PROMETHEUS_MULTIPROC_DIR` (the image's API command does)
+so every process writes to shared files and one scrape sees the whole container. Leave it unset everywhere
+else: prometheus_client switches to file mode whenever the variable exists, even when it is empty.
+
+Labels are low-cardinality on purpose: the route template, never the raw path; the job kind, never the job
+id; no tenant or user labels.
 """
 
 from __future__ import annotations
@@ -12,7 +15,7 @@ import os
 from prometheus_client import CONTENT_TYPE_LATEST, CollectorRegistry, Counter, Gauge, Histogram, generate_latest
 from prometheus_client.core import GaugeMetricFamily
 
-MULTIPROC = bool(os.environ.get("PROMETHEUS_MULTIPROC_DIR"))
+MULTIPROC = "PROMETHEUS_MULTIPROC_DIR" in os.environ  # same test prometheus_client itself uses
 LATENCY_BUCKETS = (0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0)
 
 HTTP_REQUESTS = Counter("udyam_http_requests_total", "HTTP requests", ["method", "route", "status"])
