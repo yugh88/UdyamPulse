@@ -1,0 +1,8 @@
+# Hosted LLM providers (UP_LLM_PROVIDER=azure_openai | openai). Not needed for the local demo, which uses the
+# deterministic template writer. Install on top of requirements.txt:  pip install -r requirements-cloud.txt
+#
+# Audit note: semantic-kernel pins openapi-core, which pins werkzeug<3.1.2 (advisories fixed in 3.1.4+).
+# openapi-core serves Semantic Kernel's OpenAPI-plugin feature, which UdyamPulse does not use (it only calls
+# chat completion). CI audits this file separately, ignoring only those werkzeug advisories.
+-r requirements.txt
+semantic-kernel==1.46.0

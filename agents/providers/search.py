@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import re
 from functools import lru_cache
 
@@ -9,6 +10,8 @@ import numpy as np
 
 from agents.providers.base import PolicyChunk
 from core.settings import get_settings
+
+log = logging.getLogger(__name__)
 
 _HEADING = re.compile(r"^###\s+§(\d+\.\d+)\s+(.*)$")
 
@@ -45,8 +48,8 @@ class _Embedder:
                 self._st = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
                 self.kind = "sentence_transformers"
                 return
-            except Exception:  # model or package unavailable offline -> TF-IDF
-                pass
+            except Exception as exc:  # model or package unavailable offline -> TF-IDF
+                log.info("dense embeddings unavailable (%s); using TF-IDF", type(exc).__name__)
         from sklearn.feature_extraction.text import TfidfVectorizer
 
         self._tfidf = TfidfVectorizer(ngram_range=(1, 2), sublinear_tf=True, stop_words="english").fit(corpus)

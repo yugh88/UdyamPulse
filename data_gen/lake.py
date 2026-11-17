@@ -15,6 +15,8 @@ from data_gen.generate import SOURCE_COLUMNS
 SIGNAL_COLUMNS = [c for cols in SOURCE_COLUMNS.values() for c in cols]
 
 
+# Offline build step. The SQL below interpolates only module constants (column names) and lake paths from
+# settings, never user input, hence the B608 suppressions.
 def _dedupe_sql(source: str) -> str:
     cols = ", ".join(SOURCE_COLUMNS[source])
     return f"""
@@ -22,7 +24,7 @@ def _dedupe_sql(source: str) -> str:
             SELECT factory_id, month, {cols}
             FROM read_parquet('{{bronze}}/{source}.parquet')
             QUALIFY row_number() OVER (PARTITION BY factory_id, month ORDER BY _ingested_at DESC) = 1
-        )"""
+        )"""  # nosec B608
 
 
 def build_silver() -> pd.DataFrame:
@@ -49,7 +51,7 @@ def build_silver() -> pd.DataFrame:
         FROM spine
         {joins}
         ORDER BY factory_id, month
-    """
+    """  # nosec B608
     con = duckdb.connect()
     df = con.execute(sql).df()
 
@@ -67,9 +69,9 @@ def build_silver() -> pd.DataFrame:
 
     con.register("silver_df", df)
     s.silver.mkdir(parents=True, exist_ok=True)
-    con.execute(f"COPY silver_df TO '{(s.silver / 'factory_month.parquet').as_posix()}' (FORMAT parquet)")
+    con.execute(f"COPY silver_df TO '{(s.silver / 'factory_month.parquet').as_posix()}' (FORMAT parquet)")  # nosec B608
     con.execute(
-        f"COPY (SELECT * FROM read_parquet('{bronze}/factories.parquet')) "
+        f"COPY (SELECT * FROM read_parquet('{bronze}/factories.parquet')) "  # nosec B608
         f"TO '{(s.silver / 'factories.parquet').as_posix()}' (FORMAT parquet)"
     )
     con.close()

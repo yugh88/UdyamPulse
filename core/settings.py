@@ -11,7 +11,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 
 INDIA_REGIONS = {"centralindia", "southindia", "westindia", "jioindiacentral", "jioindiawest"}
-DEFAULT_JWT_SECRET = "change-me-local-demo-secret-please-rotate-0001"
+# Public demo default; the production start-up guard refuses it.
+DEFAULT_JWT_SECRET = "change-me-local-demo-secret-please-rotate-0001"  # nosec B105
 
 
 def _load_dotenv(path: Path) -> None:

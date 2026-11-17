@@ -73,11 +73,12 @@ def process_chunk(run_id: str, chunk_no: int, factory_ids: list[str], month: int
     s = get_settings()
     con = duckdb.connect()
     con.register("ids", pd.DataFrame({"factory_id": factory_ids}))
+    # Lake paths come from server settings; account ids and the month are bound as data, never interpolated.
     silver = con.execute(
-        f"SELECT s.* FROM read_parquet('{(s.silver / 'factory_month.parquet').as_posix()}') s "
+        f"SELECT s.* FROM read_parquet('{(s.silver / 'factory_month.parquet').as_posix()}') s "  # nosec B608
         "JOIN ids USING (factory_id) WHERE s.month BETWEEN ? AND ?", [month - HISTORY_MONTHS, month]).df()
     features = con.execute(
-        f"SELECT g.* FROM read_parquet('{(s.gold / 'features.parquet').as_posix()}') g "
+        f"SELECT g.* FROM read_parquet('{(s.gold / 'features.parquet').as_posix()}') g "  # nosec B608
         "JOIN ids USING (factory_id) WHERE g.month = ?", [month]).df()
     con.close()
 

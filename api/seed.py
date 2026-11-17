@@ -21,7 +21,8 @@ from api.tenancy import bind_tenant
 from core.settings import get_settings
 from core.timeline import month_end
 
-DEMO_PASSWORD = "demo123"
+# Published password of the synthetic demo personas; production signs in through Entra ID.
+DEMO_PASSWORD = "demo123"  # nosec B105
 HERO = "UP-F0001"
 # (username, display name, role, factory, branch scope: clusters covered or "*" for the zonal hub)
 USERS = [

@@ -263,7 +263,8 @@ def compute_features(silver: pd.DataFrame, profile: pd.DataFrame) -> pd.DataFram
 
     feats = feats.replace([np.inf, -np.inf], np.nan)
     missing = set(FEATURE_NAMES) - set(feats.columns)
-    assert not missing, f"features not computed: {missing}"
+    if missing:
+        raise ValueError(f"features not computed: {sorted(missing)}")
     return feats[["factory_id", "month", *FEATURE_NAMES]]
 
 

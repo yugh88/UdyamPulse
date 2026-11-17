@@ -16,10 +16,8 @@ lightgbm==4.7.0
 scikit-learn==1.9.1
 joblib==1.6.0
 prophet==1.5.0
-mlflow-skinny==3.17.2
 
-# Agents, RAG, documents
-semantic-kernel==1.46.0
+# Agents, RAG, documents (the hosted-LLM SDK is in requirements-cloud.txt: the default writer is local)
 faiss-cpu==1.15.1
 reportlab==5.1.0
 
