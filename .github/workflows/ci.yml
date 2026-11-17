@@ -185,3 +185,22 @@ jobs:
         run: |
           docker run --rm -v "$PWD/deploy/terraform:/tf" -w /tf -e TF_DATA_DIR=/tmp/tf --entrypoint sh \
             hashicorp/terraform:1.12.2 -c "terraform fmt -check && terraform init -backend=false -input=false && terraform validate"
+
+  # Free public demo: on main, publish to the Hugging Face Space when the HF_TOKEN secret and the HF_SPACE
+  # variable are configured. Runs only after every test and gate above has passed.
+  deploy-demo:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && vars.HF_SPACE != ''
+    needs: [python, web, e2e, security, images]
+    runs-on: ubuntu-latest
+    environment: demo
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install huggingface_hub==2.4.0
+      - name: Publish to the Hugging Face Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_SPACE: ${{ vars.HF_SPACE }}
+        run: bash deploy/huggingface/push.sh

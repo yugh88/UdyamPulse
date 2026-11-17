@@ -87,6 +87,10 @@ class Settings:
     otel_endpoint: str = field(default_factory=lambda: _env("UP_OTEL_ENDPOINT", ""))  # OTLP/HTTP, empty = off
     metrics_enabled: bool = field(default_factory=lambda: _env("UP_METRICS", "on").lower() not in ("0", "off", "false"))
     metrics_token: str = field(default_factory=lambda: _env("UP_METRICS_TOKEN", ""))  # if set, /metrics needs it
+    # Single-container public demo: serve the built web app from FastAPI (api/webapp.py). Empty = API only.
+    web_dist: str = field(default_factory=lambda: _env("UP_WEB_DIST", ""))
+    # Sites allowed to frame the web app (space separated). Default none; the Hugging Face Space page embeds it.
+    frame_ancestors: str = field(default_factory=lambda: _env("UP_FRAME_ANCESTORS", ""))
 
     # LLM resilience (only matters when a hosted LLM provider is configured)
     llm_timeout_s: float = field(default_factory=lambda: float(_env("UP_LLM_TIMEOUT_S", "20")))

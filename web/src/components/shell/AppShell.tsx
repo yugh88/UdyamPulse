@@ -11,6 +11,7 @@ import { crumbs, navFor } from "../../lib/nav";
 import { useTheme } from "../../lib/theme";
 import { Badge, Button, Dialog, DropdownMenu, MenuItem, MenuLabel, MenuSeparator, Sheet, SkeletonRows, Tooltip } from "../ui";
 import { CommandPalette } from "./CommandPalette";
+import { PrototypeBanner } from "./PrototypeBanner";
 
 const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
 const MOD = isMac ? "⌘" : "Ctrl";
@@ -171,6 +172,7 @@ export function AppShell() {
       )}
 
       <div className="flex min-w-0 flex-1 flex-col">
+        <PrototypeBanner />
         <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-edge bg-panel/95 px-3 backdrop-blur sm:px-5">
           {msme ? (
             <Logo />

@@ -1,5 +1,6 @@
 const hi = {
   lang: { label: "भाषा", en: "English", hi: "हिन्दी" },
+  banner: { prototype: "प्रोटोटाइप · कृत्रिम (सिंथेटिक) डेटा · यह लोन का निर्णय नहीं है" },
   tabs: { home: "होम", plan: "90 दिन की योजना", consent: "मेरा डेटा", messages: "संदेश" },
   home: {
     greeting: "नमस्ते, {{name}}",

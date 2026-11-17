@@ -10,7 +10,21 @@ from __future__ import annotations
 
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
+from api.webapp import is_api_path
+
 API_CSP = "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
+# The web app's policy (same as web/nginx.conf), used when FastAPI serves the React build itself.
+SPA_CSP = ("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; "
+           "font-src 'self' data:; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; "
+           "base-uri 'self'; form-action 'self'; frame-ancestors {ancestors}")
+
+
+def spa_csp() -> tuple[str, bool]:
+    """(policy, framing allowed). Framing is denied unless UP_FRAME_ANCESTORS names who may embed the app."""
+    from core.settings import get_settings
+
+    ancestors = get_settings().frame_ancestors.strip()
+    return SPA_CSP.format(ancestors=ancestors or "'none'"), bool(ancestors)
 DOCS_CSP = ("default-src 'none'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
             "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' data: https://fastapi.tiangolo.com; "
             "connect-src 'self'; frame-ancestors 'none'; base-uri 'none'")
@@ -46,7 +60,14 @@ class SecurityHeadersMiddleware:
             await self.app(scope, receive, send)
             return
         path = scope.get("path", "")
-        csp = DOCS_CSP if path.startswith(DOCS_PATHS) else API_CSP
+        web = not is_api_path(path) and not path.startswith(DOCS_PATHS)
+        framable = False
+        if path.startswith(DOCS_PATHS):
+            csp = DOCS_CSP
+        elif web:
+            csp, framable = spa_csp()
+        else:
+            csp = API_CSP
         https = is_https(scope)
         api_data = path.startswith("/v1/")
 
@@ -54,9 +75,11 @@ class SecurityHeadersMiddleware:
             if message["type"] == "http.response.start":
                 headers = message.setdefault("headers", [])
                 present = {k.lower() for k, _ in headers}
-                extra = [*BASE_HEADERS, (b"content-security-policy", csp.encode())]
+                base = [h for h in BASE_HEADERS if not (framable and h[0] == b"x-frame-options")]
+                extra = [*base, (b"content-security-policy", csp.encode())]
                 if https:
                     extra.append((b"strict-transport-security", HSTS.encode()))
+                extra.append((b"x-robots-tag", b"noindex, nofollow"))  # prototype on synthetic data
                 # Credit data must never sit in a shared or browser cache.
                 if api_data:
                     extra.append((b"cache-control", b"no-store"))

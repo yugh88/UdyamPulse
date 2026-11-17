@@ -15,3 +15,11 @@ docs/images
 .ruff_cache
 UdyamPulse_Round2_Prototype_Plan.md
 update_step.md
+lake_full
+lake_scale
+data_real/raw
+data_real/cache
+ml/artifacts_*
+web/test-results
+web/playwright-report
+UdyamPulse_Round2_Guidelines_Addendum.md

@@ -1,5 +1,6 @@
 const en = {
   lang: { label: "Language", en: "English", hi: "हिन्दी" },
+  banner: { prototype: "Prototype · synthetic data · not a lending decision" },
   tabs: { home: "Home", plan: "90-day plan", consent: "My data", messages: "Messages" },
   home: {
     greeting: "Namaste, {{name}}",
