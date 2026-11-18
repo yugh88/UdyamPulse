@@ -111,7 +111,7 @@ security: $(VENV)/.installed web/node_modules/.installed  ## Secret scan, depend
 	$(VENV)/bin/pip install -q pip-audit==2.10.1 bandit==1.9.4
 	$(VENV)/bin/pip-audit -r requirements.txt --progress-spinner off --strict
 	$(VENV)/bin/bandit -q -r api agents core worker ml data_gen
-	cd web && npm audit --audit-level=moderate
+	cd web && npm audit --omit=dev --audit-level=low && node scripts/audit-gate.mjs
 
 deploy-check:  ## Validate the Helm chart (kubeconform) and Terraform, using Docker images
 	docker run --rm -v "$(CURDIR)/deploy/k8s/udyampulse:/chart" alpine/helm:3.18.4 lint /chart

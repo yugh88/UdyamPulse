@@ -4,7 +4,10 @@ import { readFileSync } from "node:fs";
 
 const pkg = JSON.parse(readFileSync("package.json", "utf8"));
 const rows = [];
-for (const [group, deps] of [["runtime", pkg.dependencies ?? {}], ["dev", pkg.devDependencies ?? {}]]) {
+for (const [group, deps] of [
+  ["runtime", pkg.dependencies ?? {}],
+  ["dev", pkg.devDependencies ?? {}],
+]) {
   for (const name of Object.keys(deps).sort()) {
     try {
       const meta = JSON.parse(readFileSync(`node_modules/${name}/package.json`, "utf8"));

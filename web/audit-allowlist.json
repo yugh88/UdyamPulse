@@ -1,0 +1,8 @@
+{
+  "_note": "Advisories accepted temporarily, each with a reason and a review date. scripts/audit-gate.mjs fails CI on any other moderate+ advisory, and on any entry past its review date.",
+  "GHSA-fc5q-39xc-vjpf": {
+    "package": "picomatch <= 4.0.7 (via vite, vitest, tinyglobby, typescript-eslint)",
+    "reason": "ReDoS needs attacker-controlled glob patterns; picomatch runs only in dev and build tooling on our own patterns, never in the shipped app (npm audit --omit=dev is clean). No patched release exists yet (latest 4.0.7).",
+    "review_by": "2026-12-15"
+  }
+}

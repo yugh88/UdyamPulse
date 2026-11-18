@@ -139,7 +139,7 @@ jobs:
         working-directory: web
         run: |
           npm audit --omit=dev --audit-level=low
-          npm audit --audit-level=moderate
+          node scripts/audit-gate.mjs
 
   # The production images: build both, scan for fixable HIGH/CRITICAL CVEs, verify they run as non-root.
   images:
@@ -155,14 +155,14 @@ jobs:
           test "$(docker run --rm --entrypoint id udyampulse-app:ci -u)" = "10001"
           test "$(docker run --rm --entrypoint id udyampulse-web:ci -u)" != "0"
       - name: Image scan (Trivy)
-        uses: aquasecurity/trivy-action@0.33.1
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: udyampulse-app:ci
           severity: CRITICAL,HIGH
           ignore-unfixed: true
           exit-code: "1"
       - name: Image scan (Trivy, web)
-        uses: aquasecurity/trivy-action@0.33.1
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: udyampulse-web:ci
           severity: CRITICAL,HIGH
