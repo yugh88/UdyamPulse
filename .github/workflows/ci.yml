@@ -11,6 +11,7 @@ permissions:
 jobs:
   python:
     runs-on: ubuntu-latest
+    timeout-minutes: 40 # the suite takes about 2 minutes; a hang must fail fast, not burn six hours
     services:
       postgres:
         image: postgres:16-alpine
@@ -35,14 +36,15 @@ jobs:
           python -m ml.train
           python -m ml.ews
       - name: Tests (SQLite)
-        run: python -m pytest -q
+        # faulthandler dumps every thread's stack if one test runs past 3 minutes, so a hang names its cause.
+        run: python -m pytest -q -o faulthandler_timeout=180 --durations=10
       - name: "Tests (PostgreSQL: migrations, partitions, row-level security)"
         env:
           PGPASSWORD: postgres
         run: |
           psql -h localhost -U postgres -c "CREATE ROLE udyam_app LOGIN PASSWORD 'udyam_app' NOSUPERUSER NOBYPASSRLS"
           psql -h localhost -U postgres -c "CREATE DATABASE udyampulse_test OWNER udyam_app"
-          UP_TEST_DB_URL=postgresql+psycopg://udyam_app:udyam_app@localhost:5432/udyampulse_test python -m pytest -q
+          UP_TEST_DB_URL=postgresql+psycopg://udyam_app:udyam_app@localhost:5432/udyampulse_test python -m pytest -q -o faulthandler_timeout=180
 
   web:
     runs-on: ubuntu-latest
