@@ -25,6 +25,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from api.audit import Actor
+from api.changes import set_actor
 from api.models.db import RefreshToken, User, get_db, utcnow
 from api.tenancy import bind_tenant
 from core.settings import get_settings
@@ -171,6 +172,7 @@ def get_current_user(
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid or expired token")
     # From here on, every query in this request is limited to the caller's bank.
     bind_tenant(db, payload["tid"])
+    set_actor(db, payload["sub"])  # change events in this request are attributed to the signed-in user
     user = db.query(User).filter_by(username=payload["sub"]).one_or_none()
     if user is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Unknown user")

@@ -22,6 +22,7 @@ from agents.base import sim_date, visible_month
 from agents.orchestrator import InvalidTransition, Orchestrator, ValidationFailed
 from agents.providers.consent import ConsentError
 from api.audit import Actor
+from api.changes import set_actor
 from api.models.db import Application, Job, SessionLocal, utcnow
 from api.tenancy import allow_cross_tenant, bind_tenant
 from core import metrics
@@ -136,6 +137,7 @@ def execute(job_id: str) -> str:
         fn = HANDLERS.get(kind)
         actor = Actor(job.created_by, job.role, None, tenant)
         set_log_tenant(tenant)
+        set_actor(db, job.created_by)  # changes made by the job belong to the user who started it
         started = time.perf_counter()
         with continue_trace((job.params or {}).get("_trace"), f"job {kind}", **{
                 "udyam.job.id": job_id, "udyam.job.kind": kind, "udyam.job.attempt": job.attempts}) as span:

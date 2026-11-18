@@ -14,6 +14,7 @@ from api.audit import log_event
 from api.auth import CurrentUser, require_roles
 from api.authz import branch_clusters, ensure_branch_access, scope_applications, scope_key
 from api.cache import cached
+from api.changes import ChangeFlags
 from api.jobs import enqueue
 from api.models.db import AccountScore, Alert, Application, Consent, User, get_db, utcnow
 from api.models.schemas import AlertAction, AlertBulk
@@ -141,6 +142,49 @@ def staff(db: Session = Depends(get_db), user: CurrentUser = Depends(require_rol
     return [{"username": u.username, "display_name": u.display_name, "role": u.role} for u in rows]
 
 
+# Which raw signals explain each rule, and which direction is good, for the before → after tiles.
+ALERT_SIGNALS = {
+    "order_loss": [("eway_value", "E-way bill value", "inr", True), ("kwh", "Electricity use", "kwh", True)],
+    "cash_squeeze": [("avg_balance", "Average bank balance", "inr", True), ("bounces", "Cheque/NACH bounces", "count", False)],
+    "buyer_risk": [("top_buyer_share", "Top buyer's share of sales", "share", False),
+                   ("avg_days_to_pay", "Days buyers take to pay", "days", False)],
+    "diversion": [("gst_bank_mismatch", "GST vs bank credits mismatch", "share", False)],
+    "compliance_slip": [("gst_filing_delay_days", "GST filing delay", "days", False)],
+}
+FALLBACK_SIGNALS = [("eway_value", "E-way bill value", "inr", True), ("aa_credits", "Bank inflows", "inr", True)]
+POINT_IN_TIME = {"bounces", "gst_filing_delay_days", "top_buyer_share", "gst_bank_mismatch"}
+
+
+def alert_before_after(lake, alert: Alert) -> dict:
+    """Triggering signals and the score, before (the rule's 8-week baseline) and after (the alert month)."""
+    hist = lake.history(alert.factory_id, alert.month).set_index("month")
+    picked: list[tuple] = []
+    for rule in alert.rules or []:
+        for sig in ALERT_SIGNALS.get(rule, []):
+            if sig not in picked:
+                picked.append(sig)
+    picked = (picked or FALLBACK_SIGNALS)[:3]
+    m = alert.month
+    signals = []
+    for col, label, unit, good_up in picked:
+        if m not in hist.index or col not in hist.columns:
+            continue
+        prev = hist.loc[[x for x in (m - 2, m - 1) if x in hist.index], col]
+        before = float(hist.loc[m - 1, col]) if col in POINT_IN_TIME and (m - 1) in hist.index else (
+            float(prev.mean()) if len(prev) else None)
+        after = float(hist.loc[m, col])
+        signals.append({"key": col, "label": label, "unit": unit, "good_when_up": good_up,
+                        "before": round(before, 4) if before is not None else None, "after": round(after, 4),
+                        "before_period": "8-week baseline" if col not in POINT_IN_TIME else month_label(m - 1),
+                        "after_period": month_label(m)})
+    scores = lake.scores(m)
+    mine = scores[scores.factory_id == alert.factory_id].set_index("month")
+    score = {"before": int(mine.loc[m - 1, "score"]) if (m - 1) in mine.index else None,
+             "after": int(mine.loc[m, "score"]) if m in mine.index else None,
+             "before_period": month_label(m - 1), "after_period": month_label(m), "good_when_up": True}
+    return {"signals": signals, "score": score}
+
+
 @router.get("/alerts")
 def list_alerts(request: Request, response: Response,
                 status_filter: str | None = Query(default="OPEN", alias="status"),
@@ -169,10 +213,13 @@ def list_alerts(request: Request, response: Response,
     history: dict[int, list[Alert]] = {}
     for h in db.query(Alert).filter(Alert.application_id.in_(app_ids)).order_by(Alert.month, Alert.id):
         history.setdefault(h.application_id, []).append(h)
+    flags = ChangeFlags(db, user.username, user.tenant_id, "alert", [str(a.id) for a in alerts])
     out = []
     for a in alerts:
         p = lake.profile(a.factory_id)
+        kind = flags.kind(str(a.id), a.created_at)
         out.append({
+            "changed_since_seen": kind is not None, "change_kind": kind,
             "owner": a.owner, "acknowledged_by": a.acknowledged_by, "outcome": a.outcome,
             "acknowledged_at": a.acknowledged_at.isoformat() if a.acknowledged_at else None,
             "days_open": max((today - a.raised_on).days, 0), "exposure": exposure.get(a.application_id, 0),
@@ -247,3 +294,27 @@ def advance(days: int = Query(default=7, ge=1, le=120), db: Session = Depends(ge
     db.commit()
     return {"job_id": job.id, "status": "queued", "status_url": f"/v1/jobs/{job.id}",
             "sim_date": str(after), "data_month": month_label(visible_month(db))}
+
+
+@router.get("/alerts/{alert_id}")
+def alert_detail(alert_id: int, db: Session = Depends(get_db),
+                 user: CurrentUser = Depends(require_roles(*STAFF))) -> dict:
+    """One alert with before → after values for its triggering signals and the score."""
+    alert = db.get(Alert, alert_id)
+    if alert is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Alert not found")
+    app = db.get(Application, alert.application_id)
+    ensure_branch_access(user, app)
+    lake = get_lake()
+    p = lake.profile(alert.factory_id)
+    flags = ChangeFlags(db, user.username, user.tenant_id, "alert", [str(alert.id)])
+    kind = flags.kind(str(alert.id), alert.created_at)
+    return {
+        "id": alert.id, "application_id": alert.application_id, "factory_id": alert.factory_id, "name": p["name"],
+        "cluster": p["cluster"], "sector": p["sector_label"], "month": month_label(alert.month),
+        "severity": alert.severity, "rules": alert.rules, "reasons": alert.reasons,
+        "next_best_action": alert.next_best_action, "briefing": alert.briefing, "status": alert.status,
+        "action_taken": alert.action_taken, "outcome": alert.outcome, "raised_on": str(alert.raised_on),
+        "changed_since_seen": kind is not None, "change_kind": kind, "ai_label": AI_LABEL,
+        **alert_before_after(lake, alert),
+    }

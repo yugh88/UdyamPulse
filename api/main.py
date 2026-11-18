@@ -18,7 +18,7 @@ from api.middleware import IdempotencyMiddleware, RateLimitMiddleware
 from api.models.db import get_engine, init_db
 from api.observability import ObservabilityMiddleware
 from api.request_context import RequestIdMiddleware
-from api.routers import applications, auth, data_models, governance, insights, jobs, msme, portfolio, system
+from api.routers import applications, auth, changes, data_models, governance, insights, jobs, msme, portfolio, system
 from api.security import SecurityHeadersMiddleware
 from core import metrics
 from core.logs import configure_logging
@@ -74,7 +74,7 @@ problems.install(app)
 
 v1 = APIRouter(prefix=f"/{API_VERSION}")
 for r in (auth.router, applications.router, insights.router, portfolio.router, msme.router, governance.router,
-          data_models.router,
+          data_models.router, changes.router,
           jobs.router, system.router):
     v1.include_router(r)
 app.include_router(v1)

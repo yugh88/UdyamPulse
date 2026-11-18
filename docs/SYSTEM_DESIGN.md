@@ -264,3 +264,28 @@ Bank isolation (ADR-002) sits underneath, so branch scope only ever narrows.
 - The API image ran with `--read-only --cap-drop ALL` and completed login, consent, scoring, memo, PDF and
   refresh. All of this runs in CI (`deploy`, `images`, `security` jobs).
 - The Terraform has not been applied to a live subscription.
+
+## ADR-014 · Change tracking: what changed, from what, to what, and whether you have seen it
+
+**Decision.**
+- **Capture:** one SQLAlchemy `after_flush` listener (`api/changes.py`) writes a `change_events` row with
+  before/after values and a plain-language summary for:
+  - every score, band, state, memo or decision change;
+  - every alert raised or actioned;
+  - every consent granted, revoked or expired.
+
+  It covers the API, agents, workers and seed without per-call logging. Events commit with the change, or
+  roll back with it.
+- **Seen tracking:** `user_seen(username, entity_type, entity_id, last_seen_at)` records when each user last
+  looked at an item; `entity_id = "*"` is "mark all seen". With no row, the baseline is the end of the demo seed
+  (`tenants.change_baseline_at`), so seeded history is not flagged.
+- **API:**
+  - list items carry `changed_since_seen`, `change_kind` (new / updated), `prev_score`, `score_delta` and a
+    plain-words `next_step`;
+  - `GET /v1/applications/{id}/changes` is the timeline;
+  - `GET /v1/alerts/{id}` returns before → after values for the triggering signals and the score;
+  - `/applications/stats` tiles return value, previous value, delta and period;
+  - `POST /v1/seen` clears markers;
+  - `GET /v1/events?changes=1` streams change events within the caller's branch or factory scope.
+
+**Verified.** `tests/test_changes.py`, on SQLite and PostgreSQL (row-level security on both new tables).

@@ -13,8 +13,9 @@ from api import pagination
 from api.audit import log_event
 from api.auth import CurrentUser, ensure_factory_access, get_current_user, require_roles
 from api.authz import ensure_branch_access, scope_applications
+from api.changes import application_change_fields, tile, timeline
 from api.jobs import enqueue
-from api.models.db import Alert, Application, AuditLog, ConsentEvent, get_db, utcnow
+from api.models.db import Alert, Application, AuditLog, ChangeEvent, ConsentEvent, get_db, utcnow
 from api.models.schemas import ApplicationCreate, DecisionRequest, ReviewRequest, ScoreResponse
 from core.settings import get_settings
 from core.timeline import month_label
@@ -83,6 +84,63 @@ def _peers(lake, factory_id: str, cluster: str, month: int, score: int | None) -
     return {"cluster": cluster, "peer_count": len(ids), "month": month_label(month), "rows": rows}
 
 
+ROLE_QUEUE = {"rm": {"APPLIED", "CONSENTED", "SCORED"}, "credit_officer": {"MEMO_DRAFTED", "DECIDED"},
+              "risk": {"MEMO_DRAFTED"}}
+EVENT_STATE = {"scored": "SCORED", "memo_ready": "MEMO_DRAFTED", "decided": "DECIDED"}
+
+
+def _aware(ts):
+    from datetime import UTC
+
+    return ts if ts is None or ts.tzinfo else ts.replace(tzinfo=UTC)
+
+
+def _tiles(db: Session, user: CurrentUser, apps: list[Application]) -> dict:
+    """Stat tiles with value, previous value, delta and period, all from recorded change events."""
+    from datetime import timedelta
+
+    now = utcnow()
+    ids = [a.id for a in apps]
+    events = (db.query(ChangeEvent).filter(ChangeEvent.entity_type == "application",
+                                           ChangeEvent.application_id.in_(ids)).order_by(ChangeEvent.id).all()
+              if ids else [])
+    queue = ROLE_QUEUE.get(user.role, set())
+
+    def state_at(app: Application, when) -> str | None:
+        if app.created_at and _aware(app.created_at) > when:
+            return None
+        state = None
+        for e in events:
+            if e.application_id != app.id or _aware(e.created_at) > when:
+                continue
+            state = (e.after or {}).get("state") or EVENT_STATE.get(e.event_type, state)
+        return state
+
+    waiting_now = sum(1 for a in apps if a.state in queue)
+    day_ago = now - timedelta(days=1)
+    waiting_prev = sum(1 for a in apps if state_at(a, day_ago) in queue) if events else None
+
+    created = {a.id: _aware(a.created_at) for a in apps}
+
+    def memo_hours(lo, hi) -> float | None:
+        hrs = [(_aware(e.created_at) - created[e.application_id]).total_seconds() / 3600 for e in events
+               if e.event_type == "memo_ready" and lo <= _aware(e.created_at) < hi and created.get(e.application_id)]
+        return round(sum(hrs) / len(hrs), 2) if hrs else None
+
+    def approval(lo, hi) -> float | None:
+        ds = [e for e in events if e.event_type == "decided" and lo <= _aware(e.created_at) < hi]
+        return round(sum(1 for e in ds if (e.after or {}).get("decision") == "APPROVED") / len(ds), 4) if ds else None
+
+    d30, d60 = now - timedelta(days=30), now - timedelta(days=60)
+    return {
+        "waiting_on_you": tile(waiting_now, waiting_prev, "since yesterday", good_when_up=False),
+        "avg_hours_to_memo": tile(memo_hours(d30, now), memo_hours(d60, d30), "last 30 days vs the 30 before",
+                                  good_when_up=False),
+        "approval_rate_30d": tile(approval(d30, now), approval(d60, d30), "last 30 days vs the 30 before",
+                                  good_when_up=True),
+    }
+
+
 @router.get("/stats")
 def application_stats(db: Session = Depends(get_db), user: CurrentUser = Depends(require_roles(*STAFF))) -> dict:
     """KPI tiles for the console. Decision figures count only decisions made in this system (not seed data)."""
@@ -95,6 +153,7 @@ def application_stats(db: Session = Depends(get_db), user: CurrentUser = Depends
     scored_today = (db.query(AuditLog.application_id).filter(AuditLog.tool == "scoring_engine.explain",
                                                              AuditLog.ts >= midnight).distinct().count())
     return {
+        "tiles": _tiles(db, user, apps),
         "pending": len(pending),
         "needs_decision": sum(1 for a in pending if a.state == "MEMO_DRAFTED"),
         "scored_today": scored_today,
@@ -119,7 +178,8 @@ def list_applications(request: Request, response: Response, state: str | None = 
     rows = q.order_by(Application.id).limit(limit + 1).all()
     page = rows[:limit]
     pagination.link_next(request, response, [page[-1].id] if len(rows) > limit else None)
-    return [_summary(a, lake.profile(a.factory_id)) for a in page]
+    changes = application_change_fields(db, user, page)
+    return [{**_summary(a, lake.profile(a.factory_id)), **changes[a.id]} for a in page]
 
 
 @router.post("", status_code=201)
@@ -131,6 +191,14 @@ def create_application(body: ApplicationCreate, db: Session = Depends(get_db),
     except KeyError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"Unknown factory {body.factory_id}") from exc
     return _summary(app, get_lake().profile(app.factory_id))
+
+
+@router.get("/{app_id}/changes")
+def application_changes(app_id: int, limit: int = Query(default=100, ge=1, le=500), db: Session = Depends(get_db),
+                        user: CurrentUser = Depends(get_current_user)) -> list[dict]:
+    """What changed on this application, newest first, in plain language. `new` marks entries the caller
+    has not seen yet."""
+    return timeline(db, user, _get_app(db, app_id, user), limit)
 
 
 @router.get("/{app_id}")

@@ -28,6 +28,9 @@ class Tenant(Base):
     __tablename__ = "tenants"
     id: Mapped[str] = mapped_column(String(32), primary_key=True)
     name: Mapped[str] = mapped_column(String(128))
+    # Changes before this moment are history (the demo seed); "changed since you last looked" starts here for a
+    # user who has never marked anything as seen.
+    change_baseline_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
 class User(TenantScoped, Base):
@@ -206,6 +209,36 @@ class AuditLog(TenantScoped, Base):
     chain_seq: Mapped[int | None] = mapped_column(Integer, nullable=True)
     prev_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     row_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+
+class ChangeEvent(TenantScoped, Base):
+    """What changed, from what, to what, and when: one row per business change (api/changes.py writes them)."""
+
+    __tablename__ = "change_events"
+    __table_args__ = (Index("ix_change_events_tenant_app", "tenant_id", "application_id", "id"),
+                      Index("ix_change_events_tenant_entity", "tenant_id", "entity_type", "entity_id", "id"))
+    id: Mapped[int] = mapped_column(primary_key=True)
+    entity_type: Mapped[str] = mapped_column(String(16))  # application | alert | consent
+    entity_id: Mapped[str] = mapped_column(String(40))
+    application_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    event_type: Mapped[str] = mapped_column(String(32))
+    before: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    after: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    summary: Mapped[str] = mapped_column(String(256))
+    actor: Mapped[str] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class UserSeen(TenantScoped, Base):
+    """When a user last looked at an item. entity_id "*" means "mark all of this type seen"."""
+
+    __tablename__ = "user_seen"
+    __table_args__ = (Index("ux_user_seen", "tenant_id", "username", "entity_type", "entity_id", unique=True),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    username: Mapped[str] = mapped_column(String(64))
+    entity_type: Mapped[str] = mapped_column(String(16))
+    entity_id: Mapped[str] = mapped_column(String(40))
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
 class AiUsage(TenantScoped, Base):

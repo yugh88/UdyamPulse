@@ -16,7 +16,7 @@ from agents.providers.lake import get_lake
 from api import serving
 from api.audit import Actor
 from api.auth import hash_password
-from api.models.db import Application, SessionLocal, Tenant, User, reset_db
+from api.models.db import Application, SessionLocal, Tenant, User, reset_db, utcnow
 from api.tenancy import bind_tenant
 from core.settings import get_settings
 from core.timeline import month_end
@@ -143,6 +143,14 @@ def main() -> None:
                        requested_amount=float(profiles.loc[pending_b, "loan_requested_inr"])))
     db.commit()
     EarlyWarningAgent(db, seed_actor).run()
+    # Everything above is seeded history; "what changed since you last looked" starts now.
+    from api.tenancy import allow_cross_tenant
+
+    allow_cross_tenant(db)
+    now = utcnow()
+    for tenant in db.query(Tenant).all():
+        tenant.change_baseline_at = now
+    db.commit()
     print(f"seeded users={len(USERS) + 1} portfolio={len(chosen)} (stressed in window: {len(stressed)}) "
           f"pending={pending} initial_alerts={len(run.new_alerts)} sim_date={s.sim_start}")
     print(f"demo logins (password '{DEMO_PASSWORD}'): rm1, co1, risk1, sharma (MSME hero), msme2 (watch-band MSME)")
