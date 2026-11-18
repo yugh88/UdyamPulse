@@ -71,7 +71,7 @@ Visionet Techthon 2026 · Round 2 · BFSI: Data & Decision Intelligence
 
 | | Link |
 |---|---|
-| Live demo | _pending: publish with `deploy/huggingface/push.sh` (see [Deployment](docs/DEPLOYMENT.md))_ |
+| Live demo | _pending: one-time Render setup from `render.yaml` (see [Deployment](docs/DEPLOYMENT.md))_ |
 | Demo video | _to add_ |
 | Deck | _to add_ ([outline](docs/PRESENTATION_OUTLINE.md)) |
 | Repository | https://github.com/yugh88/UdyamPulse |
@@ -354,7 +354,8 @@ architecture: [docs/SECURITY.md](docs/SECURITY.md).
 ## 11. Feasibility and plan
 
 - **Build and deploy today (₹0):**
-  - One Docker container (FastAPI serves the API and the React app) on a free host.
+  - One Docker container (FastAPI serves the API and the React app) on Render's free tier. Hugging Face Docker
+    Spaces now need a paid PRO plan (verified 18 Nov 2026).
   - Measured: ready **7 s** after start, **325 MB** after the full story (512 MB cap), all browser tests pass
     against it ([docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)).
 - **Azure pilot (🔭):** AKS + PostgreSQL Flexible Server + Azure Cache for Redis + Key Vault in **Central India**.

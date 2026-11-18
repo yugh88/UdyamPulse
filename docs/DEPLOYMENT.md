@@ -2,7 +2,7 @@
 
 | Target | What runs | Cost | Status |
 |---|---|---|---|
-| **Public demo** | One container: FastAPI serves the API and the built React app (lite profile) | ₹0 | ✅ Image built and tested; 🟡 public URL pending (needs the team's Hugging Face account) |
+| **Public demo** | One container: FastAPI serves the API and the built React app (lite profile), on **Render free** | ₹0 | ✅ Image built and tested; 🟡 public URL after the one-time Render setup below |
 | Local, one command | `make demo` (SQLite, no services, no keys) | ₹0 | ✅ |
 | Local full stack | `make up`: PostgreSQL, Redis, API, worker, nginx; `--profile observability` adds Prometheus, Grafana and Jaeger | ₹0 | ✅ |
 | Azure pilot | AKS + PostgreSQL Flexible Server + Azure Cache for Redis + Key Vault in Central India (`deploy/k8s`, `deploy/terraform`) | Estimate below | 🔭 Design artefacts, validated with `helm lint`, `kubeconform` and `terraform validate`; never deployed |
@@ -34,8 +34,8 @@
 
 | Host | Free tier | Fit | Caveats |
 |---|---|---|---|
-| **Hugging Face Spaces** (Docker SDK), primary | CPU Basic: 2 vCPU, 16 GB RAM; sleeps after 48 h idle; wakes on visit | Plenty of memory; one URL; builds the Dockerfile itself | 2026 community reports of Docker Spaces being restricted for new free accounts and quota errors. Confirm when creating the Space. |
-| **Render** (fallback a) | Web service: 512 MB RAM, sleeps after 15 min idle (about 1 min to wake), 750 instance-hours a month | Fits: measured 325 MB peak with one worker | Cold start of about a minute, so open the link 10 min before presenting |
+| **Render**, primary | Web service: 512 MB RAM, sleeps after 15 min idle (about 1 min to wake), 750 instance-hours a month | Fits: measured 325 MB peak with one worker | Cold start of about a minute, so open the link 10 min before presenting. Regions: no Indian region, so we use Singapore. Acceptable only because the demo holds synthetic data and no personal data. |
+| **Hugging Face Spaces** (Docker SDK) | **Not free for Docker any more.** Verified on 18 Nov 2026: creating the Space returned *402 Payment Required: "hosting Gradio and Docker Spaces on free cpu-basic requires a PRO subscription"* | Would fit (16 GB) | Needs HF PRO; `deploy/huggingface/push.sh` still works for a PRO account |
 | **Koyeb** (alternative) | One small free instance | Same image works | Check current limits before use |
 | **Neon + Upstash** (fallback b) | Free PostgreSQL and Redis | Only if the SHOULD-tier full stack is deployed | Not needed for the demo |
 
@@ -48,23 +48,26 @@ Sources:
 
 Check the providers' own pages again on the day of deployment; free tiers change.
 
-### Publish to Hugging Face (team step, about 10 minutes)
+### Publish to Render (one-time setup, about 10 minutes)
 
-1. Create a write token at huggingface.co/settings/tokens.
-2. Run `HF_TOKEN=hf_xxx HF_SPACE=<user>/udyampulse bash deploy/huggingface/push.sh`. The script assembles a
-   clean build context (no tests, docs or raw data), creates the Space if needed and uploads it.
-3. Wait for the build (about 10 minutes the first time). The app is at `https://<user>-udyampulse.hf.space`.
-4. **CI/CD:** add the repository secret `HF_TOKEN` and the variable `HF_SPACE`. After that, every push to
-   `main` deploys automatically once all CI jobs pass (`deploy-demo` job).
+1. Sign in at render.com with the team's GitHub account (free, no card for the free instance type).
+2. **New → Blueprint →** select `yugh88/UdyamPulse`, branch `main`. Render reads `render.yaml`: one free Docker
+   web service built from `deploy/huggingface/Dockerfile`, health check `/healthz`. Press **Apply**.
+3. Wait for the first build (about 10–15 minutes). The app is at `https://udyampulse-demo.onrender.com`, or the
+   name Render assigns.
+4. **CI/CD:** in the service's Settings, copy the **Deploy Hook** URL. In GitHub (Settings → Secrets and
+   variables → Actions), add the secret `RENDER_DEPLOY_HOOK` and the variable `DEMO_HOST=render`. From then
+   on, every push to `main` deploys once all CI jobs pass (the `deploy-demo` job).
+5. Put the URL in the README (live demo link and badge) and on the deck's first slide.
 
-### Publish to Render (fallback)
+### Publish to Hugging Face (PRO accounts only)
 
-New Web Service → Docker → Dockerfile path `deploy/huggingface/Dockerfile`, instance type Free. Render sets
-`PORT` and the image honours it. No environment variables are required.
+`HF_TOKEN=hf_xxx HF_SPACE=<user>/udyampulse bash deploy/huggingface/push.sh` assembles a clean build context
+and uploads it; the app appears at `https://<user>-udyampulse.hf.space`.
 
 ### Demo-day checklist
 
-- [ ] Open the live link **10 minutes before** presenting, to wake a sleeping instance. `/healthz` answers
+- [ ] Open the live link **10 minutes before** presenting, to wake a sleeping instance (Render free sleeps after 15 minutes idle). `/healthz` answers
       within seconds once the container is up.
 - [ ] Sign in as `rm1` and check the hero, Sharma Auto Components, is in the queue. If a previous visitor
       changed the state, use "Reset demo" on the login page.

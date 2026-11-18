@@ -1,5 +1,4 @@
 .venv
-web
 lake/bronze
 lake/silver
 lake/gold
@@ -23,3 +22,6 @@ ml/artifacts_*
 web/test-results
 web/playwright-report
 UdyamPulse_Round2_Guidelines_Addendum.md
+web/node_modules
+web/dist
+web/*.tsbuildinfo
