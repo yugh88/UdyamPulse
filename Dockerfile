@@ -32,7 +32,9 @@ RUN pip uninstall -y pip setuptools wheel >/dev/null 2>&1; \
     find /opt/venv -name '*.pyx' -delete -o -name '*.pxd' -delete
 
 FROM python:3.11-slim AS runtime
-RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 && rm -rf /var/lib/apt/lists/* \
+# OS security updates, and no system pip/setuptools/wheel: the app runs from /opt/venv and never installs at runtime.
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends libgomp1 \
+    && rm -rf /var/lib/apt/lists/* && python -m pip uninstall -y pip setuptools wheel \
     && useradd --create-home --uid 10001 app
 ENV PATH=/opt/venv/bin:$PATH MLFLOW_DISABLE_AGENT_HINT=1 PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 \
     UP_DB_URL=sqlite:////app/var/udyampulse.db

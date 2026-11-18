@@ -36,7 +36,9 @@ RUN pip uninstall -y pip setuptools wheel >/dev/null 2>&1; \
     done
 
 FROM python:3.11-slim AS runtime
-RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 && rm -rf /var/lib/apt/lists/* \
+# OS security updates, and no system pip/setuptools/wheel: the app runs from /opt/venv and never installs at runtime.
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends libgomp1 \
+    && rm -rf /var/lib/apt/lists/* && python -m pip uninstall -y pip setuptools wheel \
     && useradd --create-home --uid 1000 user
 # Hugging Face runs Spaces as uid 1000 and serves port 7860.
 ENV PATH=/opt/venv/bin:$PATH PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 MLFLOW_DISABLE_AGENT_HINT=1 \
