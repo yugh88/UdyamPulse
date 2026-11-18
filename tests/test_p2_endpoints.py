@@ -1,6 +1,8 @@
 """Endpoints added for the rebuilt screens: KPIs, richer signals, what-if simulation, policy lookup,
 alert ownership, band migration, governance logs, plan progress and the demo reset."""
 
+import os
+
 from api.models.db import Application, AuditLog, ConsentEvent, DataSnapshot, SessionLocal
 from tests.conftest import advance, hero_app_id, hero_score, login
 
@@ -134,7 +136,10 @@ def test_demo_reset_restores_seed_state_quickly(client):
     advance(client, rm, 40)
     assert client.get("/sim/clock", headers=rm).json()["sim_date"] != "2026-06-30"
     r = client.post("/demo/reset").json()
-    assert r["status"] == "reset" and r["took_ms"] < 3000
+    # The demo target is under 3 s (about 1.5 s on a laptop). Shared CI runners are about 3x slower, so CI only
+    # guards against a real regression.
+    budget = 10_000 if os.environ.get("CI") else 3000
+    assert r["status"] == "reset" and r["took_ms"] < budget, r
     rm = login(client, "rm1")
     assert client.get("/sim/clock", headers=rm).json()["sim_date"] == "2026-06-30"
     assert all(a["state"] == "APPLIED" for a in client.get("/applications", headers=rm).json())
