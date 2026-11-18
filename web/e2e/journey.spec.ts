@@ -79,7 +79,7 @@ for (const theme of ["light", "dark"] as const) {
 
     // Risk cockpit: play six weeks, the hero's HIGH alert fires, the RM logs an action.
     await switchTo(page, "Relationship Manager");
-    await page.getByRole("link", { name: "Risk cockpit" }).click();
+    await page.getByRole("link", { name: "Risk cockpit", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Portfolio risk cockpit" })).toBeVisible();
     await expect(page.getByRole("table", { name: "Monitored accounts" })).toBeVisible();
     await page.getByRole("button", { name: "Play story" }).first().click();
