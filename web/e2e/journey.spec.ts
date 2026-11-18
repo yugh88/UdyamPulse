@@ -14,6 +14,7 @@ const shot = (page: Page, name: string) => page.screenshot({ path: `test-results
 
 for (const theme of ["light", "dark"] as const) {
   test(`full demo story: journey, early warning, MSME in Hindi, governance (${theme})`, async ({ page }) => {
+    test.setTimeout(90_000); // the whole story in one test: about 30 s locally, slower on CI runners
     const errors = watchErrors(page);
     await reset(page);
     await page.goto("/login");
