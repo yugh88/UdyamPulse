@@ -140,8 +140,7 @@ class MemoAgent(Agent):
             f"{lim['requested']}, the policy limit is {lim['recommended']} at {facts['pricing_band']} [§4.1][§5.2]. "
             f"Recommendation: {decision_word}."
         )
-        summary = self.tool("llm.write", get_llm().write, audit_app=app.id,
-                            **{"task": "credit memo executive summary", "facts": facts, "draft": summary_draft})
+        summary = self.write("memo.summary.v1", "credit memo executive summary", facts, summary_draft, audit_app=app.id)
 
         memo = {
             "application_id": app.id,

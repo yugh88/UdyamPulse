@@ -1,0 +1,659 @@
+{
+  "dataset": "U.S. SBA 7(a) loans, manufacturing (NAICS 31-33), approved FY2010+",
+  "provenance": "Real public data",
+  "purpose": "Methodology benchmark on real small-business loan outcomes. Not the Indian MSME score.",
+  "source": [
+    {
+      "file": "FOIA_7a_FY2010_FY2019_asof_260930.csv",
+      "url": "https://data.sba.gov/sites/default/files/uploaded_resources/FOIA_7a_FY2010_FY2019_asof_260930.csv",
+      "licence": "U.S. Government Work (public domain), https://www.usa.gov/publicdomain/label/1.0/",
+      "source": "U.S. Small Business Administration, 7(a) & 504 FOIA, https://data.sba.gov",
+      "retrieved_at": "2026-11-17T12:50:46+00:00",
+      "sha256": "39aa32b71fb5dbb4bfb178c9b3d597c92bb6903622027c2f8360d13e57d0abb2"
+    },
+    {
+      "file": "FOIA_7a_FY2020_Present_asof_260930.csv",
+      "url": "https://data.sba.gov/sites/default/files/uploaded_resources/FOIA_7a_FY2020_Present_asof_260930.csv",
+      "licence": "U.S. Government Work (public domain), https://www.usa.gov/publicdomain/label/1.0/",
+      "source": "U.S. Small Business Administration, 7(a) & 504 FOIA, https://data.sba.gov",
+      "retrieved_at": "2026-11-17T12:50:55+00:00",
+      "sha256": "b56194df6da2c22c318fcfc9f8f087152bc54e2be391c4cc70316514c37ef8e6"
+    }
+  ],
+  "label": "Charged off within 60 months of approval; every disbursed loan approved at least 60 months before the data date (active and paid-off loans count as 0)",
+  "design": "Charged off within 60 months of approval; every disbursed loan approved at least 60 months before the data date (active and paid-off loans count as 0)",
+  "selection": {
+    "rows_used": 43862,
+    "defaults": 1265,
+    "default_rate": 0.0288,
+    "excluded": {
+      "CANCLD": 8569,
+      "COMMIT": 1304,
+      "approved_within_horizon_of_data_date": 14604
+    },
+    "data_as_of": "2026-09-30"
+  },
+  "split": {
+    "train": "FY2010-FY2016",
+    "validation": "FY2017 (early stopping, isotonic calibration)",
+    "test": "FY2018-FY2021",
+    "n_train": 27078,
+    "n_valid": 4048,
+    "n_test": 12736
+  },
+  "test": {
+    "n": 12736,
+    "positives": 309,
+    "event_rate": 0.0243,
+    "bootstrap_resamples": 1000,
+    "auc": 0.6869,
+    "auc_ci95": [
+      0.6584,
+      0.7134
+    ],
+    "ks": 0.2919,
+    "ks_ci95": [
+      0.2433,
+      0.3452
+    ],
+    "brier": 0.0245,
+    "brier_ci95": [
+      0.0222,
+      0.0268
+    ]
+  },
+  "train_auc": 0.7754,
+  "test_uncalibrated_brier": 0.0239,
+  "expected_calibration_error": 0.0161,
+  "calibration": [
+    {
+      "bin": 1,
+      "n": 1126,
+      "mean_predicted": 0.0079,
+      "observed": 0.0036
+    },
+    {
+      "bin": 2,
+      "n": 1332,
+      "mean_predicted": 0.0163,
+      "observed": 0.0105
+    },
+    {
+      "bin": 3,
+      "n": 2393,
+      "mean_predicted": 0.0243,
+      "observed": 0.01
+    },
+    {
+      "bin": 4,
+      "n": 3556,
+      "mean_predicted": 0.0348,
+      "observed": 0.0228
+    },
+    {
+      "bin": 5,
+      "n": 2799,
+      "mean_predicted": 0.0459,
+      "observed": 0.0368
+    },
+    {
+      "bin": 6,
+      "n": 1530,
+      "mean_predicted": 0.1133,
+      "observed": 0.0542
+    }
+  ],
+  "precision_at_k": [
+    {
+      "top_pct": 1.0,
+      "n": 127,
+      "precision": 0.0551,
+      "recall": 0.0227,
+      "lift": 2.27
+    },
+    {
+      "top_pct": 5.0,
+      "n": 637,
+      "precision": 0.0706,
+      "recall": 0.1456,
+      "lift": 2.91
+    },
+    {
+      "top_pct": 10.0,
+      "n": 1274,
+      "precision": 0.0597,
+      "recall": 0.246,
+      "lift": 2.46
+    },
+    {
+      "top_pct": 20.0,
+      "n": 2547,
+      "precision": 0.0483,
+      "recall": 0.3981,
+      "lift": 1.99
+    }
+  ],
+  "by_year": [
+    {
+      "group": "2018",
+      "n": 3708,
+      "positives": 128,
+      "event_rate": 0.0345,
+      "auc": 0.7033,
+      "auc_ci95": [
+        0.6648,
+        0.7417
+      ]
+    },
+    {
+      "group": "2019",
+      "n": 3127,
+      "positives": 79,
+      "event_rate": 0.0253,
+      "auc": 0.6534,
+      "auc_ci95": [
+        0.5984,
+        0.7217
+      ]
+    },
+    {
+      "group": "2020",
+      "n": 2585,
+      "positives": 44,
+      "event_rate": 0.017,
+      "auc": 0.6766,
+      "auc_ci95": [
+        0.6078,
+        0.7562
+      ]
+    },
+    {
+      "group": "2021",
+      "n": 3316,
+      "positives": 58,
+      "event_rate": 0.0175,
+      "auc": 0.6676,
+      "auc_ci95": [
+        0.6017,
+        0.7243
+      ]
+    }
+  ],
+  "by_sector_naics3": [
+    {
+      "group": "311",
+      "n": 1728,
+      "positives": 50,
+      "event_rate": 0.0289,
+      "auc": 0.6208,
+      "auc_ci95": [
+        0.556,
+        0.6918
+      ]
+    },
+    {
+      "group": "312",
+      "n": 1457,
+      "positives": 28,
+      "event_rate": 0.0192,
+      "auc": 0.7234
+    },
+    {
+      "group": "313",
+      "n": 59,
+      "positives": 2,
+      "event_rate": 0.0339
+    },
+    {
+      "group": "314",
+      "n": 84,
+      "positives": 3,
+      "event_rate": 0.0357
+    },
+    {
+      "group": "315",
+      "n": 272,
+      "positives": 16,
+      "event_rate": 0.0588
+    },
+    {
+      "group": "316",
+      "n": 56,
+      "positives": 1,
+      "event_rate": 0.0179
+    },
+    {
+      "group": "321",
+      "n": 511,
+      "positives": 14,
+      "event_rate": 0.0274
+    },
+    {
+      "group": "322",
+      "n": 100,
+      "positives": 1,
+      "event_rate": 0.01
+    },
+    {
+      "group": "323",
+      "n": 978,
+      "positives": 26,
+      "event_rate": 0.0266,
+      "auc": 0.6635
+    },
+    {
+      "group": "324",
+      "n": 47,
+      "positives": 2,
+      "event_rate": 0.0426
+    },
+    {
+      "group": "325",
+      "n": 495,
+      "positives": 8,
+      "event_rate": 0.0162
+    },
+    {
+      "group": "326",
+      "n": 384,
+      "positives": 7,
+      "event_rate": 0.0182
+    },
+    {
+      "group": "327",
+      "n": 383,
+      "positives": 9,
+      "event_rate": 0.0235
+    },
+    {
+      "group": "331",
+      "n": 152,
+      "positives": 3,
+      "event_rate": 0.0197
+    },
+    {
+      "group": "332",
+      "n": 2201,
+      "positives": 23,
+      "event_rate": 0.0104,
+      "auc": 0.6197
+    },
+    {
+      "group": "333",
+      "n": 978,
+      "positives": 24,
+      "event_rate": 0.0245,
+      "auc": 0.6783
+    },
+    {
+      "group": "334",
+      "n": 363,
+      "positives": 14,
+      "event_rate": 0.0386
+    },
+    {
+      "group": "335",
+      "n": 249,
+      "positives": 4,
+      "event_rate": 0.0161
+    },
+    {
+      "group": "336",
+      "n": 413,
+      "positives": 14,
+      "event_rate": 0.0339
+    },
+    {
+      "group": "337",
+      "n": 575,
+      "positives": 22,
+      "event_rate": 0.0383,
+      "auc": 0.5688
+    },
+    {
+      "group": "339",
+      "n": 1251,
+      "positives": 38,
+      "event_rate": 0.0304,
+      "auc": 0.7483,
+      "auc_ci95": [
+        0.687,
+        0.8069
+      ]
+    }
+  ],
+  "top_features_shap": [
+    {
+      "feature": "business_age",
+      "mean_abs_shap": 0.4372
+    },
+    {
+      "feature": "interest_rate",
+      "mean_abs_shap": 0.3349
+    },
+    {
+      "feature": "log_amount",
+      "mean_abs_shap": 0.2163
+    },
+    {
+      "feature": "naics4_te",
+      "mean_abs_shap": 0.1331
+    },
+    {
+      "feature": "lender_volume",
+      "mean_abs_shap": 0.1121
+    },
+    {
+      "feature": "jobs_supported",
+      "mean_abs_shap": 0.0815
+    },
+    {
+      "feature": "guarantee_pct",
+      "mean_abs_shap": 0.0809
+    },
+    {
+      "feature": "state_te",
+      "mean_abs_shap": 0.0769
+    },
+    {
+      "feature": "processing_method",
+      "mean_abs_shap": 0.0678
+    },
+    {
+      "feature": "variable_rate",
+      "mean_abs_shap": 0.0521
+    }
+  ],
+  "score_psi_train_vs_test": 0.6417,
+  "state_holdout": {
+    "held_out_states": [
+      "CT",
+      "MI",
+      "NC",
+      "OH",
+      "OR",
+      "TX",
+      "UT",
+      "WA"
+    ],
+    "n": 3591,
+    "positives": 73,
+    "event_rate": 0.0203,
+    "bootstrap_resamples": 1000,
+    "auc": 0.681,
+    "auc_ci95": [
+      0.6157,
+      0.748
+    ],
+    "ks": 0.3053,
+    "ks_ci95": [
+      0.201,
+      0.4314
+    ],
+    "brier": 0.0207,
+    "brier_ci95": [
+      0.0167,
+      0.0247
+    ]
+  },
+  "features": [
+    "log_amount",
+    "guarantee_pct",
+    "interest_rate",
+    "jobs_supported",
+    "variable_rate",
+    "revolver",
+    "collateral",
+    "franchise",
+    "naics4_te",
+    "state_te",
+    "lender_volume",
+    "business_age",
+    "business_type",
+    "processing_method"
+  ],
+  "leakage_guard": {
+    "excluded_columns": [
+      "AsOfDate",
+      "BankCity",
+      "BankFDICNumber",
+      "BankNCUANumber",
+      "BankName",
+      "BankState",
+      "BankStreet",
+      "BankZip",
+      "ChargeOffDate",
+      "FirstDisbursementDate",
+      "GrossChargeOffAmount",
+      "LoanStatus",
+      "PaidInFullDate",
+      "SoldSecMrktInd",
+      "TermInMonths"
+    ],
+    "allowed_source_columns": [
+      "ApprovalFY",
+      "BusinessAge",
+      "BusinessType",
+      "CollateralInd",
+      "FixedorVariableInterestInd",
+      "FranchiseCode",
+      "GrossApproval",
+      "InitialInterestRate",
+      "JobsSupported",
+      "LocationID",
+      "NaicsCode",
+      "ProcessingMethod",
+      "ProjectState",
+      "RevolverStatus",
+      "SBAGuaranteedApproval"
+    ],
+    "target_encoding": "NAICS-4 and state encoded out-of-fold on training rows; validation and test rows use training statistics only",
+    "label_fields": "LoanStatus, ApprovalDate and ChargeOffDate build the label inside the query and never leave it",
+    "term_leakage_evidence": {
+      "non_standard_term_share_charged_off": 0.867,
+      "non_standard_term_share_paid_in_full": 0.164,
+      "standard_terms": [
+        12,
+        24,
+        36,
+        48,
+        60,
+        72,
+        84,
+        96,
+        108,
+        120,
+        180,
+        240,
+        300
+      ],
+      "conclusion": "TermInMonths is revised for loans that go bad, so it is excluded as a post-origination field."
+    }
+  },
+  "comparison_resolved_only": {
+    "design": "Charged off vs paid in full, loans with a final outcome only (the addendum's design; biased for recent cohorts, shown for comparison)",
+    "selection": {
+      "rows_used": 39897,
+      "defaults": 2784,
+      "default_rate": 0.0698,
+      "excluded": {
+        "CANCLD": 8569,
+        "EXEMPT": 18569,
+        "COMMIT": 1304
+      },
+      "data_as_of": "2026-09-30"
+    },
+    "split": {
+      "train": "FY2010-FY2016",
+      "validation": "FY2017 (early stopping, isotonic calibration)",
+      "test": "FY2018-FY2026",
+      "n_train": 26025,
+      "n_valid": 3423,
+      "n_test": 10449
+    },
+    "test": {
+      "n": 10449,
+      "positives": 781,
+      "event_rate": 0.0747,
+      "bootstrap_resamples": 1000,
+      "auc": 0.6199,
+      "auc_ci95": [
+        0.5982,
+        0.6397
+      ],
+      "ks": 0.1891,
+      "ks_ci95": [
+        0.1573,
+        0.2238
+      ],
+      "brier": 0.0755,
+      "brier_ci95": [
+        0.0717,
+        0.0791
+      ]
+    },
+    "train_auc": 0.7513,
+    "by_year": [
+      {
+        "group": "2018",
+        "n": 2914,
+        "positives": 243,
+        "event_rate": 0.0834,
+        "auc": 0.627,
+        "auc_ci95": [
+          0.5929,
+          0.6643
+        ]
+      },
+      {
+        "group": "2019",
+        "n": 2138,
+        "positives": 173,
+        "event_rate": 0.0809,
+        "auc": 0.6335,
+        "auc_ci95": [
+          0.5879,
+          0.6766
+        ]
+      },
+      {
+        "group": "2020",
+        "n": 1605,
+        "positives": 81,
+        "event_rate": 0.0505,
+        "auc": 0.602,
+        "auc_ci95": [
+          0.5321,
+          0.6597
+        ]
+      },
+      {
+        "group": "2021",
+        "n": 1612,
+        "positives": 74,
+        "event_rate": 0.0459,
+        "auc": 0.6304,
+        "auc_ci95": [
+          0.5694,
+          0.693
+        ]
+      },
+      {
+        "group": "2022",
+        "n": 881,
+        "positives": 84,
+        "event_rate": 0.0953,
+        "auc": 0.6093,
+        "auc_ci95": [
+          0.5533,
+          0.6671
+        ]
+      },
+      {
+        "group": "2023",
+        "n": 679,
+        "positives": 85,
+        "event_rate": 0.1252,
+        "auc": 0.5681,
+        "auc_ci95": [
+          0.512,
+          0.6212
+        ]
+      },
+      {
+        "group": "2024",
+        "n": 421,
+        "positives": 34,
+        "event_rate": 0.0808,
+        "auc": 0.4182,
+        "auc_ci95": [
+          0.3381,
+          0.5028
+        ]
+      },
+      {
+        "group": "2025",
+        "n": 187,
+        "positives": 7,
+        "event_rate": 0.0374
+      },
+      {
+        "group": "2026",
+        "n": 12,
+        "positives": 0,
+        "event_rate": 0.0
+      }
+    ],
+    "top_features_shap": [
+      {
+        "feature": "business_age",
+        "mean_abs_shap": 0.493
+      },
+      {
+        "feature": "interest_rate",
+        "mean_abs_shap": 0.3165
+      },
+      {
+        "feature": "state_te",
+        "mean_abs_shap": 0.1622
+      },
+      {
+        "feature": "lender_volume",
+        "mean_abs_shap": 0.1388
+      },
+      {
+        "feature": "processing_method",
+        "mean_abs_shap": 0.132
+      },
+      {
+        "feature": "naics4_te",
+        "mean_abs_shap": 0.1132
+      },
+      {
+        "feature": "log_amount",
+        "mean_abs_shap": 0.1128
+      },
+      {
+        "feature": "jobs_supported",
+        "mean_abs_shap": 0.1063
+      },
+      {
+        "feature": "variable_rate",
+        "mean_abs_shap": 0.0939
+      },
+      {
+        "feature": "collateral",
+        "mean_abs_shap": 0.0601
+      }
+    ]
+  },
+  "limitations": [
+    "SBA records a charge-off a median 58 months after approval, so the 60-month label captures roughly the defaults of the first three years; later defaults count as performing.",
+    "The resolved-only design (paid in full vs charged off) scores higher on recent cohorts because their resolved loans are early payoffs and early charge-offs; its AUC falls cohort by cohort, which is why it is not the headline.",
+    "U.S. loans with SBA guarantees differ from Indian MSME credit; only the methodology transfers.",
+    "Lender volume uses the originating lender ID (LocationID); current-servicer fields are excluded.",
+    "Loan term, normally a strong approval-time predictor, is excluded because the published value is revised for loans that go bad (see leakage_guard.term_leakage_evidence). With it the AUC was 0.915, an inflated figure we do not report."
+  ],
+  "generated_at": "2026-11-17T13:01:15+00:00",
+  "runtime_seconds": 26.7
+}

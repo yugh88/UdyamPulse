@@ -3,13 +3,15 @@ alert cards with reasons, next-best action and an RM briefing. Stops pulling dat
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from agents.base import Agent, sim_date
 from agents.policy_engine import inr
 from agents.providers.consent import ConsentError, get_consent_provider
 from agents.providers.lake import get_lake
-from agents.providers.llm import get_llm
+from api import serving
+from api.jobs import emit
 from api.models.db import Alert, Application, Notification
 from core.timeline import last_visible_month, month_label
 from ml.ews import explain, next_best_action
@@ -22,6 +24,14 @@ MSME_MESSAGE = {
             "Your relationship manager will call you to discuss support options. Reply HELP to talk now.",
     "medium": "Namaste from your bank. We noticed some changes in your business signals this month. "
               "Your relationship manager may reach out. Reply HELP for a call back.",
+}
+
+
+MSME_MESSAGE_HI = {
+    "high": "आपके बैंक की ओर से नमस्ते। हमारी निगरानी में इस महीने आपके डिस्पैच और नकदी प्रवाह में बड़ा बदलाव दिखा है। "
+            "आपके रिलेशनशिप मैनेजर सहायता के विकल्पों पर बात करने के लिए कॉल करेंगे। अभी बात करने के लिए HELP लिखें।",
+    "medium": "आपके बैंक की ओर से नमस्ते। इस महीने आपके कारोबार के संकेतों में कुछ बदलाव दिखे हैं। "
+              "आपके रिलेशनशिप मैनेजर संपर्क कर सकते हैं। कॉल बैक के लिए HELP लिखें।",
 }
 
 
@@ -39,15 +49,19 @@ class EwsRun:
 class EarlyWarningAgent(Agent):
     name = "early_warning_agent"
 
-    def run(self) -> EwsRun:
+    def run(self, on_progress: Callable[[int, int], None] | None = None) -> EwsRun:
         today = sim_date(self.db)
         visible = last_visible_month(today)
         run = EwsRun(as_of=str(today))
         lake = get_lake()
         scores = lake.scores(visible)
         provider = get_consent_provider(self.db)
+        provider.expire_due(today)
+        self.db.commit()
         apps = self.db.query(Application).filter(Application.state == "MONITORING").all()
-        for app in apps:
+        for i, app in enumerate(apps, start=1):
+            if on_progress and (i % 10 == 0 or i == len(apps)):
+                on_progress(i, len(apps))
             start = (app.last_ews_month or 0) + 1
             months = list(range(start, visible + 1))
             if not months:
@@ -74,9 +88,12 @@ class EarlyWarningAgent(Agent):
                 self.db.add(alert)
                 self.db.flush()
                 run.new_alerts.append(alert.id)
+                emit(self.db, "alert.raised", {"alert_id": alert.id, "application_id": app.id, "factory_id": app.factory_id,
+                                               "severity": alert.severity, "rules": alert.rules})
                 if row["severity"] in MSME_MESSAGE:
                     self.db.add(Notification(factory_id=app.factory_id, text=MSME_MESSAGE[row["severity"]],
-                                             sim_date=today))
+                                             text_hi=MSME_MESSAGE_HI[row["severity"]], sim_date=today))
+            serving.write_scores(self.db, app, months)  # only reached while consent allows new data
             app.last_ews_month = visible
             self.db.commit()
         return run
@@ -94,8 +111,7 @@ class EarlyWarningAgent(Agent):
             + (f" Current Factory Health Score {score}." if score else "")
             + f" Exposure {facts['exposure']}. Next-best action: {action} — {facts['sla']}."
         )
-        briefing = self.tool("llm.write", get_llm().write, audit_app=app.id,
-                             **{"task": "RM early-warning briefing (3 sentences)", "facts": facts, "draft": draft})
+        briefing = self.write("ews.briefing.v1", "RM early-warning briefing (3 sentences)", facts, draft, audit_app=app.id)
         rules = [k for k in ("order_loss", "cash_squeeze", "buyer_risk", "diversion", "compliance_slip") if row[k]]
         if row["anomaly"]:
             rules.append("anomaly")

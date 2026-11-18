@@ -94,7 +94,7 @@ flowchart TD
 | Forecast | Prophet (offline fallback) | `ml/forecast.py` | — |
 | Agents | Typed classes; every tool call audited | `agents/*.py` | Semantic Kernel + Azure OpenAI / Foundry Agent Service |
 | LLM | Deterministic template writer (no keys needed) | `agents/providers/llm.py` | `SemanticKernelLLM` (Azure OpenAI), guarded by `agents/guard.py` |
-| RAG | TF-IDF (or sentence-transformers) + FAISS over `policy/*.md` | `agents/providers/search.py` | Azure AI Search hybrid (`AzureAISearch`) |
+| RAG | TF-IDF (or sentence-transformers) + exact NumPy cosine search over `policy/*.md` | `agents/providers/search.py` | Azure AI Search hybrid (`AzureAISearch`) |
 | API | FastAPI + Pydantic v2, JWT roles | `api/` | Azure API Management + Entra ID |
 | OLTP | SQLite via SQLAlchemy | `api/models/db.py` | Azure Database for PostgreSQL |
 | Experience | React + Vite + Tailwind + Recharts; PWA | `web/` | Dynamics 365 CRM embed, Power BI Embedded |

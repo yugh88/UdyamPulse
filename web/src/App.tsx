@@ -1,30 +1,46 @@
+import { lazy, Suspense, type ComponentType, type LazyExoticComponent } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
-import { Layout } from "./components/Layout";
-import { homeFor, useAuth } from "./lib/auth";
-import ApplicationDetail from "./pages/ApplicationDetail";
-import Cockpit from "./pages/Cockpit";
-import Console from "./pages/Console";
-import Governance from "./pages/Governance";
-import Login from "./pages/Login";
-import MsmeApp from "./pages/MsmeApp";
+import { AppShell } from "./components/shell/AppShell";
+import { DemoGuide } from "./features/demo/DemoGuide";
+import { SkeletonRows } from "./components/ui";
+import { homeFor, useAuth, type Role } from "./lib/auth";
+
+// Each screen is its own chunk so the login page does not pay for charts and tables.
+const Login = lazy(() => import("./pages/Login"));
+const Console = lazy(() => import("./pages/Console"));
+const ApplicationDetail = lazy(() => import("./pages/ApplicationDetail"));
+const Cockpit = lazy(() => import("./pages/Cockpit"));
+const Governance = lazy(() => import("./pages/Governance"));
+const MsmeApp = lazy(() => import("./pages/MsmeApp"));
+
+const STAFF: Role[] = ["rm", "credit_officer", "risk"];
+/** A screen is mounted only for roles that may use it, so it never calls an API it is not allowed to. */
+const ROUTES: { path: string; page: LazyExoticComponent<ComponentType>; roles: Role[] }[] = [
+  { path: "/console", page: Console, roles: ["rm", "credit_officer"] },
+  { path: "/console/:id", page: ApplicationDetail, roles: STAFF },
+  { path: "/cockpit", page: Cockpit, roles: STAFF },
+  { path: "/governance", page: Governance, roles: ["risk"] },
+  { path: "/msme", page: MsmeApp, roles: ["msme"] },
+];
 
 export default function App() {
   const { session } = useAuth();
   return (
-    <Routes>
-      <Route path="/login" element={<Login />} />
-      {session ? (
-        <Route element={<Layout />}>
-          <Route path="/console" element={<Console />} />
-          <Route path="/console/:id" element={<ApplicationDetail />} />
-          <Route path="/cockpit" element={<Cockpit />} />
-          <Route path="/governance" element={<Governance />} />
-          <Route path="/msme" element={<MsmeApp />} />
-          <Route path="*" element={<Navigate to={homeFor(session.role)} replace />} />
-        </Route>
-      ) : (
-        <Route path="*" element={<Navigate to="/login" replace />} />
-      )}
-    </Routes>
+    <Suspense fallback={<SkeletonRows rows={6} className="mx-auto max-w-3xl p-8" />}>
+      <Routes>
+        <Route path="/login" element={session ? <Navigate to={homeFor(session.role)} replace /> : <Login />} />
+        {session ? (
+          <Route element={<AppShell />}>
+            {ROUTES.filter((r) => r.roles.includes(session.role)).map((r) => (
+              <Route key={r.path} path={r.path} element={<r.page />} />
+            ))}
+            <Route path="*" element={<Navigate to={homeFor(session.role)} replace />} />
+          </Route>
+        ) : (
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        )}
+      </Routes>
+      <DemoGuide />
+    </Suspense>
   );
 }

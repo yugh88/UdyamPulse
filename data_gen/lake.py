@@ -6,6 +6,8 @@ Gold features are built by `ml.features.build_gold`.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import duckdb
 import pandas as pd
 
@@ -15,20 +17,30 @@ from data_gen.generate import SOURCE_COLUMNS
 SIGNAL_COLUMNS = [c for cols in SOURCE_COLUMNS.values() for c in cols]
 
 
+# Offline build step. The SQL below interpolates only module constants (column names) and lake paths from
+# settings, never user input, hence the B608 suppressions.
+def _source_path(bronze: str, source: str) -> str:
+    """One file (demo generator) or a sector-partitioned directory of chunk files (UP_DATASET=full | scale)."""
+    if Path(bronze, source).is_dir():
+        return f"read_parquet('{bronze}/{source}/*/*.parquet', hive_partitioning = false)"
+    return f"read_parquet('{bronze}/{source}.parquet')"
+
+
 def _dedupe_sql(source: str) -> str:
     cols = ", ".join(SOURCE_COLUMNS[source])
     return f"""
         {source}_dedup AS (
             SELECT factory_id, month, {cols}
-            FROM read_parquet('{{bronze}}/{source}.parquet')
+            FROM {{source_path:{source}}}
             QUALIFY row_number() OVER (PARTITION BY factory_id, month ORDER BY _ingested_at DESC) = 1
-        )"""
+        )"""  # nosec B608
 
 
 def build_silver() -> pd.DataFrame:
     s = get_settings()
     bronze = s.bronze.as_posix()
-    ctes = ",".join(_dedupe_sql(src).replace("{bronze}", bronze) for src in SOURCE_COLUMNS)
+    ctes = ",".join(_dedupe_sql(src).replace(f"{{source_path:{src}}}", _source_path(bronze, src))
+                    for src in SOURCE_COLUMNS)
     joins = "\n".join(
         f"LEFT JOIN {src}_dedup USING (factory_id, month)" for src in SOURCE_COLUMNS
     )
@@ -49,7 +61,7 @@ def build_silver() -> pd.DataFrame:
         FROM spine
         {joins}
         ORDER BY factory_id, month
-    """
+    """  # nosec B608
     con = duckdb.connect()
     df = con.execute(sql).df()
 
@@ -59,17 +71,21 @@ def build_silver() -> pd.DataFrame:
 
     # Reconciliation: bank credits (incl. ~12% GST, ~1.5 month collection lag) vs declared GST turnover.
     df = df.sort_values(["factory_id", "month"]).reset_index(drop=True)
-    g = df.groupby("factory_id")
-    bank_3 = g["aa_credits"].transform(lambda x: x.rolling(3, min_periods=2).mean()) / 1.12
-    gst_lag_3 = g["gst_turnover"].transform(lambda x: x.shift(1).rolling(3, min_periods=2).mean())
+    # Grouped rolling windows (vectorised; one Python call per column, not per factory).
+    bank_3 = (df.groupby("factory_id")["aa_credits"].rolling(3, min_periods=2).mean()
+              .reset_index(level=0, drop=True).sort_index()) / 1.12
+    df["_gst_prev"] = df.groupby("factory_id")["gst_turnover"].shift(1)
+    gst_lag_3 = (df.groupby("factory_id")["_gst_prev"].rolling(3, min_periods=2).mean()
+                 .reset_index(level=0, drop=True).sort_index())
+    df = df.drop(columns="_gst_prev")
     df["gst_bank_mismatch"] = ((bank_3 - gst_lag_3).abs() / gst_lag_3).fillna(0.0)
     df["einv_eway_gap"] = (1 - df["eway_value"] / df["einvoice_value"]).clip(-1, 1)
 
     con.register("silver_df", df)
     s.silver.mkdir(parents=True, exist_ok=True)
-    con.execute(f"COPY silver_df TO '{(s.silver / 'factory_month.parquet').as_posix()}' (FORMAT parquet)")
+    con.execute(f"COPY silver_df TO '{(s.silver / 'factory_month.parquet').as_posix()}' (FORMAT parquet)")  # nosec B608
     con.execute(
-        f"COPY (SELECT * FROM read_parquet('{bronze}/factories.parquet')) "
+        f"COPY (SELECT * FROM read_parquet('{bronze}/factories.parquet')) "  # nosec B608
         f"TO '{(s.silver / 'factories.parquet').as_posix()}' (FORMAT parquet)"
     )
     con.close()

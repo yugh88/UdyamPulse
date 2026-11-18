@@ -2,7 +2,7 @@ import re
 import time
 
 from agents.guard import unsupported_numbers
-from agents.providers.llm import SemanticKernelLLM
+from agents.providers.llm import ResilientWriter, SemanticKernelLLM
 from tests.conftest import login
 
 MEMO_TEXT_KEYS = ("summary", "recommended_limit_display", "requested_display", "pricing_band")
@@ -64,4 +64,4 @@ def test_llm_output_with_invented_number_falls_back_to_template():
 
     llm._complete = fake_complete
     draft = "The unit scores 723."
-    assert llm.write("summary", {"score": 723}, draft) == draft
+    assert ResilientWriter(llm).write("summary", {"score": 723}, draft) == draft

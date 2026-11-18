@@ -1,0 +1,880 @@
+{
+  "dataset": "Synthetic (calibrated): 50,000 factories x 36 months",
+  "provenance": "Synthetic (calibrated)",
+  "design": {
+    "train_months": "4-20",
+    "validation_months": "21-23 (early stopping, isotonic calibration)",
+    "gap_month": 24,
+    "test_months": "25-36",
+    "group_folds": 5,
+    "note": "Each factory is tested by a model that never saw it or its test months."
+  },
+  "test": {
+    "n": 565505,
+    "positives": 20845,
+    "event_rate": 0.0369,
+    "factories": 48102,
+    "bootstrap": "1000 resamples of factories",
+    "auc": 0.8481,
+    "auc_ci95": [
+      0.8416,
+      0.8544
+    ],
+    "ks": 0.5675,
+    "ks_ci95": [
+      0.5561,
+      0.58
+    ],
+    "brier": 0.0283,
+    "brier_ci95": [
+      0.0274,
+      0.0292
+    ]
+  },
+  "fold_auc": [
+    {
+      "fold": 0,
+      "auc": 0.8475,
+      "train_auc": 0.8178,
+      "best_iteration": 839,
+      "test_rows": 113467
+    },
+    {
+      "fold": 1,
+      "auc": 0.859,
+      "train_auc": 0.8172,
+      "best_iteration": 1128,
+      "test_rows": 112621
+    },
+    {
+      "fold": 2,
+      "auc": 0.8392,
+      "train_auc": 0.817,
+      "best_iteration": 1122,
+      "test_rows": 112924
+    },
+    {
+      "fold": 3,
+      "auc": 0.8506,
+      "train_auc": 0.8199,
+      "best_iteration": 1320,
+      "test_rows": 114296
+    },
+    {
+      "fold": 4,
+      "auc": 0.8461,
+      "train_auc": 0.8209,
+      "best_iteration": 1509,
+      "test_rows": 112197
+    }
+  ],
+  "fold_auc_mean": 0.8485,
+  "fold_auc_sd": 0.0064,
+  "uncalibrated_brier": 0.0288,
+  "expected_calibration_error": 0.0123,
+  "calibration": [
+    {
+      "bin": 1,
+      "n": 43553,
+      "mean_predicted": 0.0078,
+      "observed": 0.0058
+    },
+    {
+      "bin": 2,
+      "n": 63912,
+      "mean_predicted": 0.0114,
+      "observed": 0.0066
+    },
+    {
+      "bin": 3,
+      "n": 59065,
+      "mean_predicted": 0.0143,
+      "observed": 0.0084
+    },
+    {
+      "bin": 4,
+      "n": 46809,
+      "mean_predicted": 0.0166,
+      "observed": 0.0093
+    },
+    {
+      "bin": 5,
+      "n": 58424,
+      "mean_predicted": 0.0195,
+      "observed": 0.0114
+    },
+    {
+      "bin": 6,
+      "n": 64138,
+      "mean_predicted": 0.0253,
+      "observed": 0.014
+    },
+    {
+      "bin": 7,
+      "n": 57084,
+      "mean_predicted": 0.0303,
+      "observed": 0.0174
+    },
+    {
+      "bin": 8,
+      "n": 54010,
+      "mean_predicted": 0.0383,
+      "observed": 0.0214
+    },
+    {
+      "bin": 9,
+      "n": 59907,
+      "mean_predicted": 0.0597,
+      "observed": 0.0365
+    },
+    {
+      "bin": 10,
+      "n": 58603,
+      "mean_predicted": 0.2555,
+      "observed": 0.2278
+    }
+  ],
+  "operating_point": {
+    "rule": "flag when score < 650 (Watch or High risk)",
+    "precision": 0.1045,
+    "recall": 0.7881,
+    "flag_rate": 0.278
+  },
+  "precision_at_k": [
+    {
+      "top_pct": 1.0,
+      "n": 5655,
+      "precision": 0.553,
+      "recall": 0.15,
+      "lift": 15.0
+    },
+    {
+      "top_pct": 5.0,
+      "n": 28275,
+      "precision": 0.3779,
+      "recall": 0.5126,
+      "lift": 10.25
+    },
+    {
+      "top_pct": 10.0,
+      "n": 56550,
+      "precision": 0.2342,
+      "recall": 0.6353,
+      "lift": 6.35
+    },
+    {
+      "top_pct": 20.0,
+      "n": 113101,
+      "precision": 0.1362,
+      "recall": 0.7389,
+      "lift": 3.69
+    }
+  ],
+  "band_default_rate": {
+    "APPROVE": 0.0108,
+    "HIGH_RISK": 0.4564,
+    "WATCH": 0.0554
+  },
+  "band_share": {
+    "APPROVE": 0.722,
+    "WATCH": 0.244,
+    "HIGH_RISK": 0.034
+  },
+  "sector_holdout": [
+    {
+      "held_out": "auto_components",
+      "n": 111368,
+      "positives": 4236,
+      "event_rate": 0.038,
+      "factories": 9472,
+      "bootstrap": "200 resamples of factories",
+      "auc": 0.8553,
+      "auc_ci95": [
+        0.8417,
+        0.8694
+      ],
+      "ks": 0.58,
+      "ks_ci95": [
+        0.5541,
+        0.6075
+      ],
+      "brier": 0.0287,
+      "brier_ci95": [
+        0.027,
+        0.0308
+      ]
+    },
+    {
+      "held_out": "ceramics",
+      "n": 114392,
+      "positives": 4224,
+      "event_rate": 0.0369,
+      "factories": 9736,
+      "bootstrap": "200 resamples of factories",
+      "auc": 0.8576,
+      "auc_ci95": [
+        0.8424,
+        0.8716
+      ],
+      "ks": 0.5758,
+      "ks_ci95": [
+        0.5502,
+        0.6019
+      ],
+      "brier": 0.0281,
+      "brier_ci95": [
+        0.0261,
+        0.0302
+      ]
+    },
+    {
+      "held_out": "engineering",
+      "n": 114141,
+      "positives": 4543,
+      "event_rate": 0.0398,
+      "factories": 9723,
+      "bootstrap": "200 resamples of factories",
+      "auc": 0.8407,
+      "auc_ci95": [
+        0.8288,
+        0.853
+      ],
+      "ks": 0.5548,
+      "ks_ci95": [
+        0.5328,
+        0.5778
+      ],
+      "brier": 0.0311,
+      "brier_ci95": [
+        0.029,
+        0.033
+      ]
+    },
+    {
+      "held_out": "food_processing",
+      "n": 113256,
+      "positives": 3789,
+      "event_rate": 0.0335,
+      "factories": 9598,
+      "bootstrap": "200 resamples of factories",
+      "auc": 0.8142,
+      "auc_ci95": [
+        0.7991,
+        0.8267
+      ],
+      "ks": 0.5004,
+      "ks_ci95": [
+        0.4787,
+        0.52
+      ],
+      "brier": 0.0265,
+      "brier_ci95": [
+        0.0243,
+        0.0285
+      ]
+    },
+    {
+      "held_out": "textiles",
+      "n": 112348,
+      "positives": 4053,
+      "event_rate": 0.0361,
+      "factories": 9573,
+      "bootstrap": "200 resamples of factories",
+      "auc": 0.8638,
+      "auc_ci95": [
+        0.8512,
+        0.8783
+      ],
+      "ks": 0.601,
+      "ks_ci95": [
+        0.5791,
+        0.626
+      ],
+      "brier": 0.027,
+      "brier_ci95": [
+        0.025,
+        0.029
+      ]
+    }
+  ],
+  "cluster_holdout": [
+    {
+      "held_out": "Indore",
+      "n": 106302,
+      "positives": 3743,
+      "event_rate": 0.0352,
+      "factories": 9026,
+      "bootstrap": "200 resamples of factories",
+      "auc": 0.831,
+      "auc_ci95": [
+        0.8172,
+        0.8454
+      ],
+      "ks": 0.5338,
+      "ks_ci95": [
+        0.5082,
+        0.5596
+      ],
+      "brier": 0.0274,
+      "brier_ci95": [
+        0.0252,
+        0.0295
+      ]
+    },
+    {
+      "held_out": "Ludhiana",
+      "n": 105118,
+      "positives": 3918,
+      "event_rate": 0.0373,
+      "factories": 8947,
+      "bootstrap": "200 resamples of factories",
+      "auc": 0.8599,
+      "auc_ci95": [
+        0.8459,
+        0.8737
+      ],
+      "ks": 0.583,
+      "ks_ci95": [
+        0.5547,
+        0.6107
+      ],
+      "brier": 0.0282,
+      "brier_ci95": [
+        0.0263,
+        0.0304
+      ]
+    },
+    {
+      "held_out": "Morbi",
+      "n": 106220,
+      "positives": 3874,
+      "event_rate": 0.0365,
+      "factories": 9031,
+      "bootstrap": "200 resamples of factories",
+      "auc": 0.8485,
+      "auc_ci95": [
+        0.8368,
+        0.8603
+      ],
+      "ks": 0.5657,
+      "ks_ci95": [
+        0.5451,
+        0.5911
+      ],
+      "brier": 0.0283,
+      "brier_ci95": [
+        0.0262,
+        0.0303
+      ]
+    },
+    {
+      "held_out": "Pune",
+      "n": 38020,
+      "positives": 1440,
+      "event_rate": 0.0379,
+      "factories": 3236,
+      "bootstrap": "200 resamples of factories",
+      "auc": 0.8327,
+      "auc_ci95": [
+        0.8111,
+        0.8557
+      ],
+      "ks": 0.5451,
+      "ks_ci95": [
+        0.5084,
+        0.5916
+      ],
+      "brier": 0.0291,
+      "brier_ci95": [
+        0.026,
+        0.0328
+      ]
+    },
+    {
+      "held_out": "Rajkot",
+      "n": 104837,
+      "positives": 4012,
+      "event_rate": 0.0383,
+      "factories": 8922,
+      "bootstrap": "200 resamples of factories",
+      "auc": 0.843,
+      "auc_ci95": [
+        0.8271,
+        0.8572
+      ],
+      "ks": 0.5587,
+      "ks_ci95": [
+        0.5329,
+        0.5857
+      ],
+      "brier": 0.0298,
+      "brier_ci95": [
+        0.0274,
+        0.0316
+      ]
+    },
+    {
+      "held_out": "Tiruppur",
+      "n": 105008,
+      "positives": 3858,
+      "event_rate": 0.0367,
+      "factories": 8940,
+      "bootstrap": "200 resamples of factories",
+      "auc": 0.8494,
+      "auc_ci95": [
+        0.8355,
+        0.8648
+      ],
+      "ks": 0.5785,
+      "ks_ci95": [
+        0.5529,
+        0.6092
+      ],
+      "brier": 0.0284,
+      "brier_ci95": [
+        0.0264,
+        0.0304
+      ]
+    }
+  ],
+  "shock": [
+    {
+      "period": "before shock (month 25)",
+      "n": 48102,
+      "positives": 2106,
+      "event_rate": 0.0438,
+      "factories": 48102,
+      "bootstrap": "200 resamples of factories",
+      "auc": 0.8449,
+      "auc_ci95": [
+        0.8352,
+        0.8568
+      ],
+      "ks": 0.5695,
+      "ks_ci95": [
+        0.5535,
+        0.5944
+      ],
+      "brier": 0.0343,
+      "brier_ci95": [
+        0.033,
+        0.0357
+      ]
+    },
+    {
+      "period": "shock (26-30)",
+      "n": 238558,
+      "positives": 10395,
+      "event_rate": 0.0436,
+      "factories": 47982,
+      "bootstrap": "200 resamples of factories",
+      "auc": 0.8509,
+      "auc_ci95": [
+        0.8436,
+        0.8585
+      ],
+      "ks": 0.5789,
+      "ks_ci95": [
+        0.5655,
+        0.5937
+      ],
+      "brier": 0.0331,
+      "brier_ci95": [
+        0.0321,
+        0.0341
+      ]
+    },
+    {
+      "period": "recovery (31-36)",
+      "n": 278845,
+      "positives": 8344,
+      "event_rate": 0.0299,
+      "factories": 47027,
+      "bootstrap": "200 resamples of factories",
+      "auc": 0.8413,
+      "auc_ci95": [
+        0.8299,
+        0.8495
+      ],
+      "ks": 0.5488,
+      "ks_ci95": [
+        0.5309,
+        0.5655
+      ],
+      "brier": 0.0232,
+      "brier_ci95": [
+        0.0222,
+        0.0242
+      ]
+    }
+  ],
+  "ablation": {
+    "with_production_signals_auc": 0.8426,
+    "without_production_signals_auc": 0.8277,
+    "uplift_auc": 0.015,
+    "uplift_ci95": [
+      0.0092,
+      0.0198
+    ],
+    "removed_features": [
+      "eway_value_chg_1v3",
+      "eway_value_chg_1v2",
+      "eway_value_chg_3v12",
+      "eway_value_yoy",
+      "eway_count_chg_1v3",
+      "eway_count_chg_3v12",
+      "po_cover_months",
+      "po_cover_chg_1v3",
+      "eway_to_einvoice_ratio",
+      "eway_value_cv_6",
+      "kwh_chg_1v3",
+      "kwh_chg_1v2",
+      "kwh_chg_3v12",
+      "kwh_yoy",
+      "kwh_vs_sector",
+      "kwh_per_lakh_3",
+      "kwh_slope_6",
+      "kwh_cv_6"
+    ],
+    "caveat": "On synthetic data this uplift reflects how the generator links production signals to stress. It is a hypothesis to re-prove on a lender's consented data in a pilot, not evidence."
+  },
+  "leakage_audit": {
+    "factory_months_checked": 450,
+    "features_checked": 65,
+    "mismatches": [],
+    "passed": true,
+    "excluded_by_design": {
+      "vintage_years": "age at the panel end, constant offset per factory",
+      "kwh_vs_sector": "cross-sectional peer median of the same month"
+    },
+    "shuffled_label_auc": 0.4659,
+    "shuffled_label_runs": [
+      0.4071,
+      0.5071,
+      0.5462,
+      0.4957,
+      0.4651,
+      0.4868,
+      0.4553,
+      0.3642
+    ],
+    "shuffled_label_passed": true,
+    "shuffled_label_note": "8 shuffles, unconstrained model: AUCs scatter around 0.5 in both directions, as they must without leakage",
+    "domain_prior_auc": 0.6615,
+    "domain_prior_runs": [
+      0.6989,
+      0.7242,
+      0.7223,
+      0.5203,
+      0.5957,
+      0.6404,
+      0.6993,
+      0.6913
+    ],
+    "domain_prior_note": "A monotone-constrained model trained on shuffled labels still ranks real defaults: the economic directions alone carry this much signal, like an expert scorecard"
+  },
+  "fairness": {
+    "sector": [
+      {
+        "group": "auto_components",
+        "n": 111368,
+        "default_rate": 0.038,
+        "mean_score": 660.3,
+        "approval_rate": 0.7155,
+        "approval_rate_non_defaulters": 0.7359,
+        "auc": 0.8564,
+        "adverse_impact_ratio": 0.904,
+        "equal_opportunity_ratio": 0.911
+      },
+      {
+        "group": "ceramics",
+        "n": 114392,
+        "default_rate": 0.0369,
+        "mean_score": 655.7,
+        "approval_rate": 0.6799,
+        "approval_rate_non_defaulters": 0.6992,
+        "auc": 0.8595,
+        "adverse_impact_ratio": 0.859,
+        "equal_opportunity_ratio": 0.865
+      },
+      {
+        "group": "engineering",
+        "n": 114141,
+        "default_rate": 0.0398,
+        "mean_score": 660.2,
+        "approval_rate": 0.7168,
+        "approval_rate_non_defaulters": 0.7376,
+        "auc": 0.8431,
+        "adverse_impact_ratio": 0.906,
+        "equal_opportunity_ratio": 0.913
+      },
+      {
+        "group": "food_processing",
+        "n": 113256,
+        "default_rate": 0.0335,
+        "mean_score": 671.2,
+        "approval_rate": 0.7912,
+        "approval_rate_non_defaulters": 0.8081,
+        "auc": 0.8216,
+        "adverse_impact_ratio": 1.0,
+        "equal_opportunity_ratio": 1.0
+      },
+      {
+        "group": "textiles",
+        "n": 112348,
+        "default_rate": 0.0361,
+        "mean_score": 659.1,
+        "approval_rate": 0.707,
+        "approval_rate_non_defaulters": 0.7268,
+        "auc": 0.8638,
+        "adverse_impact_ratio": 0.894,
+        "equal_opportunity_ratio": 0.899
+      }
+    ],
+    "udyam_category": [
+      {
+        "group": "micro",
+        "n": 334594,
+        "default_rate": 0.0465,
+        "mean_score": 652.1,
+        "approval_rate": 0.6486,
+        "approval_rate_non_defaulters": 0.6712,
+        "auc": 0.8424,
+        "adverse_impact_ratio": 0.783,
+        "equal_opportunity_ratio": 0.798
+      },
+      {
+        "group": "small",
+        "n": 230911,
+        "default_rate": 0.0229,
+        "mean_score": 674.6,
+        "approval_rate": 0.8285,
+        "approval_rate_non_defaulters": 0.841,
+        "auc": 0.8342,
+        "adverse_impact_ratio": 1.0,
+        "equal_opportunity_ratio": 1.0
+      }
+    ]
+  },
+  "score_psi_train_vs_test": 0.0355,
+  "top_features_shap": [
+    {
+      "feature": "po_cover_chg_1v3",
+      "mean_abs_shap": 0.311
+    },
+    {
+      "feature": "po_cover_months",
+      "mean_abs_shap": 0.21063
+    },
+    {
+      "feature": "days_to_pay_chg_3v12",
+      "mean_abs_shap": 0.19171
+    },
+    {
+      "feature": "balance_to_debits_1",
+      "mean_abs_shap": 0.1872
+    },
+    {
+      "feature": "balance_chg_1v3",
+      "mean_abs_shap": 0.17608
+    },
+    {
+      "feature": "n_buyers",
+      "mean_abs_shap": 0.13703
+    },
+    {
+      "feature": "days_to_pay_1",
+      "mean_abs_shap": 0.12552
+    },
+    {
+      "feature": "net_inflow_ratio_1",
+      "mean_abs_shap": 0.1201
+    },
+    {
+      "feature": "rm_ratio_3",
+      "mean_abs_shap": 0.09534
+    },
+    {
+      "feature": "kwh_per_lakh_3",
+      "mean_abs_shap": 0.09291
+    },
+    {
+      "feature": "einvoice_value_slope_6",
+      "mean_abs_shap": 0.09235
+    },
+    {
+      "feature": "gst_late_months_3",
+      "mean_abs_shap": 0.08277
+    },
+    {
+      "feature": "balance_cv_6",
+      "mean_abs_shap": 0.07439
+    },
+    {
+      "feature": "credits_chg_1v3",
+      "mean_abs_shap": 0.07399
+    },
+    {
+      "feature": "epfo_drop_months_6",
+      "mean_abs_shap": 0.07293
+    }
+  ],
+  "ews": {
+    "operating_points": [
+      {
+        "min_points": 1,
+        "sma2_events_in_window": 4004,
+        "detected_30d_ahead": 3815,
+        "recall": 0.953,
+        "median_lead_days": 92.0,
+        "mean_lead_days": 128.5,
+        "p25_lead_days": 90.0,
+        "alerted_accounts": 30704,
+        "precision_sma2_within_6m": 0.071,
+        "precision_true_stress": 0.188,
+        "alert_rate_per_account_month": 0.1036,
+        "min_severity": "points>=1",
+        "target_median_lead_days_met": true
+      },
+      {
+        "min_points": 2,
+        "sma2_events_in_window": 4004,
+        "detected_30d_ahead": 3755,
+        "recall": 0.938,
+        "median_lead_days": 91.0,
+        "mean_lead_days": 101.3,
+        "p25_lead_days": 61.0,
+        "alerted_accounts": 14631,
+        "precision_sma2_within_6m": 0.206,
+        "precision_true_stress": 0.493,
+        "alert_rate_per_account_month": 0.0593,
+        "min_severity": "points>=2",
+        "target_median_lead_days_met": true
+      },
+      {
+        "min_points": 3,
+        "sma2_events_in_window": 4004,
+        "detected_30d_ahead": 3466,
+        "recall": 0.866,
+        "median_lead_days": 90.0,
+        "mean_lead_days": 82.5,
+        "p25_lead_days": 61.0,
+        "alerted_accounts": 9826,
+        "precision_sma2_within_6m": 0.314,
+        "precision_true_stress": 0.743,
+        "alert_rate_per_account_month": 0.0171,
+        "min_severity": "points>=3",
+        "target_median_lead_days_met": true
+      },
+      {
+        "min_points": 4,
+        "sma2_events_in_window": 4004,
+        "detected_30d_ahead": 1716,
+        "recall": 0.429,
+        "median_lead_days": 61.0,
+        "mean_lead_days": 73.8,
+        "p25_lead_days": 59.0,
+        "alerted_accounts": 5020,
+        "precision_sma2_within_6m": 0.311,
+        "precision_true_stress": 0.788,
+        "alert_rate_per_account_month": 0.0059,
+        "min_severity": "points>=4",
+        "target_median_lead_days_met": true
+      },
+      {
+        "min_points": 5,
+        "sma2_events_in_window": 4004,
+        "detected_30d_ahead": 868,
+        "recall": 0.217,
+        "median_lead_days": 61.0,
+        "mean_lead_days": 67.2,
+        "p25_lead_days": 59.0,
+        "alerted_accounts": 2133,
+        "precision_sma2_within_6m": 0.369,
+        "precision_true_stress": 0.95,
+        "alert_rate_per_account_month": 0.0022,
+        "min_severity": "points>=5",
+        "target_median_lead_days_met": true
+      },
+      {
+        "min_points": 6,
+        "sma2_events_in_window": 4004,
+        "detected_30d_ahead": 327,
+        "recall": 0.082,
+        "median_lead_days": 89.0,
+        "mean_lead_days": 77.4,
+        "p25_lead_days": 61.0,
+        "alerted_accounts": 859,
+        "precision_sma2_within_6m": 0.349,
+        "precision_true_stress": 0.949,
+        "alert_rate_per_account_month": 0.0007,
+        "min_severity": "points>=6",
+        "target_median_lead_days_met": true
+      },
+      {
+        "min_points": 7,
+        "sma2_events_in_window": 4004,
+        "detected_30d_ahead": 30,
+        "recall": 0.007,
+        "median_lead_days": 61.5,
+        "mean_lead_days": 77.0,
+        "p25_lead_days": 61.0,
+        "alerted_accounts": 63,
+        "precision_sma2_within_6m": 0.444,
+        "precision_true_stress": 0.921,
+        "alert_rate_per_account_month": 0.0,
+        "min_severity": "points>=7",
+        "target_median_lead_days_met": true
+      },
+      {
+        "min_points": 8,
+        "sma2_events_in_window": 4004,
+        "detected_30d_ahead": 16,
+        "recall": 0.004,
+        "median_lead_days": 61.0,
+        "mean_lead_days": 72.2,
+        "p25_lead_days": 61.0,
+        "alerted_accounts": 31,
+        "precision_sma2_within_6m": 0.452,
+        "precision_true_stress": 0.935,
+        "alert_rate_per_account_month": 0.0,
+        "min_severity": "points>=8",
+        "target_median_lead_days_met": true
+      },
+      {
+        "min_points": 9,
+        "sma2_events_in_window": 4004,
+        "detected_30d_ahead": 0,
+        "recall": 0.0,
+        "median_lead_days": null,
+        "mean_lead_days": null,
+        "p25_lead_days": null,
+        "alerted_accounts": 5,
+        "precision_sma2_within_6m": 0.0,
+        "precision_true_stress": 0.8,
+        "alert_rate_per_account_month": 0.0,
+        "min_severity": "points>=9",
+        "target_median_lead_days_met": false
+      }
+    ],
+    "chosen": {
+      "min_points": 3,
+      "sma2_events_in_window": 4004,
+      "detected_30d_ahead": 3466,
+      "recall": 0.866,
+      "median_lead_days": 90.0,
+      "mean_lead_days": 82.5,
+      "p25_lead_days": 61.0,
+      "alerted_accounts": 9826,
+      "precision_sma2_within_6m": 0.314,
+      "precision_true_stress": 0.743,
+      "alert_rate_per_account_month": 0.0171,
+      "min_severity": "points>=3",
+      "target_median_lead_days_met": true
+    },
+    "rule": "highest precision with median lead >= 60 days and recall >= 0.5"
+  },
+  "monotone_features": 61,
+  "runtime_seconds": 673.8,
+  "generated_at": "2026-11-17T19:54:20+00:00"
+}

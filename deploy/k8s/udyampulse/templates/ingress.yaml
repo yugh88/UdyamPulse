@@ -1,0 +1,25 @@
+{{- if .Values.ingress.enabled }}
+# The web pods serve the SPA and proxy /api to the API service (nginx.conf), so one host fronts both.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "up.name" . }}
+  labels: {{- include "up.labels" . | nindent 4 }}
+  annotations:
+    appgw.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  tls:
+    - hosts: [{{ .Values.ingress.host | quote }}]
+      secretName: {{ .Values.ingress.tlsSecret }}
+  rules:
+    - host: {{ .Values.ingress.host | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "up.name" . }}-web
+                port: {name: http}
+{{- end }}

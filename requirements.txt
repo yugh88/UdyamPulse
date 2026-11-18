@@ -16,13 +16,27 @@ lightgbm==4.7.0
 scikit-learn==1.9.1
 joblib==1.6.0
 prophet==1.5.0
-mlflow-skinny==3.17.2
 
-# Agents, RAG, documents
-semantic-kernel==1.46.0
-faiss-cpu==1.15.1
+# Agents, RAG, documents (the hosted-LLM SDK is in requirements-cloud.txt: the default writer is local)
 reportlab==5.1.0
 
 # Dev
 pytest==9.2.0
 ruff==0.17.3
+
+# PostgreSQL (docker compose default; SQLite stays for make demo)
+alembic==1.20.1
+psycopg[binary]==3.3.9
+
+# Redis: cache, rate limits, idempotency keys; Dramatiq job queue (in-process stub when Redis is not configured)
+redis==8.1.0
+dramatiq[redis]==2.2.1
+
+# Ops & security: Prometheus metrics, OpenTelemetry traces (OTLP/HTTP, off unless UP_OTEL_ENDPOINT is set),
+# argon2id password hashing, Fernet field encryption (cryptography)
+prometheus-client==0.26.0
+opentelemetry-api==1.45.2
+opentelemetry-sdk==1.45.2
+opentelemetry-exporter-otlp-proto-http==1.45.2
+argon2-cffi==25.1.0
+cryptography==50.0.2

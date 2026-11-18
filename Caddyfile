@@ -1,4 +1,4 @@
 localhost {
 	tls internal
-	reverse_proxy web:5173
+	reverse_proxy web:8080
 }

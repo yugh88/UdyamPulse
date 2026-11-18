@@ -1,0 +1,228 @@
+{
+  "dataset": "UCI Polish companies bankruptcy (43,405 firm-years, 64 financial ratios)",
+  "provenance": "Real public data",
+  "purpose": "Validates the financial-health pillar's approach (cash-flow, liquidity, leverage ratios) on real firms. Not the Indian MSME score.",
+  "source": [
+    {
+      "file": "polish_bankruptcy.parquet",
+      "url": "https://archive.ics.uci.edu/dataset/365",
+      "licence": "CC BY 4.0, https://creativecommons.org/licenses/by/4.0/",
+      "source": "Tomczak, S. (2016). Polish Companies Bankruptcy [Dataset]. UCI Machine Learning Repository. https://doi.org/10.24432/C5F600",
+      "retrieved_at": "2026-11-17T12:52:42+00:00",
+      "sha256": "d3dfa85179dd7c5bdd72fbd1a0ee17b992c4015a31dbcabae4544483051fb4b6"
+    }
+  ],
+  "citation": "Tomczak, S. (2016). Polish Companies Bankruptcy [Dataset]. UCI Machine Learning Repository. https://doi.org/10.24432/C5F600",
+  "licence": "CC BY 4.0",
+  "label": "bankrupt within the dataset's forecasting horizon (class = 1)",
+  "split": {
+    "train": "forecasting years 1-3 (80%), validation 20% of the same years",
+    "test": "years 4-5",
+    "n_train": 22096,
+    "n_valid": 5607,
+    "n_test": 15702,
+    "note": "'Year' is the forecasting horizon (year 1 = status after 5 years ... year 5 = after 1 year), so this tests generalisation across horizons, not across calendar time."
+  },
+  "test": {
+    "n": 15702,
+    "positives": 925,
+    "event_rate": 0.0589,
+    "bootstrap_resamples": 1000,
+    "auc": 0.9542,
+    "auc_ci95": [
+      0.9479,
+      0.9603
+    ],
+    "ks": 0.7514,
+    "ks_ci95": [
+      0.7349,
+      0.7761
+    ],
+    "brier": 0.0265,
+    "brier_ci95": [
+      0.0244,
+      0.0286
+    ]
+  },
+  "expected_calibration_error": 0.0142,
+  "calibration": [
+    {
+      "bin": 1,
+      "n": 3777,
+      "mean_predicted": 0.0001,
+      "observed": 0.0003
+    },
+    {
+      "bin": 2,
+      "n": 2867,
+      "mean_predicted": 0.001,
+      "observed": 0.0014
+    },
+    {
+      "bin": 3,
+      "n": 2419,
+      "mean_predicted": 0.0022,
+      "observed": 0.0054
+    },
+    {
+      "bin": 4,
+      "n": 3432,
+      "mean_predicted": 0.0121,
+      "observed": 0.0186
+    },
+    {
+      "bin": 5,
+      "n": 1536,
+      "mean_predicted": 0.0192,
+      "observed": 0.0632
+    },
+    {
+      "bin": 6,
+      "n": 1671,
+      "mean_predicted": 0.3724,
+      "observed": 0.4464
+    }
+  ],
+  "precision_at_k": [
+    {
+      "top_pct": 1.0,
+      "n": 157,
+      "precision": 1.0,
+      "recall": 0.1697,
+      "lift": 16.98
+    },
+    {
+      "top_pct": 5.0,
+      "n": 785,
+      "precision": 0.7096,
+      "recall": 0.6022,
+      "lift": 12.04
+    },
+    {
+      "top_pct": 10.0,
+      "n": 1570,
+      "precision": 0.4605,
+      "recall": 0.7816,
+      "lift": 7.82
+    },
+    {
+      "top_pct": 20.0,
+      "n": 3140,
+      "precision": 0.2567,
+      "recall": 0.8714,
+      "lift": 4.36
+    }
+  ],
+  "by_year": [
+    {
+      "group": "4",
+      "n": 9792,
+      "positives": 515,
+      "event_rate": 0.0526,
+      "auc": 0.9557,
+      "auc_ci95": [
+        0.9483,
+        0.9629
+      ]
+    },
+    {
+      "group": "5",
+      "n": 5910,
+      "positives": 410,
+      "event_rate": 0.0694,
+      "auc": 0.9535,
+      "auc_ci95": [
+        0.9432,
+        0.9624
+      ]
+    }
+  ],
+  "top_features_shap": [
+    {
+      "feature": "A27",
+      "mean_abs_shap": 0.7885,
+      "definition": "profit on operating activities / financial expenses",
+      "family": "profitability"
+    },
+    {
+      "feature": "A34",
+      "mean_abs_shap": 0.6545,
+      "definition": "operating expenses / total liabilities",
+      "family": "size"
+    },
+    {
+      "feature": "A58",
+      "mean_abs_shap": 0.4626,
+      "definition": "total costs /total sales",
+      "family": "activity"
+    },
+    {
+      "feature": "A46",
+      "mean_abs_shap": 0.4506,
+      "definition": "(current assets - inventory) / short-term liabilities",
+      "family": "liquidity"
+    },
+    {
+      "feature": "A5",
+      "mean_abs_shap": 0.4408,
+      "definition": "[(cash + short-term securities + receivables - short-term liabilities) / (operating expenses - depreciation)] * 365",
+      "family": "liquidity"
+    },
+    {
+      "feature": "A24",
+      "mean_abs_shap": 0.3024,
+      "definition": "gross profit (in 3 years) / total assets",
+      "family": "profitability"
+    },
+    {
+      "feature": "A13",
+      "mean_abs_shap": 0.2506,
+      "definition": "(gross profit + depreciation) / sales",
+      "family": "profitability"
+    },
+    {
+      "feature": "A39",
+      "mean_abs_shap": 0.2482,
+      "definition": "profit on sales / sales",
+      "family": "profitability"
+    },
+    {
+      "feature": "A29",
+      "mean_abs_shap": 0.2299,
+      "definition": "logarithm of total assets",
+      "family": "size"
+    },
+    {
+      "feature": "A26",
+      "mean_abs_shap": 0.2283,
+      "definition": "(net profit + depreciation) / total liabilities",
+      "family": "profitability"
+    },
+    {
+      "feature": "A33",
+      "mean_abs_shap": 0.2216,
+      "definition": "operating expenses / short-term liabilities",
+      "family": "liquidity"
+    },
+    {
+      "feature": "A42",
+      "mean_abs_shap": 0.2197,
+      "definition": "profit on operating activities / sales",
+      "family": "profitability"
+    }
+  ],
+  "importance_by_ratio_family": {
+    "profitability": 0.364,
+    "activity": 0.217,
+    "liquidity": 0.214,
+    "size": 0.139,
+    "leverage": 0.066
+  },
+  "limitations": [
+    "Polish firms 2000-2013 with audited statements; Indian MSMEs often lack audited accounts, which is why UdyamPulse relies on GST, bank and operating signals instead.",
+    "The dataset has no company identifier, so the same firm can appear in a training year and a test year; that overlap can flatter the AUC.",
+    "Bankrupt firms are 4.8% of rows across a 1-5 year horizon; published studies on this dataset report AUCs of a similar order with gradient boosting."
+  ],
+  "runtime_seconds": 14.7,
+  "generated_at": "2026-11-17T13:02:39+00:00"
+}

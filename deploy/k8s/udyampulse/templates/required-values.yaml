@@ -1,0 +1,4 @@
+{{- /* Fails the install early when the secret name is missing. Keys are documented in values.yaml. */ -}}
+{{- if not .Values.existingSecret }}
+{{- fail "existingSecret is required: UP_DB_URL, UP_REDIS_URL, UP_JWT_SECRET, UP_FIELD_KEYS, UP_METRICS_TOKEN" }}
+{{- end }}

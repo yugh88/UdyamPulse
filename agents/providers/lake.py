@@ -17,8 +17,9 @@ class DuckDBLakeStore:
         s = get_settings()
         con = duckdb.connect()
 
+        # Paths come from server settings, never from a request, so interpolating them is safe.
         def q(path: str) -> pd.DataFrame:
-            return con.execute(f"SELECT * FROM read_parquet('{path}')").df()
+            return con.execute(f"SELECT * FROM read_parquet('{path}')").df()  # nosec B608
 
         self._profiles = q((s.silver / "factories.parquet").as_posix()).set_index("factory_id", drop=False)
         self._silver = q((s.silver / "factory_month.parquet").as_posix())
@@ -45,6 +46,9 @@ class DuckDBLakeStore:
         if rows.empty:
             raise KeyError(f"{factory_id}@{month}")
         return rows.iloc[0]
+
+    def features_month(self, month: int) -> pd.DataFrame:
+        return self._gold[self._gold.month == month]
 
     def scores(self, upto_month: int) -> pd.DataFrame:
         return self._scores[self._scores.month <= upto_month]

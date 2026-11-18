@@ -1,0 +1,42 @@
+{
+  "dataset": "full",
+  "generate": {
+    "factories": 50000,
+    "months": 36,
+    "factory_months": 1800000,
+    "defaults": 5045,
+    "default_rate": 0.1009,
+    "default_rate_micro": 0.1262,
+    "default_rate_small": 0.0628,
+    "stressed_rate": 0.2207,
+    "stress_types": {
+      "buyer_loss": 5284,
+      "payment_stretch": 2018,
+      "buyer_default": 1314,
+      "input_cost_spike": 1148,
+      "diversion": 940,
+      "sudden": 329
+    },
+    "stress_sources": {
+      "idiosyncratic": 6585,
+      "contagion": 2397,
+      "macro": 1721,
+      "sudden": 329,
+      "scripted": 1
+    },
+    "monthly_label_rate": 0.0309,
+    "calibration_source": "MoSPI Index of Industrial Production via api.mospi.gov.in",
+    "shock_month": 26,
+    "seconds": 9.3,
+    "peak_rss_mb": 681
+  },
+  "generate_seconds": 9.6,
+  "silver_seconds": 4.2,
+  "gold_seconds": 117.8,
+  "total_seconds": 131.6,
+  "silver_rows": 1800000,
+  "gold_rows": 1800000,
+  "gold_features": 67,
+  "peak_rss_mb_main": 3982,
+  "peak_rss_mb_largest_worker": 411
+}

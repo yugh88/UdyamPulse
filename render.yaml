@@ -1,0 +1,16 @@
+# Render Blueprint for the free public demo (dashboard → New → Blueprint → this repository).
+# One Docker web service: FastAPI serves the API and the built React app (lite profile: SQLite, in-process
+# worker, template writer, reseeded on every start). No secrets or environment variables are required.
+services:
+  - type: web
+    name: udyampulse-demo
+    runtime: docker
+    plan: free
+    region: singapore           # nearest free region to India; the demo holds synthetic data only
+    dockerfilePath: ./deploy/huggingface/Dockerfile
+    dockerContext: .
+    healthCheckPath: /healthz
+    autoDeploy: false           # CI triggers the deploy hook only after every test and security gate passes
+    envVars:
+      - key: UP_FRAME_ANCESTORS
+        value: ""               # not embedded anywhere on Render: framing stays denied

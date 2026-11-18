@@ -1,0 +1,18 @@
+sequenceDiagram
+    autonumber
+    participant UI as Web app
+    participant API as FastAPI
+    participant SM as State machine
+    participant OB as Outbox
+    participant W as Worker
+    participant AG as Agents
+    participant AU as Audit chain
+    UI->>API: POST /v1/applications/{id}/score (Prefer: respond-async)
+    API->>SM: check role + state
+    API->>OB: job row + outbox event (one transaction)
+    API-->>UI: 202 Accepted + job URL
+    OB->>W: relay publishes the job
+    W->>AG: Data agent (consent check) → scoring engine
+    AG->>AU: every tool call: masked inputs + output hash, chained
+    W-->>UI: progress over Server-Sent Events
+    UI->>API: GET result → score, reasons

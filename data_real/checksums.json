@@ -1,0 +1,45 @@
+{
+  "7a_504_foia_data_dictionary.xlsx": {
+    "url": "https://data.sba.gov/sites/default/files/uploaded_resources/7a_504_foia_data_dictionary.xlsx",
+    "bytes": 24529,
+    "sha256": "777ba97a6f92e325f79905610816cb59d41f1971cd964c54dc30ef02730a3941",
+    "licence": "U.S. Government Work (public domain), https://www.usa.gov/publicdomain/label/1.0/",
+    "source": "U.S. Small Business Administration, 7(a) & 504 FOIA, https://data.sba.gov",
+    "retrieved_at": "2026-11-17T12:50:34+00:00"
+  },
+  "FOIA_7a_FY2010_FY2019_asof_260930.csv": {
+    "url": "https://data.sba.gov/sites/default/files/uploaded_resources/FOIA_7a_FY2010_FY2019_asof_260930.csv",
+    "bytes": 255300948,
+    "sha256": "39aa32b71fb5dbb4bfb178c9b3d597c92bb6903622027c2f8360d13e57d0abb2",
+    "licence": "U.S. Government Work (public domain), https://www.usa.gov/publicdomain/label/1.0/",
+    "source": "U.S. Small Business Administration, 7(a) & 504 FOIA, https://data.sba.gov",
+    "retrieved_at": "2026-11-17T12:50:46+00:00"
+  },
+  "FOIA_7a_FY2020_Present_asof_260930.csv": {
+    "url": "https://data.sba.gov/sites/default/files/uploaded_resources/FOIA_7a_FY2020_Present_asof_260930.csv",
+    "bytes": 188484797,
+    "sha256": "b56194df6da2c22c318fcfc9f8f087152bc54e2be391c4cc70316514c37ef8e6",
+    "licence": "U.S. Government Work (public domain), https://www.usa.gov/publicdomain/label/1.0/",
+    "source": "U.S. Small Business Administration, 7(a) & 504 FOIA, https://data.sba.gov",
+    "retrieved_at": "2026-11-17T12:50:55+00:00"
+  },
+  "iip_monthly.parquet": {
+    "url": "https://api.mospi.gov.in/api/iip/getIIPMonthly",
+    "bytes": 79016,
+    "sha256": "8f0c9a90ba4eab3640305d4a4ea6f49c248148c8f252213c92ab51e66d260758",
+    "licence": "MoSPI official statistics, disseminated under MoSPI's Guidelines for Statistical Data Dissemination; GODL-India is the likely licence but was not confirmed for this API. Used only to derive aggregate calibration parameters; the raw series is not redistributed.",
+    "source": "Ministry of Statistics and Programme Implementation (MoSPI), Index of Industrial Production",
+    "rows": 17196,
+    "retrieved_at": "2026-11-17T13:07:38+00:00",
+    "note": "checksum of the tidy Parquet; the API serves the latest revision"
+  },
+  "polish_bankruptcy.parquet": {
+    "url": "https://archive.ics.uci.edu/dataset/365",
+    "bytes": 20605588,
+    "sha256": "d3dfa85179dd7c5bdd72fbd1a0ee17b992c4015a31dbcabae4544483051fb4b6",
+    "licence": "CC BY 4.0, https://creativecommons.org/licenses/by/4.0/",
+    "source": "Tomczak, S. (2016). Polish Companies Bankruptcy [Dataset]. UCI Machine Learning Repository. https://doi.org/10.24432/C5F600",
+    "retrieved_at": "2026-11-17T12:52:42+00:00",
+    "note": "Parquet re-serialisation of the ucimlrepo download"
+  }
+}

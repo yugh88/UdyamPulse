@@ -2,40 +2,17 @@
   "openapi": "3.1.0",
   "info": {
     "title": "UdyamPulse API",
-    "description": "Decision intelligence for MSME manufacturing credit: consented operating data \u2192 explainable Factory Health Score \u2192 credit memo \u2192 human decision \u2192 continuous early warning. All AI outputs are recommendations; the credit officer decides.",
-    "version": "0.1.0"
+    "description": "Decision intelligence for MSME manufacturing credit: consented operating data \u2192 explainable Factory Health Score \u2192 credit memo \u2192 human decision \u2192 continuous early warning. All AI outputs are recommendations; the credit officer decides. Errors use RFC 9457 problem details (`application/problem+json`).",
+    "version": "1.0.0"
   },
   "paths": {
-    "/health": {
-      "get": {
-        "tags": [
-          "meta"
-        ],
-        "summary": "Health",
-        "operationId": "health_health_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "type": "object",
-                  "title": "Response Health Health Get"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/auth/login": {
+    "/v1/auth/login": {
       "post": {
         "tags": [
           "auth"
         ],
         "summary": "Login",
-        "operationId": "login_auth_login_post",
+        "operationId": "login_v1_auth_login_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -70,13 +47,13 @@
         }
       }
     },
-    "/auth/me": {
+    "/v1/auth/me": {
       "get": {
         "tags": [
           "auth"
         ],
         "summary": "Me",
-        "operationId": "me_auth_me_get",
+        "operationId": "me_v1_auth_me_get",
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -85,7 +62,7 @@
                 "schema": {
                   "additionalProperties": true,
                   "type": "object",
-                  "title": "Response Me Auth Me Get"
+                  "title": "Response Me V1 Auth Me Get"
                 }
               }
             }
@@ -98,13 +75,43 @@
         ]
       }
     },
-    "/applications": {
+    "/v1/applications/stats": {
+      "get": {
+        "tags": [
+          "applications"
+        ],
+        "summary": "Application Stats",
+        "description": "KPI tiles for the console. Decision figures count only decisions made in this system (not seed data).",
+        "operationId": "application_stats_v1_applications_stats_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Application Stats V1 Applications Stats Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/applications": {
       "get": {
         "tags": [
           "applications"
         ],
         "summary": "List Applications",
-        "operationId": "list_applications_applications_get",
+        "description": "Applications in the pipeline (or in one `state`), oldest first. Paginated by cursor (see `Link`).",
+        "operationId": "list_applications_v1_applications_get",
         "security": [
           {
             "HTTPBearer": []
@@ -126,6 +133,34 @@
               ],
               "title": "State"
             }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 200,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
           }
         ],
         "responses": {
@@ -139,7 +174,7 @@
                     "type": "object",
                     "additionalProperties": true
                   },
-                  "title": "Response List Applications Applications Get"
+                  "title": "Response List Applications V1 Applications Get"
                 }
               }
             }
@@ -161,7 +196,7 @@
           "applications"
         ],
         "summary": "Create Application",
-        "operationId": "create_application_applications_post",
+        "operationId": "create_application_v1_applications_post",
         "security": [
           {
             "HTTPBearer": []
@@ -185,7 +220,7 @@
                 "schema": {
                   "type": "object",
                   "additionalProperties": true,
-                  "title": "Response Create Application Applications Post"
+                  "title": "Response Create Application V1 Applications Post"
                 }
               }
             }
@@ -203,13 +238,13 @@
         }
       }
     },
-    "/applications/{app_id}": {
+    "/v1/applications/{app_id}": {
       "get": {
         "tags": [
           "applications"
         ],
         "summary": "Get Application",
-        "operationId": "get_application_applications__app_id__get",
+        "operationId": "get_application_v1_applications__app_id__get",
         "security": [
           {
             "HTTPBearer": []
@@ -234,7 +269,7 @@
                 "schema": {
                   "type": "object",
                   "additionalProperties": true,
-                  "title": "Response Get Application Applications  App Id  Get"
+                  "title": "Response Get Application V1 Applications  App Id  Get"
                 }
               }
             }
@@ -252,13 +287,13 @@
         }
       }
     },
-    "/applications/{app_id}/consent": {
+    "/v1/applications/{app_id}/consent": {
       "post": {
         "tags": [
           "applications"
         ],
         "summary": "Grant Consent",
-        "operationId": "grant_consent_applications__app_id__consent_post",
+        "operationId": "grant_consent_v1_applications__app_id__consent_post",
         "security": [
           {
             "HTTPBearer": []
@@ -283,7 +318,7 @@
                 "schema": {
                   "type": "object",
                   "additionalProperties": true,
-                  "title": "Response Grant Consent Applications  App Id  Consent Post"
+                  "title": "Response Grant Consent V1 Applications  App Id  Consent Post"
                 }
               }
             }
@@ -305,7 +340,7 @@
           "applications"
         ],
         "summary": "Revoke Consent",
-        "operationId": "revoke_consent_applications__app_id__consent_delete",
+        "operationId": "revoke_consent_v1_applications__app_id__consent_delete",
         "security": [
           {
             "HTTPBearer": []
@@ -330,7 +365,7 @@
                 "schema": {
                   "type": "object",
                   "additionalProperties": true,
-                  "title": "Response Revoke Consent Applications  App Id  Consent Delete"
+                  "title": "Response Revoke Consent V1 Applications  App Id  Consent Delete"
                 }
               }
             }
@@ -348,13 +383,13 @@
         }
       }
     },
-    "/applications/{app_id}/consent-ledger": {
+    "/v1/applications/{app_id}/consent-ledger": {
       "get": {
         "tags": [
           "applications"
         ],
         "summary": "Consent Ledger",
-        "operationId": "consent_ledger_applications__app_id__consent_ledger_get",
+        "operationId": "consent_ledger_v1_applications__app_id__consent_ledger_get",
         "security": [
           {
             "HTTPBearer": []
@@ -382,7 +417,7 @@
                     "type": "object",
                     "additionalProperties": true
                   },
-                  "title": "Response Consent Ledger Applications  App Id  Consent Ledger Get"
+                  "title": "Response Consent Ledger V1 Applications  App Id  Consent Ledger Get"
                 }
               }
             }
@@ -400,13 +435,13 @@
         }
       }
     },
-    "/applications/{app_id}/score": {
+    "/v1/applications/{app_id}/score": {
       "post": {
         "tags": [
           "applications"
         ],
         "summary": "Score Application",
-        "operationId": "score_application_applications__app_id__score_post",
+        "operationId": "score_application_v1_applications__app_id__score_post",
         "security": [
           {
             "HTTPBearer": []
@@ -420,6 +455,22 @@
             "schema": {
               "type": "integer",
               "title": "App Id"
+            }
+          },
+          {
+            "name": "prefer",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Prefer"
             }
           }
         ],
@@ -434,54 +485,8 @@
               }
             }
           },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/applications/{app_id}/memo": {
-      "post": {
-        "tags": [
-          "applications"
-        ],
-        "summary": "Draft Memo",
-        "operationId": "draft_memo_applications__app_id__memo_post",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "app_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "title": "App Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response Draft Memo Applications  App Id  Memo Post"
-                }
-              }
-            }
+          "202": {
+            "description": "Queued as a background job (with `Prefer: respond-async`)"
           },
           "422": {
             "description": "Validation Error",
@@ -496,13 +501,77 @@
         }
       }
     },
-    "/applications/{app_id}/memo.pdf": {
+    "/v1/applications/{app_id}/memo": {
+      "post": {
+        "tags": [
+          "applications"
+        ],
+        "summary": "Draft Memo",
+        "operationId": "draft_memo_v1_applications__app_id__memo_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "app_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "App Id"
+            }
+          },
+          {
+            "name": "prefer",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Prefer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "202": {
+            "description": "Queued as a background job (with `Prefer: respond-async`)"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/applications/{app_id}/memo.pdf": {
       "get": {
         "tags": [
           "applications"
         ],
         "summary": "Memo Pdf",
-        "operationId": "memo_pdf_applications__app_id__memo_pdf_get",
+        "operationId": "memo_pdf_v1_applications__app_id__memo_pdf_get",
         "security": [
           {
             "HTTPBearer": []
@@ -541,13 +610,13 @@
         }
       }
     },
-    "/applications/{app_id}/decision": {
+    "/v1/applications/{app_id}/decision": {
       "post": {
         "tags": [
           "applications"
         ],
         "summary": "Decide",
-        "operationId": "decide_applications__app_id__decision_post",
+        "operationId": "decide_v1_applications__app_id__decision_post",
         "security": [
           {
             "HTTPBearer": []
@@ -582,7 +651,7 @@
                 "schema": {
                   "type": "object",
                   "additionalProperties": true,
-                  "title": "Response Decide Applications  App Id  Decision Post"
+                  "title": "Response Decide V1 Applications  App Id  Decision Post"
                 }
               }
             }
@@ -600,13 +669,13 @@
         }
       }
     },
-    "/applications/{app_id}/disburse": {
+    "/v1/applications/{app_id}/disburse": {
       "post": {
         "tags": [
           "applications"
         ],
         "summary": "Disburse",
-        "operationId": "disburse_applications__app_id__disburse_post",
+        "operationId": "disburse_v1_applications__app_id__disburse_post",
         "security": [
           {
             "HTTPBearer": []
@@ -631,7 +700,7 @@
                 "schema": {
                   "type": "object",
                   "additionalProperties": true,
-                  "title": "Response Disburse Applications  App Id  Disburse Post"
+                  "title": "Response Disburse V1 Applications  App Id  Disburse Post"
                 }
               }
             }
@@ -649,14 +718,14 @@
         }
       }
     },
-    "/applications/{app_id}/review-request": {
+    "/v1/applications/{app_id}/review-request": {
       "post": {
         "tags": [
           "applications"
         ],
         "summary": "Request Review",
         "description": "Right to challenge an AI-assisted outcome (RBI FREE-AI): routes the case to a human reviewer.",
-        "operationId": "request_review_applications__app_id__review_request_post",
+        "operationId": "request_review_v1_applications__app_id__review_request_post",
         "security": [
           {
             "HTTPBearer": []
@@ -691,7 +760,7 @@
                 "schema": {
                   "type": "object",
                   "additionalProperties": true,
-                  "title": "Response Request Review Applications  App Id  Review Request Post"
+                  "title": "Response Request Review V1 Applications  App Id  Review Request Post"
                 }
               }
             }
@@ -709,13 +778,63 @@
         }
       }
     },
-    "/portfolio": {
+    "/v1/policy/{section}": {
       "get": {
         "tags": [
-          "portfolio"
+          "insights"
         ],
-        "summary": "Portfolio",
-        "operationId": "portfolio_portfolio_get",
+        "summary": "Policy Clause",
+        "description": "Full text of one credit-policy clause, for the citation chips in the memo.",
+        "operationId": "policy_clause_v1_policy__section__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "section",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Section"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Policy Clause V1 Policy  Section  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/score/levers": {
+      "get": {
+        "tags": [
+          "insights"
+        ],
+        "summary": "Levers",
+        "operationId": "levers_v1_score_levers_get",
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -724,7 +843,7 @@
                 "schema": {
                   "additionalProperties": true,
                   "type": "object",
-                  "title": "Response Portfolio Portfolio Get"
+                  "title": "Response Levers V1 Score Levers Get"
                 }
               }
             }
@@ -737,13 +856,153 @@
         ]
       }
     },
-    "/alerts": {
+    "/v1/score/simulate": {
+      "post": {
+        "tags": [
+          "insights"
+        ],
+        "summary": "Simulate",
+        "description": "Re-score with a few signals changed over the latest months. Nothing is stored: the application's\nscore, band and state are untouched and no data pull is recorded.",
+        "operationId": "simulate_v1_score_simulate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SimulateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Simulate V1 Score Simulate Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/portfolio": {
+      "get": {
+        "tags": [
+          "portfolio"
+        ],
+        "summary": "Portfolio",
+        "description": "Portfolio aggregates, cached per bank and invalidated by any change to its accounts (see api/cache.py).",
+        "operationId": "portfolio_v1_portfolio_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Portfolio V1 Portfolio Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/portfolio/migration": {
+      "get": {
+        "tags": [
+          "portfolio"
+        ],
+        "summary": "Migration",
+        "description": "Score-band migration of monitored accounts between the previous and the latest visible month.",
+        "operationId": "migration_v1_portfolio_migration_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Migration V1 Portfolio Migration Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/staff": {
+      "get": {
+        "tags": [
+          "portfolio"
+        ],
+        "summary": "Staff",
+        "description": "Staff who can own an alert (for the assign menu).",
+        "operationId": "staff_v1_staff_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "type": "array",
+                  "title": "Response Staff V1 Staff Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/alerts": {
       "get": {
         "tags": [
           "portfolio"
         ],
         "summary": "List Alerts",
-        "operationId": "list_alerts_alerts_get",
+        "description": "Alerts, highest severity first, then newest month. Paginated by cursor (see `Link`).",
+        "operationId": "list_alerts_v1_alerts_get",
         "security": [
           {
             "HTTPBearer": []
@@ -766,6 +1025,34 @@
               "default": "OPEN",
               "title": "Status"
             }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000,
+              "minimum": 1,
+              "default": 500,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
           }
         ],
         "responses": {
@@ -779,7 +1066,7 @@
                     "type": "object",
                     "additionalProperties": true
                   },
-                  "title": "Response List Alerts Alerts Get"
+                  "title": "Response List Alerts V1 Alerts Get"
                 }
               }
             }
@@ -797,13 +1084,13 @@
         }
       }
     },
-    "/alerts/{alert_id}/action": {
+    "/v1/alerts/{alert_id}/action": {
       "post": {
         "tags": [
           "portfolio"
         ],
         "summary": "Action Alert",
-        "operationId": "action_alert_alerts__alert_id__action_post",
+        "operationId": "action_alert_v1_alerts__alert_id__action_post",
         "security": [
           {
             "HTTPBearer": []
@@ -838,7 +1125,7 @@
                 "schema": {
                   "type": "object",
                   "additionalProperties": true,
-                  "title": "Response Action Alert Alerts  Alert Id  Action Post"
+                  "title": "Response Action Alert V1 Alerts  Alert Id  Action Post"
                 }
               }
             }
@@ -856,13 +1143,24 @@
         }
       }
     },
-    "/sim/clock": {
-      "get": {
+    "/v1/alerts/bulk": {
+      "post": {
         "tags": [
           "portfolio"
         ],
-        "summary": "Clock",
-        "operationId": "clock_sim_clock_get",
+        "summary": "Bulk Alerts",
+        "description": "Assign an owner to, or acknowledge, several open alerts in one step.",
+        "operationId": "bulk_alerts_v1_alerts_bulk_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlertBulk"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -871,7 +1169,17 @@
                 "schema": {
                   "additionalProperties": true,
                   "type": "object",
-                  "title": "Response Clock Sim Clock Get"
+                  "title": "Response Bulk Alerts V1 Alerts Bulk Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -884,14 +1192,42 @@
         ]
       }
     },
-    "/sim/advance": {
+    "/v1/sim/clock": {
+      "get": {
+        "tags": [
+          "portfolio"
+        ],
+        "summary": "Clock",
+        "operationId": "clock_v1_sim_clock_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Clock V1 Sim Clock Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/sim/advance": {
       "post": {
         "tags": [
           "portfolio"
         ],
         "summary": "Advance",
-        "description": "Fast-forward the simulated clock, then let the early-warning agent process newly visible data.",
-        "operationId": "advance_sim_advance_post",
+        "description": "Fast-forward the simulated clock, then queue the early-warning batch for the newly visible data.\nReturns 202 with a job id; follow it at `/v1/events?job=<id>` or `/v1/jobs/<id>`.",
+        "operationId": "advance_v1_sim_advance_post",
         "security": [
           {
             "HTTPBearer": []
@@ -912,14 +1248,14 @@
           }
         ],
         "responses": {
-          "200": {
+          "202": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
                   "additionalProperties": true,
-                  "title": "Response Advance Sim Advance Post"
+                  "title": "Response Advance V1 Sim Advance Post"
                 }
               }
             }
@@ -937,13 +1273,13 @@
         }
       }
     },
-    "/msme/{factory_id}/readiness": {
+    "/v1/msme/{factory_id}/readiness": {
       "get": {
         "tags": [
           "msme"
         ],
         "summary": "Readiness",
-        "operationId": "readiness_msme__factory_id__readiness_get",
+        "operationId": "readiness_v1_msme__factory_id__readiness_get",
         "security": [
           {
             "HTTPBearer": []
@@ -968,7 +1304,7 @@
                 "schema": {
                   "type": "object",
                   "additionalProperties": true,
-                  "title": "Response Readiness Msme  Factory Id  Readiness Get"
+                  "title": "Response Readiness V1 Msme  Factory Id  Readiness Get"
                 }
               }
             }
@@ -986,13 +1322,82 @@
         }
       }
     },
-    "/msme/{factory_id}/notifications": {
+    "/v1/msme/{factory_id}/plan/steps/{step_key}": {
+      "put": {
+        "tags": [
+          "msme"
+        ],
+        "summary": "Set Plan Step",
+        "description": "Tick or untick one step of the 90-day plan.",
+        "operationId": "set_plan_step_v1_msme__factory_id__plan_steps__step_key__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "factory_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Factory Id"
+            }
+          },
+          {
+            "name": "step_key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Step Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlanStepUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Set Plan Step V1 Msme  Factory Id  Plan Steps  Step Key  Put"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/msme/{factory_id}/notifications": {
       "get": {
         "tags": [
           "msme"
         ],
         "summary": "Notifications",
-        "operationId": "notifications_msme__factory_id__notifications_get",
+        "operationId": "notifications_v1_msme__factory_id__notifications_get",
         "security": [
           {
             "HTTPBearer": []
@@ -1020,7 +1425,7 @@
                     "type": "object",
                     "additionalProperties": true
                   },
-                  "title": "Response Notifications Msme  Factory Id  Notifications Get"
+                  "title": "Response Notifications V1 Msme  Factory Id  Notifications Get"
                 }
               }
             }
@@ -1038,14 +1443,14 @@
         }
       }
     },
-    "/msme/{factory_id}/my-data": {
+    "/v1/msme/{factory_id}/my-data": {
       "get": {
         "tags": [
           "msme"
         ],
         "summary": "My Data",
         "description": "DPDP data-principal rights stub: what is held, why, and the consent history.",
-        "operationId": "my_data_msme__factory_id__my_data_get",
+        "operationId": "my_data_v1_msme__factory_id__my_data_get",
         "security": [
           {
             "HTTPBearer": []
@@ -1070,7 +1475,7 @@
                 "schema": {
                   "type": "object",
                   "additionalProperties": true,
-                  "title": "Response My Data Msme  Factory Id  My Data Get"
+                  "title": "Response My Data V1 Msme  Factory Id  My Data Get"
                 }
               }
             }
@@ -1088,13 +1493,13 @@
         }
       }
     },
-    "/msme/{factory_id}/erasure-request": {
+    "/v1/msme/{factory_id}/erasure-request": {
       "post": {
         "tags": [
           "msme"
         ],
         "summary": "Erasure Request",
-        "operationId": "erasure_request_msme__factory_id__erasure_request_post",
+        "operationId": "erasure_request_v1_msme__factory_id__erasure_request_post",
         "security": [
           {
             "HTTPBearer": []
@@ -1119,7 +1524,7 @@
                 "schema": {
                   "type": "object",
                   "additionalProperties": true,
-                  "title": "Response Erasure Request Msme  Factory Id  Erasure Request Post"
+                  "title": "Response Erasure Request V1 Msme  Factory Id  Erasure Request Post"
                 }
               }
             }
@@ -1137,13 +1542,14 @@
         }
       }
     },
-    "/audit": {
+    "/v1/audit": {
       "get": {
         "tags": [
           "governance"
         ],
         "summary": "Audit",
-        "operationId": "audit_audit_get",
+        "description": "Audit trail, newest first. Paginated by cursor (see `Link`).",
+        "operationId": "audit_v1_audit_get",
         "security": [
           {
             "HTTPBearer": []
@@ -1173,8 +1579,25 @@
             "schema": {
               "type": "integer",
               "maximum": 2000,
+              "minimum": 1,
               "default": 200,
               "title": "Limit"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
             }
           }
         ],
@@ -1189,7 +1612,7 @@
                     "type": "object",
                     "additionalProperties": true
                   },
-                  "title": "Response Audit Audit Get"
+                  "title": "Response Audit V1 Audit Get"
                 }
               }
             }
@@ -1207,14 +1630,14 @@
         }
       }
     },
-    "/model": {
+    "/v1/model": {
       "get": {
         "tags": [
           "governance"
         ],
         "summary": "Model Inventory",
         "description": "Model inventory entry: metrics, fairness, drift, EWS back-test and the model card.",
-        "operationId": "model_inventory_model_get",
+        "operationId": "model_inventory_v1_model_get",
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -1223,7 +1646,7 @@
                 "schema": {
                   "additionalProperties": true,
                   "type": "object",
-                  "title": "Response Model Inventory Model Get"
+                  "title": "Response Model Inventory V1 Model Get"
                 }
               }
             }
@@ -1236,13 +1659,13 @@
         ]
       }
     },
-    "/factories": {
+    "/v1/factories": {
       "get": {
         "tags": [
           "governance"
         ],
         "summary": "Factories",
-        "operationId": "factories_factories_get",
+        "operationId": "factories_v1_factories_get",
         "security": [
           {
             "HTTPBearer": []
@@ -1282,7 +1705,7 @@
                     "type": "object",
                     "additionalProperties": true
                   },
-                  "title": "Response Factories Factories Get"
+                  "title": "Response Factories V1 Factories Get"
                 }
               }
             }
@@ -1293,6 +1716,396 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/consent-ledger": {
+      "get": {
+        "tags": [
+          "governance"
+        ],
+        "summary": "Consent Ledger",
+        "description": "Portfolio-wide consent ledger: grants, data pulls, blocked pulls, expiries, revocations, deletion jobs.",
+        "operationId": "consent_ledger_v1_consent_ledger_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 2000,
+              "minimum": 1,
+              "default": 300,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Consent Ledger V1 Consent Ledger Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/ai-usage": {
+      "get": {
+        "tags": [
+          "governance"
+        ],
+        "summary": "Ai Usage",
+        "description": "Every LLM-writer call: prompt template, provider, latency and a token estimate (characters / 4).",
+        "operationId": "ai_usage_v1_ai_usage_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 2000,
+              "minimum": 1,
+              "default": 300,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Ai Usage V1 Ai Usage Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/demo/reset": {
+      "post": {
+        "tags": [
+          "governance",
+          "demo"
+        ],
+        "summary": "Reset Demo",
+        "description": "Presenter control: restore the seeded demo state. Available only in demo mode (local synthetic data).",
+        "operationId": "reset_demo_v1_demo_reset_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Reset Demo V1 Demo Reset Post"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/demo/status": {
+      "get": {
+        "tags": [
+          "governance",
+          "demo"
+        ],
+        "summary": "Demo Status",
+        "operationId": "demo_status_v1_demo_status_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Demo Status V1 Demo Status Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/jobs/{job_id}": {
+      "get": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "Get Job",
+        "operationId": "get_job_v1_jobs__job_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Job V1 Jobs  Job Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/jobs": {
+      "get": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "List Jobs",
+        "operationId": "list_jobs_v1_jobs_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "default": 20,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "title": "Response List Jobs V1 Jobs Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/events": {
+      "get": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "Events",
+        "operationId": "events_v1_events_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "job",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Job"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/healthz": {
+      "get": {
+        "tags": [
+          "meta"
+        ],
+        "summary": "Healthz",
+        "description": "Liveness: the process is running. Checks no dependency, so a slow database never restarts the pod.",
+        "operationId": "healthz_healthz_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Healthz Healthz Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/readyz": {
+      "get": {
+        "tags": [
+          "meta"
+        ],
+        "summary": "Readyz",
+        "description": "Readiness: database, model artifact, lake and (when configured) Redis. 503 takes the pod out of rotation.",
+        "operationId": "readyz_readyz_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Readyz Readyz Get"
                 }
               }
             }
@@ -1322,6 +2135,23 @@
             "maxLength": 1000,
             "title": "Note",
             "default": ""
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "resolved",
+                  "monitoring",
+                  "escalated",
+                  "no contact"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outcome"
           }
         },
         "type": "object",
@@ -1329,6 +2159,45 @@
           "action"
         ],
         "title": "AlertAction"
+      },
+      "AlertBulk": {
+        "properties": {
+          "ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "maxItems": 500,
+            "minItems": 1,
+            "title": "Ids"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "assign",
+              "acknowledge"
+            ],
+            "title": "Action"
+          },
+          "owner": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner",
+            "description": "Staff username; required for assign"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ids",
+          "action"
+        ],
+        "title": "AlertBulk"
       },
       "ApplicationCreate": {
         "properties": {
@@ -1465,13 +2334,23 @@
               }
             ],
             "title": "Factory Id"
+          },
+          "tenant_id": {
+            "type": "string",
+            "title": "Tenant Id"
+          },
+          "tenant_name": {
+            "type": "string",
+            "title": "Tenant Name"
           }
         },
         "type": "object",
         "required": [
           "access_token",
           "role",
-          "display_name"
+          "display_name",
+          "tenant_id",
+          "tenant_name"
         ],
         "title": "LoginResponse"
       },
@@ -1507,6 +2386,19 @@
           "health"
         ],
         "title": "Pillar"
+      },
+      "PlanStepUpdate": {
+        "properties": {
+          "done": {
+            "type": "boolean",
+            "title": "Done"
+          }
+        },
+        "type": "object",
+        "required": [
+          "done"
+        ],
+        "title": "PlanStepUpdate"
       },
       "Reason": {
         "properties": {
@@ -1635,6 +2527,27 @@
           "ai_label"
         ],
         "title": "ScoreResponse"
+      },
+      "SimulateRequest": {
+        "properties": {
+          "application_id": {
+            "type": "integer",
+            "title": "Application Id"
+          },
+          "adjustments": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Adjustments",
+            "description": "Lever key -> change, see GET /score/levers"
+          }
+        },
+        "type": "object",
+        "required": [
+          "application_id"
+        ],
+        "title": "SimulateRequest"
       },
       "ValidationError": {
         "properties": {

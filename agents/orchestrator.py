@@ -15,8 +15,10 @@ from agents.data_agent import DataAgent
 from agents.memo_agent import MemoAgent
 from agents.policy_engine import inr
 from agents.providers.lake import get_lake
+from api import serving
 from api.audit import Actor, log_event
-from api.models.db import Application, Notification
+from api.jobs import emit
+from api.models.db import Application, Notification, utcnow
 from ml.scoring import get_scorer
 
 TRANSITIONS: dict[str, set[str]] = {
@@ -34,6 +36,10 @@ class InvalidTransition(Exception):
     pass
 
 
+class ValidationFailed(Exception):
+    """A business rule on the input was not met (reported to the client as 422)."""
+
+
 class Orchestrator(Agent):
     name = "orchestrator"
 
@@ -49,11 +55,10 @@ class Orchestrator(Agent):
         old = app.state
         app.state = new_state
         log_event(self.db, self.actor, agent=self.name, tool="state_machine", action="transition",
-                  inputs={"from": old, "to": new_state}, output={"state": new_state}, application_id=app.id,
-                  commit=False)
+                  inputs={"from": old, "to": new_state}, output={"state": new_state}, application_id=app.id)
 
-    def _notify(self, factory_id: str, text: str) -> None:
-        self.db.add(Notification(factory_id=factory_id, text=text, sim_date=sim_date(self.db)))
+    def _notify(self, factory_id: str, text: str, text_hi: str) -> None:
+        self.db.add(Notification(factory_id=factory_id, text=text, text_hi=text_hi, sim_date=sim_date(self.db)))
 
     # ---- journey steps ----------------------------------------------------------------------
     def create(self, factory_id: str, requested_amount: float | None, channel: str) -> Application:
@@ -65,6 +70,7 @@ class Orchestrator(Agent):
         log_event(self.db, self.actor, agent=self.name, tool="applications", action="create",
                   inputs={"factory_id": factory_id, "requested_amount": app.requested_amount, "channel": channel},
                   output={"id": app.id}, application_id=app.id)
+        self.db.commit()
         return app
 
     def consent(self, app: Application) -> dict:
@@ -74,14 +80,19 @@ class Orchestrator(Agent):
         if app.state == "APPLIED":
             self._transition(app, "CONSENTED")
         self._notify(app.factory_id, "Consent received via Account Aggregator for your loan application. "
-                                     "Purpose: working-capital assessment and monitoring. You can revoke it any time in the app.")
+                                     "Purpose: working-capital assessment and monitoring. You can revoke it any time in the app.",
+                     "आपके लोन आवेदन के लिए अकाउंट एग्रीगेटर से सहमति मिल गई है। उद्देश्य: कार्यशील पूँजी का आकलन और "
+                     "निगरानी। आप इसे ऐप में कभी भी वापस ले सकते हैं।")
         self.db.commit()
         return {"consent": asdict(artefact), "data_pull": pull.to_dict()}
 
     def revoke(self, app: Application) -> dict:
         artefact = self.data_agent.revoke_consent(app)
+        emit(self.db, "consent.revoked", {"application_id": app.id, "factory_id": app.factory_id})
         self._notify(app.factory_id, "Your data-sharing consent has been revoked. The bank will not fetch new data "
-                                     "and previously fetched copies are being deleted.")
+                                     "and previously fetched copies are being deleted.",
+                     "आपकी डेटा साझा करने की सहमति वापस ले ली गई है। बैंक अब नया डेटा नहीं लेगा और पहले लिया गया डेटा "
+                     "हटाया जा रहा है।")
         self.db.commit()
         return asdict(artefact)
 
@@ -114,20 +125,27 @@ class Orchestrator(Agent):
 
     def decide(self, app: Application, decision: str, comment: str, sanctioned_limit: float | None) -> dict:
         if not comment or not comment.strip():
-            raise ValueError("A decision comment is mandatory")
+            raise ValidationFailed("A decision comment is mandatory")
         self._transition(app, "DECIDED")
         app.decision, app.decision_comment, app.decided_by = decision, comment.strip(), self.actor.username
+        app.decided_at = utcnow()
         if decision == "APPROVED":
             app.sanctioned_limit = sanctioned_limit or app.recommended_limit
             app.kfs = key_fact_statement(app)
             self._notify(app.factory_id, f"Good news! Your working-capital limit of {inr(app.sanctioned_limit)} is "
-                                         "approved. Please review the Key Fact Statement before signing.")
+                                         "approved. Please review the Key Fact Statement before signing.",
+                         f"बधाई हो! आपकी {inr(app.sanctioned_limit)} की कार्यशील पूँजी लिमिट मंज़ूर हो गई है। "
+                         "हस्ताक्षर से पहले की फ़ैक्ट स्टेटमेंट ज़रूर पढ़ें।")
         else:
             self._notify(app.factory_id, "Your application was not approved this time. Open the app to see the "
-                                         "main reasons and your 90-day improvement plan, or request a human review.")
+                                         "main reasons and your 90-day improvement plan, or request a human review.",
+                         "इस बार आपका आवेदन मंज़ूर नहीं हुआ। मुख्य कारण और 90 दिन की सुधार योजना ऐप में देखें, "
+                         "या किसी अधिकारी से समीक्षा का अनुरोध करें।")
+        emit(self.db, "application.decided", {"application_id": app.id, "factory_id": app.factory_id, "decision": decision,
+                                              "sanctioned_limit": app.sanctioned_limit, "by": self.actor.username})
         log_event(self.db, self.actor, agent=self.name, tool="credit_decision", action=decision.lower(),
                   inputs={"comment": comment, "sanctioned_limit": app.sanctioned_limit},
-                  output={"decision": decision}, application_id=app.id, commit=False)
+                  output={"decision": decision}, application_id=app.id)
         self.db.commit()
         return {"decision": decision, "kfs": app.kfs}
 
@@ -139,11 +157,16 @@ class Orchestrator(Agent):
         app.disbursed_on = sim_date(self.db)
         log_event(self.db, self.actor, agent=self.name, tool="los_stub.disburse", action="disburse",
                   inputs={"amount": app.sanctioned_limit, "to": "borrower's own account (direct, per DLD 2025)"},
-                  output={"ref": app.disbursement_ref}, application_id=app.id, commit=False)
+                  output={"ref": app.disbursement_ref}, application_id=app.id)
         self._transition(app, "MONITORING")
         app.last_ews_month = app.score_month
+        emit(self.db, "application.disbursed", {"application_id": app.id, "factory_id": app.factory_id,
+                                                "amount": app.sanctioned_limit, "ref": app.disbursement_ref})
+        serving.write_scores(self.db, app, range(1, (app.score_month or 0) + 1))  # history seen under consent
         self._notify(app.factory_id, f"Your limit of {inr(app.sanctioned_limit or 0)} is now active in your "
-                                     f"account (ref {app.disbursement_ref}).")
+                                     f"account (ref {app.disbursement_ref}).",
+                     f"आपकी {inr(app.sanctioned_limit or 0)} की लिमिट अब आपके खाते में चालू है "
+                     f"(संदर्भ {app.disbursement_ref})।")
         self.db.commit()
         return {"disbursement_ref": app.disbursement_ref, "disbursed_on": str(app.disbursed_on), "state": app.state}
 

@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "up.name" . }}-web
+  labels: {{- include "up.labels" . | nindent 4 }}
+    app.kubernetes.io/component: web
+spec:
+  replicas: {{ .Values.web.replicas }}
+  selector:
+    matchLabels: {{- include "up.selector" (dict "root" . "component" "web") | nindent 6 }}
+  template:
+    metadata:
+      labels: {{- include "up.podLabels" . | nindent 8 }}
+        {{- include "up.selector" (dict "root" . "component" "web") | nindent 8 }}
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: web
+          image: "{{ .Values.image.web }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - {name: http, containerPort: 8080}
+          env:
+            - name: UP_API_UPSTREAM
+              value: "http://{{ include "up.name" . }}-api:8000"
+          securityContext: {{- include "up.containerSecurity" . | nindent 12 }}
+          resources: {{- toYaml .Values.web.resources | nindent 12 }}
+          readinessProbe:
+            httpGet: {path: /, port: http}
+            periodSeconds: 5
+          volumeMounts:
+            - {name: tmp, mountPath: /tmp}
+            - {name: conf, mountPath: /etc/nginx/conf.d}  # the rendered template lands here
+      volumes:
+        - {name: tmp, emptyDir: {sizeLimit: 64Mi}}
+        - {name: conf, emptyDir: {sizeLimit: 1Mi}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "up.name" . }}-web
+  labels: {{- include "up.labels" . | nindent 4 }}
+spec:
+  selector: {{- include "up.selector" (dict "root" . "component" "web") | nindent 4 }}
+  ports:
+    - {name: http, port: 8080, targetPort: http}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "up.name" . }}-web
+  labels: {{- include "up.labels" . | nindent 4 }}
+spec:
+  minAvailable: {{ .Values.web.pdb.minAvailable }}
+  selector:
+    matchLabels: {{- include "up.selector" (dict "root" . "component" "web") | nindent 6 }}

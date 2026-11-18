@@ -1,5 +1,5 @@
 from api.models.db import DataSnapshot, SessionLocal
-from tests.conftest import hero_app_id, login
+from tests.conftest import advance, hero_app_id, login
 
 
 def test_requires_auth(client):
@@ -41,7 +41,7 @@ def test_full_journey_roles_and_audit(client):
 def test_fast_forward_raises_high_alert_for_hero(client):
     rm = login(client, "rm1")
     for _ in range(6):
-        client.post("/sim/advance?days=7", headers=rm)
+        advance(client, rm, 7)
     alerts = [a for a in client.get("/alerts", headers=rm).json() if a["factory_id"] == "UP-F0001"]
     assert alerts and alerts[0]["severity"] == "high"
     assert alerts[0]["next_best_action"] == "visit + limit review"
@@ -67,7 +67,7 @@ def test_revoking_consent_blocks_new_pulls(client):
     r = client.get("/msme/UP-F0001/readiness", headers=msme).json()
     assert r["data_stale"] is True and r["plan"] is None
     assert client.post(f"/applications/{app_id}/score", headers=rm).status_code == 403
-    run = client.post("/sim/advance?days=31", headers=rm).json()
+    run = advance(client, rm, 31)
     assert app_id in run["blocked"]
 
     ledger = [e["event"] for e in client.get(f"/applications/{app_id}/consent-ledger", headers=rm).json()]

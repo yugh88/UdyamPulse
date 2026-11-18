@@ -48,7 +48,6 @@ class MockAAConsentProvider:
         self.db.add(c)
         self.db.flush()
         self._ledger(c, "GRANTED", actor, {"purpose": PURPOSE, "fi_types": FI_TYPES, "expires_on": str(c.expires_on)})
-        self.db.commit()
         return _to_artefact(c)
 
     def revoke(self, application_id: int, actor: str) -> ConsentArtefact:
@@ -61,19 +60,34 @@ class MockAAConsentProvider:
             self._ledger(c, "REVOKED", actor)
             deleted = self.db.query(DataSnapshot).filter_by(application_id=application_id).delete()
             self._ledger(c, "DELETION_JOB", "system", {"snapshots_deleted": deleted, "status": "completed"})
-            self.db.commit()
         return _to_artefact(c)
 
     def active(self, application_id: int, as_of: date) -> ConsentArtefact | None:
+        """Pure read (safe on GET): a consent past its expiry date is treated as inactive even before
+        `expire_due` has recorded the expiry in the ledger."""
         c = self._current(application_id)
-        if c is None or c.status != "ACTIVE":
-            return None
-        if c.expires_on < as_of:
-            c.status = "EXPIRED"
-            self._ledger(c, "EXPIRED", "system")
-            self.db.commit()
+        if c is None or c.status != "ACTIVE" or c.expires_on < as_of:
             return None
         return _to_artefact(c)
+
+    def expire_due(self, as_of: date) -> int:
+        """Mark consents past their expiry date as EXPIRED and record it in the ledger. Run by the
+        monitoring batch; the caller commits."""
+        due = self.db.query(Consent).filter(Consent.status == "ACTIVE", Consent.expires_on < as_of).all()
+        for c in due:
+            c.status = "EXPIRED"
+            self._ledger(c, "EXPIRED", "system")
+        return len(due)
+
+    def summary(self, application_id: int, as_of: date) -> dict:
+        """Consent state for display: the artefact while active, otherwise just the last known status."""
+        art = self.active(application_id, as_of)
+        if art is not None:
+            return {"active": True, **art.__dict__}
+        last = self._current(application_id)
+        status = None if last is None else ("EXPIRED" if last.status == "ACTIVE" else last.status)
+        return {"active": False, "status": status,
+                "revoked_at": last.revoked_at.isoformat() if last and last.revoked_at else None}
 
     def authorise_pull(self, application_id: int, factory_id: str, as_of: date, actor: str, detail: dict) -> ConsentArtefact:
         """Gate every data pull on an active consent; record the pull (or the blocked attempt) in the ledger."""
@@ -81,7 +95,9 @@ class MockAAConsentProvider:
         if art is None:
             c = self._current(application_id)
             if c is not None:
-                self._ledger(c, "PULL_BLOCKED", actor, {"reason": f"consent {c.status}", **detail})
+                reason = "consent EXPIRED" if c.status == "ACTIVE" else f"consent {c.status}"
+                self._ledger(c, "PULL_BLOCKED", actor, {"reason": reason, **detail})
+                # Committed on purpose: the request is about to fail, and a blocked attempt must stay on record.
                 self.db.commit()
             raise ConsentError(f"No active consent for application {application_id}; data pull blocked")
         c = self._current(application_id)

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import re
 from functools import lru_cache
 
@@ -9,6 +10,8 @@ import numpy as np
 
 from agents.providers.base import PolicyChunk
 from core.settings import get_settings
+
+log = logging.getLogger(__name__)
 
 _HEADING = re.compile(r"^###\s+§(\d+\.\d+)\s+(.*)$")
 
@@ -45,8 +48,8 @@ class _Embedder:
                 self._st = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
                 self.kind = "sentence_transformers"
                 return
-            except Exception:  # model or package unavailable offline -> TF-IDF
-                pass
+            except Exception as exc:  # model or package unavailable offline -> TF-IDF
+                log.info("dense embeddings unavailable (%s); using TF-IDF", type(exc).__name__)
         from sklearn.feature_extraction.text import TfidfVectorizer
 
         self._tfidf = TfidfVectorizer(ngram_range=(1, 2), sublinear_tf=True, stop_words="english").fit(corpus)
@@ -61,37 +64,23 @@ class _Embedder:
 
 
 class LocalPolicySearch:
-    """Embeddings + FAISS inner-product index (cosine on normalised vectors). Falls back to numpy."""
+    """Embeddings + exact cosine search with one NumPy matrix product.
+
+    The policy corpus is a few dozen clauses, so an exact search takes microseconds; a vector index (FAISS,
+    Azure AI Search's HNSW) only pays off at hundreds of thousands of chunks, which is the production adapter."""
 
     def __init__(self) -> None:
         self.chunks = load_policy_chunks()
         corpus = [f"{c.title}. {c.text}" for c in self.chunks]
         self.embedder = _Embedder(corpus)
         self.vectors = self.embedder.encode(corpus)
-        try:
-            import faiss
-
-            self.index = faiss.IndexFlatIP(self.vectors.shape[1])
-            self.index.add(self.vectors)
-        except ImportError:
-            self.index = None
 
     def search(self, query: str, k: int = 4) -> list[PolicyChunk]:
-        q = self.embedder.encode([query])
-        if self.index is not None:
-            scores, idx = self.index.search(q, k)
-            pairs = zip(idx[0], scores[0], strict=False)
-        else:
-            sims = self.vectors @ q[0]
-            top = np.argsort(-sims)[:k]
-            pairs = zip(top, sims[top], strict=False)
-        out = []
-        for i, sc in pairs:
-            if i < 0:
-                continue
-            c = self.chunks[int(i)]
-            out.append(PolicyChunk(c.section, c.title, c.text, round(float(sc), 4)))
-        return out
+        q = self.embedder.encode([query])[0]
+        sims = self.vectors @ q  # cosine: both sides are L2-normalised
+        top = np.argsort(-sims, kind="stable")[:k]
+        return [PolicyChunk(self.chunks[i].section, self.chunks[i].title, self.chunks[i].text, round(float(sims[i]), 4))
+                for i in top]
 
     def get(self, section: str) -> PolicyChunk | None:
         return next((c for c in self.chunks if c.section == section), None)

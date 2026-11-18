@@ -1,0 +1,194 @@
+"""Job execution. One actor (`run_job`) loads the job and dispatches to a handler by kind.
+
+Consumers are idempotent: a job is claimed with a conditional UPDATE (queued/retrying → running), so a
+duplicate delivery of the same message finds nothing to claim and returns. A running job whose worker died
+is reclaimed after its lease expires. Business-rule errors (no consent, wrong state) fail the job at once;
+unexpected errors are retried with backoff and end in the dead-letter queue."""
+
+from __future__ import annotations
+
+import logging
+import time
+from collections.abc import Callable
+from datetime import timedelta
+
+import dramatiq
+from dramatiq.middleware import CurrentMessage
+from opentelemetry import trace
+from sqlalchemy import and_, or_
+from sqlalchemy.orm import Session
+
+from agents.base import sim_date, visible_month
+from agents.orchestrator import InvalidTransition, Orchestrator, ValidationFailed
+from agents.providers.consent import ConsentError
+from api.audit import Actor
+from api.changes import set_actor
+from api.models.db import Application, Job, SessionLocal, utcnow
+from api.tenancy import allow_cross_tenant, bind_tenant
+from core import metrics
+from core.logs import set_log_tenant
+from core.settings import get_settings
+from core.telemetry import continue_trace
+from core.timeline import month_label
+from worker.broker import broker  # noqa: F401  (the broker must exist before actors are declared)
+
+log = logging.getLogger("udyampulse.worker")
+LEASE = timedelta(minutes=15)
+BUSINESS_ERRORS = (ConsentError, InvalidTransition, ValidationFailed, LookupError)
+
+Progress = Callable[[int, str], None]
+Handler = Callable[[Session, Actor, Job, Progress], dict]
+HANDLERS: dict[str, Handler] = {}
+
+
+def handler(kind: str) -> Callable[[Handler], Handler]:
+    def register(fn: Handler) -> Handler:
+        HANDLERS[kind] = fn
+        return fn
+
+    return register
+
+
+def _application(db: Session, job: Job) -> Application:
+    app = db.get(Application, job.application_id) if job.application_id else None
+    if app is None:
+        raise LookupError("Application not found")
+    return app
+
+
+@handler("ews.run")
+def ews_run(db: Session, actor: Actor, job: Job, progress: Progress) -> dict:
+    from agents.ews_agent import EarlyWarningAgent
+
+    run = EarlyWarningAgent(db, actor).run(on_progress=lambda i, n: progress(int(i / n * 95), f"Checked {i} of {n} accounts"))
+    return {**run.to_dict(), "sim_date": str(sim_date(db)), "data_month": month_label(visible_month(db))}
+
+
+@handler("application.score")
+def score_application(db: Session, actor: Actor, job: Job, progress: Progress) -> dict:
+    progress(20, "Pulling consented data")
+    result = Orchestrator(db, actor).score(_application(db, job))
+    return {k: result[k] for k in ("score", "band", "pd_12m")}
+
+
+@handler("application.memo")
+def draft_memo(db: Session, actor: Actor, job: Job, progress: Progress) -> dict:
+    progress(20, "Retrieving policy clauses and drafting")
+    memo = Orchestrator(db, actor).draft_memo(_application(db, job))
+    return {"generated_in_ms": memo["generated_in_ms"], "citations": len(memo["citations"]),
+            "recommended_limit_display": memo["recommended_limit_display"]}
+
+
+@handler("batch.ews")
+def nightly_batch(db: Session, actor: Actor, job: Job, progress: Progress) -> dict:
+    from ml.batch import run_batch
+
+    seen: list[int] = []
+
+    def chunk_done(r: dict) -> None:
+        seen.append(r["chunk_no"])
+        progress(min(95, len(seen) * 10), f"{len(seen)} chunks done")
+
+    return run_batch(int(job.params["month"]), chunk_size=10_000, on_chunk=chunk_done)
+
+
+def _progress(db: Session, job_id: str) -> Progress:
+    """Progress is written through the handler's own session, so one job holds one connection. Handlers call
+    it only where everything before it may be committed: before work starts, or between accounts in the
+    early-warning batch, which already commits account by account."""
+
+    def update(pct: int, message: str) -> None:
+        job = db.get(Job, job_id)
+        job.progress, job.message, job.updated_at = max(0, min(99, pct)), message[:256], utcnow()
+        db.commit()
+
+    return update
+
+
+def _retries_so_far() -> int:
+    message = CurrentMessage.get_current_message()
+    return message.options.get("retries", 0) if message else get_settings().job_max_retries
+
+
+def execute(job_id: str) -> str:
+    """Run one job. Returns the final status, or "skipped" for a duplicate or unknown delivery."""
+    with SessionLocal() as db:
+        allow_cross_tenant(db)  # the job id alone says which bank it belongs to
+        found = db.get(Job, job_id)
+        tenant = found.tenant_id if found else None
+    if tenant is None:
+        # The relay only publishes committed jobs, so a missing row means this worker is looking at the wrong
+        # or a lagging database. Raise so the message is retried and finally dead-lettered, never silently lost.
+        raise LookupError(f"job {job_id} not visible yet")
+
+    with SessionLocal() as db:
+        bind_tenant(db, tenant)
+        now = utcnow()
+        claimed = db.query(Job).filter(
+            Job.id == job_id,
+            or_(Job.status.in_(("queued", "retrying")), and_(Job.status == "running", Job.started_at < now - LEASE)),
+        ).update({"status": "running", "attempts": Job.attempts + 1, "started_at": now, "message": "Running",
+                  "error": None, "updated_at": now}, synchronize_session=False)
+        db.commit()
+        if not claimed:
+            return "skipped"
+        job = db.get(Job, job_id)
+        kind = job.kind
+        fn = HANDLERS.get(kind)
+        actor = Actor(job.created_by, job.role, None, tenant)
+        set_log_tenant(tenant)
+        set_actor(db, job.created_by)  # changes made by the job belong to the user who started it
+        started = time.perf_counter()
+        with continue_trace((job.params or {}).get("_trace"), f"job {kind}", **{
+                "udyam.job.id": job_id, "udyam.job.kind": kind, "udyam.job.attempt": job.attempts}) as span:
+            try:
+                if fn is None:
+                    raise LookupError(f"No handler for job kind '{kind}'")
+                result = fn(db, actor, job, _progress(db, job_id))
+                db.commit()
+                job = db.get(Job, job_id)
+                job.status, job.progress, job.message, job.result, job.finished_at = "succeeded", 100, "Done", result, utcnow()
+                db.commit()
+                outcome = "succeeded"
+            except BUSINESS_ERRORS as exc:
+                db.rollback()
+                job = db.get(Job, job_id)
+                job.status, job.error, job.message, job.finished_at = "failed", str(exc)[:500], str(exc)[:256], utcnow()
+                db.commit()
+                outcome = "failed"
+            except Exception as exc:
+                db.rollback()
+                final = _retries_so_far() >= get_settings().job_max_retries
+                job = db.get(Job, job_id)
+                job.status = "dead" if final else "retrying"
+                job.error = f"{type(exc).__name__}: {exc}"[:500]
+                job.message = "Failed after all retries" if final else f"Attempt {job.attempts} failed; retrying"
+                if final:
+                    job.finished_at = utcnow()
+                db.commit()
+                metrics.JOBS.labels(kind, job.status).inc()
+                metrics.JOB_LATENCY.labels(kind).observe(time.perf_counter() - started)
+                span.record_exception(exc)
+                span.set_status(trace.StatusCode.ERROR)
+                log.exception("job %s (%s) attempt %s failed", job_id, kind, job.attempts,
+                              extra={"job_id": job_id, "kind": kind})
+                raise  # Dramatiq retries with backoff, then dead-letters
+            span.set_attribute("udyam.job.status", outcome)
+            metrics.JOBS.labels(kind, outcome).inc()
+            metrics.JOB_LATENCY.labels(kind).observe(time.perf_counter() - started)
+            log.info("job %s %s", kind, outcome, extra={"job_id": job_id, "kind": kind, "status": outcome,
+                                                        "duration_ms": round((time.perf_counter() - started) * 1000, 1)})
+            return outcome
+
+
+@dramatiq.actor(queue_name="jobs")
+def run_job(job_id: str) -> None:
+    execute(job_id)
+
+
+def execute_or_skip(job_id: str) -> str:
+    """For direct calls (tests, tooling): a job that does not exist is reported, not raised."""
+    try:
+        return execute(job_id)
+    except LookupError:
+        return "skipped"

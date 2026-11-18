@@ -1,0 +1,4 @@
+# Training-time only: experiment tracking for `python -m ml.train` (falls back silently when absent).
+# Installed by `make setup` and in the image's build stage; not shipped in the runtime image.
+-r requirements.txt
+mlflow-skinny==3.17.2

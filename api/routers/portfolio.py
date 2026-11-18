@@ -2,18 +2,22 @@ from __future__ import annotations
 
 from datetime import timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from sqlalchemy import and_, case, or_, select
 from sqlalchemy.orm import Session
 
 from agents.base import set_sim_date, sim_date, visible_month
-from agents.ews_agent import EarlyWarningAgent
 from agents.memo_agent import AI_LABEL
-from agents.providers.consent import get_consent_provider
 from agents.providers.lake import get_lake
+from api import pagination, serving
 from api.audit import log_event
 from api.auth import CurrentUser, require_roles
-from api.models.db import Alert, Application, get_db
-from api.models.schemas import AlertAction
+from api.authz import branch_clusters, ensure_branch_access, scope_applications, scope_key
+from api.cache import cached
+from api.changes import ChangeFlags
+from api.jobs import enqueue
+from api.models.db import AccountScore, Alert, Application, Consent, User, get_db, utcnow
+from api.models.schemas import AlertAction, AlertBulk
 from core.timeline import month_label
 
 router = APIRouter(tags=["portfolio"])
@@ -23,34 +27,47 @@ LGD, EARLY_ACTION_EFFECT = 0.45, 0.40
 
 
 @router.get("/portfolio")
-def portfolio(db: Session = Depends(get_db), user: CurrentUser = Depends(require_roles(*STAFF))) -> dict:
+def portfolio(response: Response, db: Session = Depends(get_db),
+              user: CurrentUser = Depends(require_roles(*STAFF))) -> dict:
+    """Portfolio aggregates, cached per bank and invalidated by any change to its accounts (see api/cache.py)."""
+    value, hit = cached(f"portfolio:{scope_key(user)}", user.tenant_id, lambda: _portfolio(db, user))
+    response.headers["X-Cache"] = "hit" if hit else "miss"
+    return value
+
+
+def _portfolio(db: Session, user: CurrentUser) -> dict:
     lake = get_lake()
     vm = visible_month(db)
-    scores = lake.scores(vm)
-    apps = db.query(Application).filter(Application.state == "MONITORING").all()
+    today = sim_date(db)
+    apps = scope_applications(db.query(Application), user).filter(Application.state == "MONITORING").all()
     open_alerts = db.query(Alert).filter(Alert.status == "OPEN").all()
     by_app: dict[int, list[Alert]] = {}
     for a in open_alerts:
         by_app.setdefault(a.application_id, []).append(a)
 
-    consent = get_consent_provider(db)
-    today = sim_date(db)
+    # Three set-based queries for the whole portfolio (no per-account lookups).
+    scores = serving.recent_scores(db, vm)
+    scores |= serving.latest_scores(db, [a.factory_id for a in apps if a.factory_id not in scores])
+    consented = {row[0] for row in db.query(Consent.application_id)
+                 .filter(Consent.status == "ACTIVE", Consent.expires_on >= today)}
     rows = []
     for app in apps:
+        s = scores.get(app.factory_id)
+        if not s:
+            continue  # not yet picked up by the monitoring batch
         p = lake.profile(app.factory_id)
-        s = scores[scores.factory_id == app.factory_id].sort_values("month")
-        cur = s.iloc[-1]
-        prev = s[s.month == vm - 3]
+        cur = s[-1]
+        prev = next((x for x in s if x.month == cur.month - 3), None)
         alerts = by_app.get(app.id, [])
         top = max(alerts, key=lambda a: SEV_RANK[a.severity]) if alerts else None
         rows.append({
             "application_id": app.id, "factory_id": app.factory_id, "name": p["name"], "sector": p["sector_label"],
             "cluster": p["cluster"], "udyam_category": p["udyam_category"], "exposure": app.sanctioned_limit or 0,
-            "score": int(cur.score), "band": cur.band, "pd_12m": round(float(cur.pd_12m), 4),
-            "trend_3m": int(cur.score - prev.score.iloc[0]) if not prev.empty else 0,
-            "sparkline": [int(x) for x in s.score.tail(6)],
+            "score": cur.score, "band": cur.band, "pd_12m": round(cur.pd_12m, 4),
+            "trend_3m": cur.score - prev.score if prev else 0,
+            "sparkline": [x.score for x in s[-6:]], "score_month": month_label(cur.month),
             "open_alerts": len(alerts), "max_severity": top.severity if top else None,
-            "consent_active": consent.active(app.id, today) is not None,
+            "consent_active": app.id in consented,
         })
 
     sev_counts = {k: sum(1 for a in open_alerts if a.severity == k) for k in ("high", "medium", "low")}
@@ -78,18 +95,137 @@ def portfolio(db: Session = Depends(get_db), user: CurrentUser = Depends(require
     }
 
 
-@router.get("/alerts")
-def list_alerts(status_filter: str | None = Query(default="OPEN", alias="status"), db: Session = Depends(get_db),
-                user: CurrentUser = Depends(require_roles(*STAFF))) -> list[dict]:
+BAND_ORDER = ("APPROVE", "WATCH", "HIGH_RISK")
+
+
+@router.get("/portfolio/migration")
+def migration(response: Response, db: Session = Depends(get_db),
+              user: CurrentUser = Depends(require_roles(*STAFF))) -> dict:
+    """Score-band migration of monitored accounts between the previous and the latest visible month."""
+    value, hit = cached(f"migration:{scope_key(user)}", user.tenant_id, lambda: _migration(db, user))
+    response.headers["X-Cache"] = "hit" if hit else "miss"
+    return value
+
+
+def _migration(db: Session, user: CurrentUser) -> dict:
     lake = get_lake()
-    q = db.query(Alert)
+    vm = visible_month(db)
+    apps = scope_applications(db.query(Application), user).filter(Application.state == "MONITORING").all()
+    by_factory = {a.factory_id: a for a in apps}
+    rows = db.query(AccountScore).filter(AccountScore.month.in_([vm - 1, vm])).all()
+    prev = {r.factory_id: r for r in rows if r.month == vm - 1 and r.factory_id in by_factory}
+    cur = {r.factory_id: r for r in rows if r.month == vm and r.factory_id in by_factory}
+    both = sorted(set(prev) & set(cur))
+    matrix = {a: {b: 0 for b in BAND_ORDER} for a in BAND_ORDER}
+    movers = []
+    for fid in both:
+        a, b = prev[fid].band, cur[fid].band
+        matrix[a][b] += 1
+        if a != b:
+            movers.append({"application_id": by_factory[fid].id, "factory_id": fid, "name": lake.profile(fid)["name"],
+                           "from_band": a, "to_band": b, "from_score": prev[fid].score, "to_score": cur[fid].score,
+                           "direction": "down" if BAND_ORDER.index(b) > BAND_ORDER.index(a) else "up"})
+    movers.sort(key=lambda m: m["to_score"] - m["from_score"])
+    return {
+        "from_month": month_label(vm - 1), "to_month": month_label(vm), "bands": list(BAND_ORDER), "matrix": matrix,
+        "accounts": len(both),
+        "downgrades": sum(1 for m in movers if m["direction"] == "down"),
+        "upgrades": sum(1 for m in movers if m["direction"] == "up"),
+        "movers": movers,
+    }
+
+
+@router.get("/staff")
+def staff(db: Session = Depends(get_db), user: CurrentUser = Depends(require_roles(*STAFF))) -> list[dict]:
+    """Staff who can own an alert (for the assign menu)."""
+    rows = db.query(User).filter(User.role.in_(("rm", "credit_officer"))).order_by(User.username).all()
+    return [{"username": u.username, "display_name": u.display_name, "role": u.role} for u in rows]
+
+
+# Which raw signals explain each rule, and which direction is good, for the before → after tiles.
+ALERT_SIGNALS = {
+    "order_loss": [("eway_value", "E-way bill value", "inr", True), ("kwh", "Electricity use", "kwh", True)],
+    "cash_squeeze": [("avg_balance", "Average bank balance", "inr", True), ("bounces", "Cheque/NACH bounces", "count", False)],
+    "buyer_risk": [("top_buyer_share", "Top buyer's share of sales", "share", False),
+                   ("avg_days_to_pay", "Days buyers take to pay", "days", False)],
+    "diversion": [("gst_bank_mismatch", "GST vs bank credits mismatch", "share", False)],
+    "compliance_slip": [("gst_filing_delay_days", "GST filing delay", "days", False)],
+}
+FALLBACK_SIGNALS = [("eway_value", "E-way bill value", "inr", True), ("aa_credits", "Bank inflows", "inr", True)]
+POINT_IN_TIME = {"bounces", "gst_filing_delay_days", "top_buyer_share", "gst_bank_mismatch"}
+
+
+def alert_before_after(lake, alert: Alert) -> dict:
+    """Triggering signals and the score, before (the rule's 8-week baseline) and after (the alert month)."""
+    hist = lake.history(alert.factory_id, alert.month).set_index("month")
+    picked: list[tuple] = []
+    for rule in alert.rules or []:
+        for sig in ALERT_SIGNALS.get(rule, []):
+            if sig not in picked:
+                picked.append(sig)
+    picked = (picked or FALLBACK_SIGNALS)[:3]
+    m = alert.month
+    signals = []
+    for col, label, unit, good_up in picked:
+        if m not in hist.index or col not in hist.columns:
+            continue
+        prev = hist.loc[[x for x in (m - 2, m - 1) if x in hist.index], col]
+        before = float(hist.loc[m - 1, col]) if col in POINT_IN_TIME and (m - 1) in hist.index else (
+            float(prev.mean()) if len(prev) else None)
+        after = float(hist.loc[m, col])
+        signals.append({"key": col, "label": label, "unit": unit, "good_when_up": good_up,
+                        "before": round(before, 4) if before is not None else None, "after": round(after, 4),
+                        "before_period": "8-week baseline" if col not in POINT_IN_TIME else month_label(m - 1),
+                        "after_period": month_label(m)})
+    scores = lake.scores(m)
+    mine = scores[scores.factory_id == alert.factory_id].set_index("month")
+    score = {"before": int(mine.loc[m - 1, "score"]) if (m - 1) in mine.index else None,
+             "after": int(mine.loc[m, "score"]) if m in mine.index else None,
+             "before_period": month_label(m - 1), "after_period": month_label(m), "good_when_up": True}
+    return {"signals": signals, "score": score}
+
+
+@router.get("/alerts")
+def list_alerts(request: Request, response: Response,
+                status_filter: str | None = Query(default="OPEN", alias="status"),
+                limit: int = Query(default=500, ge=1, le=1000), cursor: str | None = None,
+                db: Session = Depends(get_db), user: CurrentUser = Depends(require_roles(*STAFF))) -> list[dict]:
+    """Alerts, highest severity first, then newest month. Paginated by cursor (see `Link`)."""
+    lake = get_lake()
+    rank = case({"high": 3, "medium": 2, "low": 1}, value=Alert.severity, else_=0)
+    q = db.query(Alert, rank.label("rank"))
+    clusters = branch_clusters(user)
+    if clusters is not None:
+        q = q.filter(Alert.application_id.in_(select(Application.id).where(Application.cluster.in_(clusters))))
     if status_filter and status_filter != "ALL":
         q = q.filter(Alert.status == status_filter)
-    alerts = sorted(q.all(), key=lambda a: (-SEV_RANK[a.severity], -a.month, a.id))
+    after = pagination.decode(cursor, 3)
+    if after:  # keyset on (rank desc, month desc, id asc)
+        r, m, i = after
+        q = q.filter(or_(rank < r, and_(rank == r, or_(Alert.month < m, and_(Alert.month == m, Alert.id > i)))))
+    found = q.order_by(rank.desc(), Alert.month.desc(), Alert.id).limit(limit + 1).all()
+    page = found[:limit]
+    pagination.link_next(request, response, [page[-1][1], page[-1][0].month, page[-1][0].id] if len(found) > limit else None)
+    alerts = [a for a, _ in page]
+    today = sim_date(db)
+    app_ids = {a.application_id for a in alerts}
+    exposure = {x.id: x.sanctioned_limit or 0 for x in db.query(Application).filter(Application.id.in_(app_ids))}
+    history: dict[int, list[Alert]] = {}
+    for h in db.query(Alert).filter(Alert.application_id.in_(app_ids)).order_by(Alert.month, Alert.id):
+        history.setdefault(h.application_id, []).append(h)
+    flags = ChangeFlags(db, user.username, user.tenant_id, "alert", [str(a.id) for a in alerts])
     out = []
     for a in alerts:
         p = lake.profile(a.factory_id)
+        kind = flags.kind(str(a.id), a.created_at)
         out.append({
+            "changed_since_seen": kind is not None, "change_kind": kind,
+            "owner": a.owner, "acknowledged_by": a.acknowledged_by, "outcome": a.outcome,
+            "acknowledged_at": a.acknowledged_at.isoformat() if a.acknowledged_at else None,
+            "days_open": max((today - a.raised_on).days, 0), "exposure": exposure.get(a.application_id, 0),
+            "timeline": [{"id": h.id, "month": month_label(h.month), "severity": h.severity, "rules": h.rules,
+                          "reasons": h.reasons, "status": h.status, "action_taken": h.action_taken,
+                          "raised_on": str(h.raised_on)} for h in history.get(a.application_id, [])],
             "id": a.id, "application_id": a.application_id, "factory_id": a.factory_id, "name": p["name"],
             "cluster": p["cluster"], "sector": p["sector_label"], "month": month_label(a.month),
             "severity": a.severity, "rules": a.rules, "reasons": a.reasons, "next_best_action": a.next_best_action,
@@ -105,11 +241,39 @@ def action_alert(alert_id: int, body: AlertAction, db: Session = Depends(get_db)
     alert = db.get(Alert, alert_id)
     if alert is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Alert not found")
+    ensure_branch_access(user, db.get(Application, alert.application_id))
     alert.status, alert.action_taken, alert.action_note, alert.actioned_by = "ACTIONED", body.action, body.note, user.username
+    alert.outcome = body.outcome
+    alert.owner = alert.owner or user.username
     log_event(db, user, agent="api", tool="alerts", action="log_action",
-              inputs={"alert_id": alert_id, "action": body.action, "note": body.note},
+              inputs={"alert_id": alert_id, "action": body.action, "note": body.note, "outcome": body.outcome},
               output={"status": "ACTIONED"}, application_id=alert.application_id)
+    db.commit()
     return {"id": alert.id, "status": alert.status, "action_taken": alert.action_taken}
+
+
+@router.post("/alerts/bulk")
+def bulk_alerts(body: AlertBulk, db: Session = Depends(get_db),
+                user: CurrentUser = Depends(require_roles("rm", "credit_officer"))) -> dict:
+    """Assign an owner to, or acknowledge, several open alerts in one step."""
+    if body.action == "assign":
+        owner = db.query(User).filter_by(username=body.owner or "").one_or_none()
+        if owner is None or owner.role not in ("rm", "credit_officer"):
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Owner must be a relationship manager or credit officer")
+    alerts = db.query(Alert).filter(Alert.id.in_(body.ids), Alert.status == "OPEN").all()
+    for a in alerts:
+        ensure_branch_access(user, db.get(Application, a.application_id))
+    for a in alerts:
+        if body.action == "assign":
+            a.owner = body.owner
+        else:
+            a.acknowledged_by, a.acknowledged_at = user.username, utcnow()
+            a.owner = a.owner or user.username
+    log_event(db, user, agent="api", tool="alerts", action=f"bulk_{body.action}",
+              inputs={"alert_ids": sorted(a.id for a in alerts), "owner": body.owner},
+              output={"updated": len(alerts)})
+    db.commit()
+    return {"updated": len(alerts), "skipped": len(set(body.ids)) - len(alerts)}
 
 
 @router.get("/sim/clock")
@@ -117,13 +281,40 @@ def clock(db: Session = Depends(get_db), user: CurrentUser = Depends(require_rol
     return {"sim_date": str(sim_date(db)), "data_month": month_label(visible_month(db))}
 
 
-@router.post("/sim/advance")
+@router.post("/sim/advance", status_code=202)
 def advance(days: int = Query(default=7, ge=1, le=120), db: Session = Depends(get_db),
             user: CurrentUser = Depends(require_roles(*STAFF))) -> dict:
-    """Fast-forward the simulated clock, then let the early-warning agent process newly visible data."""
+    """Fast-forward the simulated clock, then queue the early-warning batch for the newly visible data.
+    Returns 202 with a job id; follow it at `/v1/events?job=<id>` or `/v1/jobs/<id>`."""
     before = sim_date(db)
     after = set_sim_date(db, before + timedelta(days=days))
-    run = EarlyWarningAgent(db, user).run()
+    job = enqueue(db, user, "ews.run", {"days": days, "from": str(before), "to": str(after)})
     log_event(db, user, agent="api", tool="sim_clock", action="advance",
-              inputs={"days": days, "from": str(before)}, output={"to": str(after), **run.to_dict()})
-    return {"sim_date": str(after), "data_month": month_label(visible_month(db)), **run.to_dict()}
+              inputs={"days": days, "from": str(before)}, output={"to": str(after), "job_id": job.id})
+    db.commit()
+    return {"job_id": job.id, "status": "queued", "status_url": f"/v1/jobs/{job.id}",
+            "sim_date": str(after), "data_month": month_label(visible_month(db))}
+
+
+@router.get("/alerts/{alert_id}")
+def alert_detail(alert_id: int, db: Session = Depends(get_db),
+                 user: CurrentUser = Depends(require_roles(*STAFF))) -> dict:
+    """One alert with before → after values for its triggering signals and the score."""
+    alert = db.get(Alert, alert_id)
+    if alert is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Alert not found")
+    app = db.get(Application, alert.application_id)
+    ensure_branch_access(user, app)
+    lake = get_lake()
+    p = lake.profile(alert.factory_id)
+    flags = ChangeFlags(db, user.username, user.tenant_id, "alert", [str(alert.id)])
+    kind = flags.kind(str(alert.id), alert.created_at)
+    return {
+        "id": alert.id, "application_id": alert.application_id, "factory_id": alert.factory_id, "name": p["name"],
+        "cluster": p["cluster"], "sector": p["sector_label"], "month": month_label(alert.month),
+        "severity": alert.severity, "rules": alert.rules, "reasons": alert.reasons,
+        "next_best_action": alert.next_best_action, "briefing": alert.briefing, "status": alert.status,
+        "action_taken": alert.action_taken, "outcome": alert.outcome, "raised_on": str(alert.raised_on),
+        "changed_since_seen": kind is not None, "change_kind": kind, "ai_label": AI_LABEL,
+        **alert_before_after(lake, alert),
+    }

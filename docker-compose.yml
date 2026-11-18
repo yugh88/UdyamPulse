@@ -1,22 +1,78 @@
+# Full stack: PostgreSQL + Redis + API + worker + web. No API keys needed.
+#   docker compose up --build        → http://localhost:5173
+#   docker compose --profile https up → https://localhost (Caddy)
+#   UP_OTEL_ENDPOINT=http://jaeger:4318 docker compose --profile observability up
+#       → Grafana http://localhost:3000 (dashboard "UdyamPulse — service overview"), Jaeger http://localhost:16686,
+#         Prometheus http://localhost:9090
+# The lite demo (`make demo`) needs none of this and runs on SQLite.
 services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_PASSWORD: postgres_local_only
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # Creates the non-superuser app role (subject to row-level security) and the database.
+      - ./ops/postgres/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U udyam_app -d udyampulse"]
+      interval: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "256mb", "--maxmemory-policy", "volatile-lru"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 20
+
   api:
     build: .
-    ports: ["8000:8000"]
+    image: udyampulse-app
+    ports: ["${UP_API_PORT:-8000}:8000"]
     env_file: [.env.example]
     environment:
-      UP_DB_URL: sqlite:////app/var/udyampulse.db
+      UP_DB_URL: postgresql+psycopg://udyam_app:udyam_app_local@postgres:5432/udyampulse
+      UP_REDIS_URL: redis://redis:6379/0
+      UP_OTEL_ENDPOINT: ${UP_OTEL_ENDPOINT:-}
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/readyz')"]
       interval: 10s
       retries: 30
-  web:
-    build: ./web
-    ports: ["5173:5173"]
+
+  # Background jobs: outbox relay + Dramatiq workers. Scale with `docker compose up --scale worker=4`.
+  worker:
+    image: udyampulse-app
+    command: ["python", "-m", "worker"]
+    env_file: [.env.example]
     environment:
-      VITE_API_PROXY: http://api:8000
+      UP_DB_URL: postgresql+psycopg://udyam_app:udyam_app_local@postgres:5432/udyampulse
+      UP_REDIS_URL: redis://redis:6379/0
+      UP_WORKER_THREADS: "4"
+      UP_OTEL_ENDPOINT: ${UP_OTEL_ENDPOINT:-}
+    restart: unless-stopped
+    healthcheck:  # the image's check targets the API port; the worker serves metrics on :9191
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9191/metrics')"]
+      interval: 10s
+      retries: 6
     depends_on:
       api:
         condition: service_healthy
+
+  web:
+    build: ./web
+    ports: ["${UP_WEB_PORT:-5173}:8080"]
+    depends_on:
+      api:
+        condition: service_healthy
+
   # Optional HTTPS front door: `docker compose --profile https up`, then open https://localhost
   caddy:
     image: caddy:2-alpine
@@ -24,3 +80,35 @@ services:
     ports: ["443:443"]
     volumes: ["./Caddyfile:/etc/caddy/Caddyfile:ro"]
     depends_on: [web]
+
+  # Observability: `docker compose --profile observability up` (set UP_OTEL_ENDPOINT=http://jaeger:4318 for traces)
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    profiles: ["observability"]
+    ports: ["9090:9090"]
+    volumes:
+      - ./ops/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./ops/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+
+  grafana:
+    image: grafana/grafana:12.1.0
+    profiles: ["observability"]
+    ports: ["3000:3000"]
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_SECURITY_ADMIN_PASSWORD: admin_local_only
+    volumes:
+      - ./ops/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./ops/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on: [prometheus]
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.72.0
+    profiles: ["observability"]
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports: ["16686:16686"]
+
+volumes:
+  pgdata:

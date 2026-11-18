@@ -1,18 +1,21 @@
 from __future__ import annotations
 
+import copy
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from agents.advisor_agent import AdvisorAgent
 from agents.base import sim_date, visible_month
-from agents.data_agent import DataAgent
 from agents.memo_agent import AI_LABEL
-from agents.providers.consent import ConsentError, get_consent_provider
+from agents.providers.consent import get_consent_provider
 from agents.providers.lake import get_lake
 from api.audit import log_event
 from api.auth import CurrentUser, ensure_factory_access, require_roles
-from api.models.db import Application, ConsentEvent, DataSnapshot, Notification, get_db
+from api.models.db import Application, ConsentEvent, DataSnapshot, Notification, PlanProgress, get_db
+from api.models.schemas import PlanStepUpdate
 from core.timeline import month_label
+from ml.i18n_hi import PILLARS_HI, describe_hi
 from ml.scoring import get_scorer
 
 router = APIRouter(prefix="/msme", tags=["msme"])
@@ -33,24 +36,53 @@ def readiness(factory_id: str, db: Session = Depends(get_db),
     lake = get_lake()
     app = _latest_app(db, factory_id)
     profile = lake.profile(factory_id)
-    consent = get_consent_provider(db).active(app.id, sim_date(db))
     base = {"factory_id": factory_id, "name": profile["name"], "application_id": app.id, "state": app.state,
             "decision": app.decision, "review_requested": app.review_requested, "ai_label": AI_LABEL,
-            "consent": {"active": consent is not None, **(consent.__dict__ if consent else {})}}
-    try:
-        pull = DataAgent(db, user).pull(app)
-    except ConsentError:
-        last = app.score_detail
-        return {**base, "data_stale": True,
-                "message": "Consent revoked: no new data is being pulled. Showing your last assessment only.",
-                "score": last["score"] if last else None, "band": last["band"] if last else None,
-                "plan": None}
-    row = lake.features(factory_id, pull.upto_month)
+            "consent": get_consent_provider(db).summary(app.id, sim_date(db))}
+    stale = {**base, "data_stale": True,
+             "message": "Consent revoked: no new data is being pulled. Showing your last assessment only.",
+             "message_hi": "सहमति वापस ले ली गई है: अब कोई नया डेटा नहीं लिया जा रहा। केवल आपका पिछला आकलन दिखाया जा रहा है।",
+             "score": (app.score_detail or {}).get("score"), "band": (app.score_detail or {}).get("band"), "plan": None}
+    if not base["consent"]["active"]:
+        return stale
+    # Read-only view of data already covered by the active consent: viewing the app is not a new data
+    # pull, so nothing is written to the ledger, the snapshots or the audit trail.
+    upto = visible_month(db)
+    row = lake.features(factory_id, upto)
     score = get_scorer().explain_row(row).to_dict()
-    history = lake.history(factory_id, pull.upto_month)
-    plan = AdvisorAgent(db, user).plan(score, history)
-    return {**base, "data_stale": False, "data_month": month_label(pull.upto_month), "score": score["score"],
+    for r in score["reasons"]:  # the owner can read the app in Hindi
+        r["text_hi"] = describe_hi(r["feature"], r["value"])
+    for p in score["pillars"]:
+        p["label_hi"] = PILLARS_HI[p["pillar"]]
+    cached = app.plan_cache or {}
+    if cached.get("month") == upto:
+        plan = cached["plan"]
+    else:
+        # First view for this data month: the advisor writes the plan once (audited, logged as AI usage).
+        plan = AdvisorAgent(db, user).plan(score, lake.history(factory_id, upto))
+        app.plan_cache = {"month": upto, "plan": plan}
+        db.commit()
+    plan = copy.deepcopy(plan)  # per-request copy: progress ticks are added below, never stored in the cache
+    done = {p.step_key for p in db.query(PlanProgress).filter_by(factory_id=factory_id)}
+    for step in plan["steps"]:
+        step["done"] = step["key"] in done
+    plan["steps_done"] = sum(1 for step in plan["steps"] if step["done"])
+    return {**base, "data_stale": False, "data_month": month_label(upto), "score": score["score"],
             "band": score["band"], "pillars": score["pillars"], "reasons": score["reasons"], "plan": plan}
+
+
+@router.put("/{factory_id}/plan/steps/{step_key}")
+def set_plan_step(factory_id: str, step_key: str, body: PlanStepUpdate, db: Session = Depends(get_db),
+                  user: CurrentUser = Depends(require_roles("msme"))) -> dict:
+    """Tick or untick one step of the 90-day plan."""
+    ensure_factory_access(user, factory_id)
+    row = db.query(PlanProgress).filter_by(factory_id=factory_id, step_key=step_key).one_or_none()
+    if body.done and row is None:
+        db.add(PlanProgress(factory_id=factory_id, step_key=step_key[:64]))
+    elif not body.done and row is not None:
+        db.delete(row)
+    db.commit()
+    return {"step_key": step_key, "done": body.done}
 
 
 @router.get("/{factory_id}/notifications")
@@ -58,7 +90,8 @@ def notifications(factory_id: str, db: Session = Depends(get_db),
                   user: CurrentUser = Depends(require_roles(*ROLES))) -> list[dict]:
     ensure_factory_access(user, factory_id)
     rows = db.query(Notification).filter_by(factory_id=factory_id).order_by(Notification.id.desc()).limit(30).all()
-    return [{"id": n.id, "channel": n.channel, "text": n.text, "sim_date": str(n.sim_date)} for n in rows]
+    return [{"id": n.id, "channel": n.channel, "text": n.text, "text_hi": n.text_hi, "sim_date": str(n.sim_date)}
+            for n in rows]
 
 
 @router.get("/{factory_id}/my-data")
@@ -85,4 +118,5 @@ def erasure_request(factory_id: str, db: Session = Depends(get_db),
                     user: CurrentUser = Depends(require_roles("msme"))) -> dict:
     ensure_factory_access(user, factory_id)
     log_event(db, user, agent="api", tool="dpdp_rights", action="erasure_request", inputs={"factory_id": factory_id})
+    db.commit()
     return {"status": "Erasure request logged; the lender's grievance officer will respond within 30 days"}

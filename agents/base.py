@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import json
+import time
 from collections.abc import Callable
 from datetime import date
 from typing import Any, TypeVar
@@ -10,8 +12,9 @@ from typing import Any, TypeVar
 import pandas as pd
 from sqlalchemy.orm import Session
 
+from agents.providers.llm import get_llm
 from api.audit import Actor, log_event
-from api.models.db import SimClock
+from api.models.db import AiUsage, SimClock
 from core.settings import get_settings
 from core.timeline import last_visible_month, month_end
 
@@ -36,6 +39,29 @@ class Agent:
         log_event(self.db, self.actor, agent=self.name, tool=tool, action="tool_call", inputs=logged_inputs,
                   output=_jsonable(out), application_id=audit_app)
         return result
+
+    def write(self, template_id: str, task: str, facts: dict, draft: str, *, audit_app: int | None = None) -> str:
+        """Prose from the LLM writer (template by default). Audited like any tool call and recorded in the
+        AI usage log with the prompt template id, provider, latency and a token estimate."""
+        llm = get_llm()
+        t0 = time.perf_counter()
+        outcome: dict[str, str] = {}
+
+        def llm_write(task: str, facts: dict, draft: str) -> str:
+            result = llm.write_result(task, facts, draft, tenant=self.actor.tenant_id)
+            outcome["value"] = result.outcome
+            return result.text
+
+        text = self.tool("llm.write", llm_write, audit_app=audit_app, **{"task": task, "facts": facts, "draft": draft})
+        chars = len(task) + len(json.dumps(facts, ensure_ascii=False, default=str)) + len(draft) + len(text)
+        result_outcome = outcome.get("value", "template")
+        self.db.add(AiUsage(
+            agent=self.name, template_id=template_id, provider=llm.name,
+            latency_ms=round((time.perf_counter() - t0) * 1000, 2), tokens_est=chars // 4,
+            fallback=result_outcome not in ("template", "ok", "cached"), outcome=result_outcome,
+            user=self.actor.username, application_id=audit_app,
+        ))
+        return text
 
 
 def _jsonable(obj: Any) -> Any:

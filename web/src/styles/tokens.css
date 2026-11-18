@@ -1,0 +1,64 @@
+/* Design tokens. Hex values only, one per line: scripts/check-contrast.ts parses this file. */
+:root {
+  color-scheme: light;
+  --bg: #f5f6f8;
+  --surface: #ffffff;
+  --surface-2: #f0f2f5;
+  --border: #e3e6eb;
+  --border-strong: #7d8394;
+  --text: #1f2430;
+  --text-muted: #5f6675;
+  --text-subtle: #7d8394;
+  --primary: #4f5bc4;
+  --primary-hover: #434ead;
+  --primary-tint: #eef0fa;
+  --on-primary: #ffffff;
+  --brand: #b9577c;
+  --brand-tint: #f8eef2;
+  --success: #2a7352;
+  --success-tint: #e7f3ed;
+  --warning: #8e5a12;
+  --warning-tint: #faf1e1;
+  --danger: #b5473d;
+  --danger-tint: #faebe9;
+  --info: #2e7486;
+  --info-tint: #e6f1f4;
+  --chart-1: #4f5bc4;
+  --chart-2: #2e9a9e;
+  --chart-3: #c08a3e;
+  --chart-4: #b9577c;
+  --chart-5: #4f9d74;
+  --chart-6: #7a8194;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0f1218;
+  --surface: #161a22;
+  --surface-2: #1d222c;
+  --border: #2a303c;
+  --border-strong: #7a8191;
+  --text: #e6e8ee;
+  --text-muted: #a0a7b5;
+  --text-subtle: #7a8191;
+  --primary: #8e99ee;
+  --primary-hover: #a3acf2;
+  --primary-tint: #1f2440;
+  --on-primary: #0f1218;
+  --brand: #d98aa6;
+  --brand-tint: #2e1f27;
+  --success: #6bbf95;
+  --success-tint: #16281f;
+  --warning: #d9a65a;
+  --warning-tint: #2b2314;
+  --danger: #e08a80;
+  --danger-tint: #2e1b19;
+  --info: #6fb3c4;
+  --info-tint: #152a30;
+  --chart-1: #8e99ee;
+  --chart-2: #4fb8bc;
+  --chart-3: #d9a65a;
+  --chart-4: #d98aa6;
+  --chart-5: #6bbf95;
+  --chart-6: #a0a7b5;
+}

@@ -13,29 +13,45 @@ from agents.ews_agent import EarlyWarningAgent
 from agents.policy_engine import assess_limit
 from agents.providers.consent import MockAAConsentProvider
 from agents.providers.lake import get_lake
+from api import serving
 from api.audit import Actor
 from api.auth import hash_password
-from api.models.db import Application, Base, SessionLocal, User, get_engine
+from api.models.db import Application, SessionLocal, Tenant, User, reset_db, utcnow
+from api.tenancy import bind_tenant
 from core.settings import get_settings
 from core.timeline import month_end
 
-DEMO_PASSWORD = "demo123"
+# Published password of the synthetic demo personas; production signs in through Entra ID.
+DEMO_PASSWORD = "demo123"  # nosec B105
 HERO = "UP-F0001"
+# (username, display name, role, factory, branch scope: clusters covered or "*" for the zonal hub)
 USERS = [
-    ("rm1", "Relationship Manager · Ludhiana", "rm", None),
-    ("co1", "Credit Officer · MSME Hub", "credit_officer", None),
-    ("risk1", "Chief Risk Office", "risk", None),
-    ("sharma", "Sharma Auto Components", "msme", HERO),
+    ("rm1", "Relationship Manager · Zonal hub", "rm", None, "*"),
+    ("rm3", "Relationship Manager · Morbi branch", "rm", None, "Morbi"),
+    ("co1", "Credit Officer · MSME Hub", "credit_officer", None, "*"),
+    ("risk1", "Chief Risk Office", "risk", None, None),
+    ("sharma", "Sharma Auto Components", "msme", HERO, None),
 ]
 PORTFOLIO_SIZE = 140
+# Two banks prove tenant isolation. Bank A carries the demo story; bank B is a small second portfolio.
+BANK_A, BANK_B = "bank-a", "bank-b"
+TENANTS = {BANK_A: "Sample Bank Ltd", BANK_B: "Second Bank Ltd"}
+USERS_B = [
+    ("rm2", "Relationship Manager · Second Bank", "rm", None, "*"),
+    ("co2", "Credit Officer · Second Bank", "credit_officer", None, "*"),
+    ("risk2", "Risk Office · Second Bank", "risk", None, None),
+]
+PORTFOLIO_SIZE_B = 20
 
 
 def main() -> None:
     s = get_settings()
-    engine = get_engine()
-    Base.metadata.drop_all(engine)
-    Base.metadata.create_all(engine)
+    reset_db()
     db = SessionLocal()
+    for tid, name in TENANTS.items():
+        db.add(Tenant(id=tid, name=name))
+    db.commit()
+    bind_tenant(db, BANK_A)
     rng = np.random.default_rng(s.seed)
     seed_actor = Actor("seed", "system")
     lake = get_lake()
@@ -53,8 +69,9 @@ def main() -> None:
         pending.append(str(rng.choice(cands)))
     watch_factory = pending[2]
 
-    for username, display, role, fid in USERS + [("msme2", profiles.loc[watch_factory, "name"], "msme", watch_factory)]:
-        db.add(User(username=username, display_name=display, role=role, factory_id=fid,
+    for username, display, role, fid, branch in USERS + [
+            ("msme2", profiles.loc[watch_factory, "name"], "msme", watch_factory, None)]:
+        db.add(User(username=username, display_name=display, role=role, factory_id=fid, branch=branch,
                     password_hash=hash_password(DEMO_PASSWORD)))
     db.commit()
     set_sim_date(db, s.sim_start)
@@ -85,6 +102,7 @@ def main() -> None:
         db.add(app)
         db.flush()
         consent.request(app.id, fid, month_end(m0), "seed")
+        serving.write_scores(db, app, range(1, 20))
 
     for fid in pending:
         db.add(Application(factory_id=fid, state="APPLIED", channel="rm" if fid == HERO else "app",
@@ -92,11 +110,71 @@ def main() -> None:
     db.commit()
 
     run = EarlyWarningAgent(db, seed_actor).run()
+
+    # ---- Bank B: its own users and accounts, drawn from factories bank A does not hold ----
+    bind_tenant(db, BANK_B)
+    for username, display, role, fid, branch in USERS_B:
+        db.add(User(username=username, display_name=display, role=role, factory_id=fid, branch=branch,
+                    password_hash=hash_password(DEMO_PASSWORD)))
+    taken = set(chosen) | set(pending)
+    free = [f for f in others if f not in taken]
+    chosen_b = list(rng.choice(free, size=PORTFOLIO_SIZE_B, replace=False))
+    consent_b = MockAAConsentProvider(db)
+    for fid in chosen_b:
+        p = profiles.loc[fid]
+        sc = scores[(scores.factory_id == fid) & (scores.month == 15)].iloc[0]
+        hist = lake.history(fid, 15)
+        annual = float(hist.tail(12).gst_turnover.sum() * 12 / len(hist.tail(12)))
+        lim = assess_limit(annual, float(p.loan_requested_inr), int(sc.score), "APPROVE", float(hist.top_buyer_share.iloc[-1]))
+        app = Application(
+            factory_id=fid, state="MONITORING", channel="rm", requested_amount=float(p.loan_requested_inr),
+            score=int(sc.score), band=sc.band, pd_12m=float(sc.pd_12m), score_month=15, decision="APPROVED",
+            decision_comment="Sanctioned under programme (seed data)", decided_by="co2",
+            recommended_limit=lim.recommended_limit, sanctioned_limit=max(lim.recommended_limit, 1e5),
+            pricing_band=lim.pricing_band, disbursed_on=month_end(15) + timedelta(days=10),
+            disbursement_ref=f"LOS-SEEDB{fid[-4:]}", last_ews_month=19,
+        )
+        db.add(app)
+        db.flush()
+        consent_b.request(app.id, fid, month_end(15), "seed")
+        serving.write_scores(db, app, range(1, 20))
+    pending_b = str(rng.choice([f for f in free if f not in chosen_b]))
+    db.add(Application(factory_id=pending_b, state="APPLIED", channel="rm",
+                       requested_amount=float(profiles.loc[pending_b, "loan_requested_inr"])))
+    db.commit()
+    EarlyWarningAgent(db, seed_actor).run()
+    # Everything above is seeded history; "what changed since you last looked" starts now.
+    from api.tenancy import allow_cross_tenant
+
+    allow_cross_tenant(db)
+    now = utcnow()
+    for tenant in db.query(Tenant).all():
+        tenant.change_baseline_at = now
+    db.commit()
     print(f"seeded users={len(USERS) + 1} portfolio={len(chosen)} (stressed in window: {len(stressed)}) "
           f"pending={pending} initial_alerts={len(run.new_alerts)} sim_date={s.sim_start}")
     print(f"demo logins (password '{DEMO_PASSWORD}'): rm1, co1, risk1, sharma (MSME hero), msme2 (watch-band MSME)")
+    print(f"second bank ({TENANTS[BANK_B]}): rm2, co2, risk2 · {len(chosen_b)} monitored accounts")
     db.close()
 
 
-if __name__ == "__main__":
+def seed_if_empty() -> bool:
+    """Container start-up: seed a fresh database, leave an existing demo state alone."""
+    from sqlalchemy import inspect
+
+    from api.models.db import get_engine, init_db
+
+    init_db()
+    if inspect(get_engine()).has_table("tenants"):
+        with get_engine().connect() as conn:
+            if conn.exec_driver_sql("SELECT count(*) FROM tenants").scalar():
+                print("database already seeded; leaving it as it is")
+                return False
     main()
+    return True
+
+
+if __name__ == "__main__":
+    import sys
+
+    seed_if_empty() if "--if-empty" in sys.argv else main()
