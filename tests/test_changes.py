@@ -129,3 +129,37 @@ def test_rolled_back_changes_leave_no_event(client):
         db.flush()
         db.rollback()
     assert len(_events(app_id)) == before
+
+
+def test_marking_the_same_new_item_seen_twice_at_once_does_not_fail(client, monkeypatch):
+    """Two requests mark the same never-seen item at once (a double-fired effect, two tabs). The one that loses the
+    race must update the row the other created, not hit the unique index (this was a 500)."""
+    from api import changes
+    from api.models.db import UserSeen
+
+    class U:
+        username, tenant_id = "co1", "bank-a"
+
+    app_id = str(_hero_id())
+    real = changes._seen_rows
+    calls = {"n": 0}
+
+    def stale_first_read(db, username, entity_type, ids):
+        calls["n"] += 1
+        return {} if calls["n"] == 1 else real(db, username, entity_type, ids)
+
+    with SessionLocal() as a, SessionLocal() as b:
+        bind_tenant(a, "bank-a")
+        bind_tenant(b, "bank-a")
+        a.query(UserSeen).filter(UserSeen.username == "co1", UserSeen.entity_id == app_id).delete()
+        a.commit()
+        changes.mark_seen(b, U, "application", [app_id])  # the other request wins and commits first
+        b.commit()
+        monkeypatch.setattr(changes, "_seen_rows", stale_first_read)  # this one read before that commit
+        changes.mark_seen(a, U, "application", [app_id])
+        a.commit()
+        assert calls["n"] == 2  # the insert conflicted and fell back to the update
+        assert a.query(UserSeen).filter(UserSeen.username == "co1", UserSeen.entity_id == app_id).count() == 1
+    monkeypatch.setattr(changes, "_seen_rows", real)
+    rs = [client.post("/seen", headers=login(client, "co1"), json={"entity_type": "application", "ids": [app_id]}) for _ in range(2)]
+    assert [r.status_code for r in rs] == [200, 200]

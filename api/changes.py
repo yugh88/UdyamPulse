@@ -24,6 +24,7 @@ from collections.abc import Iterable
 from datetime import UTC, datetime
 
 from sqlalchemy import event, func, inspect
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from api.models.db import Alert, Application, ChangeEvent, Consent, Tenant, UserSeen, utcnow
@@ -250,17 +251,29 @@ def timeline(db: Session, user, app: Application, limit: int = 100) -> list[dict
              "created_at": _aware(r.created_at).isoformat(), "new": _aware(r.created_at) > seen} for r in rows]
 
 
+def _seen_rows(db: Session, username: str, entity_type: str, ids: list[str]) -> dict[str, UserSeen]:
+    return {r.entity_id: r for r in db.query(UserSeen).filter(
+        UserSeen.username == username, UserSeen.entity_type == entity_type, UserSeen.entity_id.in_(ids)).all()}
+
+
 def mark_seen(db: Session, user, entity_type: str, entity_ids: list[str]) -> int:
+    """Upsert the user's last look at each item. Safe under concurrency: two requests marking the same new item
+    at once (a double-fired effect, two tabs) both succeed, because each insert runs in a savepoint and a lost race
+    falls back to updating the row the other request created."""
     now = utcnow()
-    existing = {r.entity_id: r for r in db.query(UserSeen).filter(
-        UserSeen.username == user.username, UserSeen.entity_type == entity_type,
-        UserSeen.entity_id.in_(entity_ids)).all()}
+    found = _seen_rows(db, user.username, entity_type, entity_ids)
     for eid in entity_ids:
-        row = existing.get(eid)
-        if row is None:
-            db.add(UserSeen(username=user.username, entity_type=entity_type, entity_id=eid, last_seen_at=now))
-        else:
+        row = found.get(eid)
+        if row is not None:
             row.last_seen_at = now
+            continue
+        try:
+            with db.begin_nested():
+                db.add(UserSeen(username=user.username, entity_type=entity_type, entity_id=eid, last_seen_at=now))
+        except IntegrityError:
+            row = _seen_rows(db, user.username, entity_type, [eid]).get(eid)
+            if row is not None:
+                row.last_seen_at = now
     return len(entity_ids)
 
 
