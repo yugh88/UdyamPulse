@@ -288,12 +288,14 @@ def compute_features(silver: pd.DataFrame, profile: pd.DataFrame, workers: int |
     if len(ids) <= PARALLEL_ABOVE:
         feats = _features_for(df)
     else:
+        import multiprocessing
         from concurrent.futures import ProcessPoolExecutor
 
         workers = workers or max(1, (os.cpu_count() or 2) - 1)
         chunks = np.array_split(np.sort(ids), workers * 4)
         parts = [df[df["factory_id"].isin(set(c))] for c in chunks]
-        with ProcessPoolExecutor(max_workers=workers) as pool:
+        # spawn, never fork: a forked child of a process running OpenMP or other threads can deadlock.
+        with ProcessPoolExecutor(max_workers=workers, mp_context=multiprocessing.get_context("spawn")) as pool:
             feats = pd.concat(list(pool.map(_features_for, parts)), ignore_index=True)
         feats = feats.sort_values(["factory_id", "month"]).reset_index(drop=True)
 

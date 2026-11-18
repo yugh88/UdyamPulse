@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import multiprocessing
 import os
 import time
 import uuid
@@ -148,7 +149,9 @@ def run_batch(month: int, *, workers: int = 1, shards: int | None = None, chunk_
                     raise RuntimeError(f"simulated crash in chunk {n}")
                 record(shard, process_chunk(run_id, n, ids, month))
         else:
-            with ProcessPoolExecutor(max_workers=workers) as pool:
+            # spawn, never fork: forking a process that already runs OpenMP (LightGBM) or other threads can
+            # deadlock the child. Linux defaults to fork, which hung the CI test suite; macOS already spawns.
+            with ProcessPoolExecutor(max_workers=workers, mp_context=multiprocessing.get_context("spawn")) as pool:
                 futures = {pool.submit(process_chunk, run_id, n, ids, month): shard for n, shard, ids in todo}
                 for fut in as_completed(futures):
                     record(futures[fut], fut.result())
