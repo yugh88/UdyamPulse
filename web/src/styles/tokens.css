@@ -1,76 +1,77 @@
-/* Design tokens: the "cream" palette. Hex values only, one per line: scripts/check-contrast.ts parses this file.
+/* Design tokens: the "dusty cream" palette. Hex values only, one per line: scripts/check-contrast.ts parses this file.
  * Meaning is fixed: forest = primary / good / Approve · blue = info and policy citations · purple = AI agents and
  * the current step · pink = change markers only · ochre = Watch / to improve · brick = High risk / worse / delete.
- * Text colours on tints are darkened where needed to pass WCAG 2.2 AA (pink, ochre).
+ * Text colours are darkened slightly where needed to pass WCAG 2.2 AA (subtle, pink, ochre). Dark mode uses the same
+ * hues with accents lightened about 25% and tints mixed 16% into the surface.
  * Charts: chart-1..4 are the categorical series (blue, ochre, purple, green; validated for colour-vision
  * separation in this order, light and dark); chart-5/6 are neutral greys for "other" and baselines. Pink is
  * never a series colour: it marks change. */
 :root {
   color-scheme: light;
-  --bg: #fbf8f2;
-  --surface: #fffdf9;
-  --surface-2: #f4efe6;
-  --border: #e7e0d3;
-  --border-2: #d9d0bf;
+  --bg: #f2ede3;
+  --surface: #faf7f1;
+  --surface-2: #ece5d8;
+  --border: #ded5c5;
+  --border-2: #cfc4b0;
   --border-strong: #8f877a;
-  --text: #2a2722;
-  --text-muted: #6b655b;
-  --text-subtle: #8a8275;
+  --text: #2b2722;
+  --text-muted: #6a6358;
+  --text-subtle: #8b8275;
   --primary: #2f6b4f;
   --primary-hover: #275a42;
-  --primary-tint: #e6f0ea;
-  --on-primary: #fffdf9;
-  --brand: #a44a6d;
-  --brand-tint: #f8eaf0;
+  --primary-tint: #e3ece4;
+  --on-primary: #faf7f1;
+  --brand: #a04a6c;
+  --brand-tint: #f3e6ea;
   --purple: #6b5ca5;
-  --purple-tint: #efecf8;
+  --purple-tint: #ebe7f2;
   --success: #2f6b4f;
-  --success-tint: #e6f0ea;
-  --warning: #8a5c1e;
-  --warning-tint: #f7eedc;
+  --success-tint: #e3ece4;
+  --warning: #895e1f;
+  --warning-tint: #f2e9d6;
   --danger: #a8473f;
-  --danger-tint: #f6e6e3;
+  --danger-tint: #f2e3df;
   --info: #3e5c9a;
-  --info-tint: #e8edf7;
-  --toast: #2a2722;
-  --on-toast: #fffdf9;
+  --info-tint: #e5e9f1;
+  --toast: #2b2722;
+  --on-toast: #faf7f1;
   --chart-1: #3e5c9a;
   --chart-2: #a9742a;
   --chart-3: #6b5ca5;
   --chart-4: #3c8a5e;
   --chart-5: #7d7568;
-  --chart-6: #6b655b;
+  --chart-6: #6a6358;
 }
 
 [data-theme="dark"] {
   color-scheme: dark;
-  --bg: #16140f;
-  --surface: #1e1b16;
-  --surface-2: #27231c;
-  --border: #332e26;
-  --border-2: #423b31;
+  --bg: #17150f;
+  --surface: #1f1c16;
+  --surface-2: #28241d;
+  --border: #342f27;
+  --border-2: #433c32;
   --border-strong: #7d7568;
   --text: #ede7dc;
   --text-muted: #b3aa9c;
   --text-subtle: #8c8477;
-  --primary: #6fb08f;
-  --primary-hover: #86c2a3;
-  --primary-tint: #1d2a22;
-  --on-primary: #16140f;
-  --brand: #e08aab;
-  --brand-tint: #33202a;
-  --purple: #aea2de;
-  --purple-tint: #25213a;
-  --success: #6fb08f;
-  --success-tint: #1d2a22;
-  --warning: #d9a75e;
-  --warning-tint: #2d2414;
-  --danger: #e58f86;
-  --danger-tint: #33201d;
-  --info: #8fa8da;
-  --info-tint: #1e2533;
+  --primary: #60b990;
+  --primary-hover: #7cc5a4;
+  --primary-tint: #29352a;
+  --on-primary: #17150f;
+  --brand: #d3a0b3;
+  --brand-tint: #3c312f;
+  --purple: #b6aed2;
+  --purple-tint: #373334;
+  --success: #60b990;
+  --success-tint: #29352a;
+  --warning: #daa354;
+  --warning-tint: #3d3220;
+  --danger: #d69691;
+  --danger-tint: #3c302a;
+  --info: #889fcf;
+  --info-tint: #303134;
   --toast: #ede7dc;
-  --on-toast: #16140f;
+  --on-toast: #17150f;
   --chart-1: #6f92da;
   --chart-2: #b9822f;
   --chart-3: #8e7bd3;
