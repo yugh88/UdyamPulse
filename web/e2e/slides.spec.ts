@@ -1,15 +1,20 @@
 import { expect, test, type Page } from "@playwright/test";
 import { loginAs, setTheme } from "./helpers";
 
-/** Deck and README screenshots at 1920x1080, light theme: `SLIDES=1 npx playwright test e2e/slides.spec.ts`.
- * Writes docs/media/slides/NN-name.png. Skipped in normal runs. */
+/**
+ * Screenshots of every screen at 1920x1080 from the real running app, light theme, walking the demo story.
+ *   SLIDES=1 npx playwright test e2e/slides.spec.ts                      → docs/media/slides/NN-name.png
+ *   SLIDES=1 SCREENS_DIR=/some/folder npx playwright test e2e/slides.spec.ts  → that folder instead
+ * Skipped in normal runs.
+ */
 test.skip(!process.env.SLIDES, "screenshots only on demand (SLIDES=1)");
 test.use({ viewport: { width: 1920, height: 1080 } });
 
-const OUT = "../docs/media/slides";
+const OUT = process.env.SCREENS_DIR || "../docs/media/slides";
 let n = 0;
 const snap = async (page: Page, name: string) => {
-  await page.waitForTimeout(1500); // let charts finish drawing
+  await page.waitForTimeout(1200); // let charts finish drawing
+  await expect(page.getByRole("status", { name: /Loading/ })).toHaveCount(0);
   // No toasts on slides: hide them only while the picture is taken (the steps still wait on them).
   const hide = await page.addStyleTag({ content: "[data-sonner-toaster]{display:none!important}" });
   n += 1;
@@ -22,70 +27,113 @@ async function switchTo(page: Page, role: string) {
   await expect(page.getByText(new RegExp(`Now signed in as ${role}`))).toBeVisible();
 }
 
-test("deck screenshots", async ({ page }) => {
-  test.setTimeout(180_000);
+test("screens", async ({ page }) => {
+  test.setTimeout(240_000);
   expect((await page.request.post("/api/v1/demo/reset")).ok()).toBeTruthy();
   await page.goto("/login");
   await setTheme(page, "light");
+  await page.evaluate(() => localStorage.setItem("up_notice_dismissed", "1")); // the one-time notice is not on slides
   await page.reload();
   await snap(page, "login");
 
+  // Relationship manager.
   await loginAs(page, "rm1");
   await expect(page.getByRole("row", { name: /Sharma Auto Components/ })).toBeVisible();
-  await snap(page, "rm-console");
+  await snap(page, "applications");
   await page.getByRole("row", { name: /Sharma Auto Components/ }).click();
   await page.getByRole("button", { name: "Request consent and pull data" }).click();
   await expect(page.getByText("Consent received")).toBeVisible();
-  await page.getByRole("button", { name: "Run scoring" }).click();
-  await expect(page.getByRole("heading", { name: "Top 5 reasons" })).toBeVisible();
-  await snap(page, "score-and-reasons");
+  await page.getByRole("button", { name: "Run scoring" }).first().click();
+  await expect(page.getByRole("heading", { name: "Why this score" })).toBeVisible();
+  await expect(page.getByRole("img", { name: /Factory Health Score \d+ out of 900/ })).toBeVisible();
+  await snap(page, "application-overview");
+  await page.getByRole("tab", { name: "Signals" }).click();
+  await snap(page, "application-signals");
+  await page.getByRole("button", { name: "Try a what-if" }).click();
+  await page.getByRole("dialog", { name: "What-if simulator" }).getByLabel("Cheque/NACH bounces per month").fill("2");
+  await expect(page.getByText(/Simulation only/).first()).toBeVisible();
+  await snap(page, "what-if");
+  await page.getByRole("button", { name: "Close", exact: true }).click();
   await page.getByRole("button", { name: "Generate memo" }).click();
   await expect(page.getByRole("heading", { name: /Credit memo/ })).toBeVisible();
+  await page.getByRole("button", { name: /Agent trace/ }).click();
   await snap(page, "credit-memo");
-  await page.getByRole("tab", { name: "What-if simulator" }).click();
-  await page.getByLabel("Cheque/NACH bounces per month").fill("2");
-  await expect(page.getByText(/Simulation only/)).toBeVisible();
-  await snap(page, "what-if-simulator");
 
+  // Credit officer: the hero now shows as updated in the queue; decide.
   await switchTo(page, "Credit Officer");
+  await expect(page.getByRole("row", { name: /Sharma Auto Components/ })).toBeVisible();
+  await snap(page, "applications-credit-officer");
   await page.getByRole("row", { name: /Sharma Auto Components/ }).click();
-  await page.getByRole("button", { name: "Review memo and decide" }).click();
-  await page.getByLabel(/Comment/).fill("Approve per memo; strong order book and clean banking.");
-  await page.getByRole("button", { name: "Review Key Fact Statement" }).click();
-  await snap(page, "officer-decision-kfs");
-  await page.getByRole("dialog", { name: "Confirm approval" }).getByRole("button", { name: "Confirm approval" }).click();
+  await expect(page.getByRole("heading", { name: "What changed" })).toBeVisible();
+  await snap(page, "application-overview-credit-officer");
+  await page.getByRole("button", { name: "Review & decide" }).click();
+  await page.getByLabel(/Comment/).fill("Strong order growth backed by power use. Buyer concentration covered by covenant.");
+  await snap(page, "decision");
+  await page.getByRole("button", { name: "Confirm approval" }).click();
+  await snap(page, "decision-kfs-preview");
+  await page.getByRole("dialog", { name: "Approve this application?" }).getByRole("button", { name: "Approve and issue KFS" }).click();
+  await expect(page.getByText("Key Fact Statement issued")).toBeVisible();
+  await snap(page, "decision-approved");
   await page.getByRole("button", { name: "Disburse via LOS" }).first().click();
   await expect(page.getByText(/Disbursed \(ref LOS-/)).toBeVisible();
+  await page.getByRole("tab", { name: "Activity" }).click();
+  await snap(page, "application-activity");
 
+  // Early warning.
   await switchTo(page, "Relationship Manager");
-  await page.getByRole("link", { name: "Risk cockpit" }).click();
-  await page.getByRole("button", { name: "Play story" }).first().click();
-  await expect(page.getByText(/Six weeks later: \d+ new alert/)).toBeVisible({ timeout: 30_000 });
-  await snap(page, "risk-cockpit");
-  await page.getByRole("row", { name: "Open high alert for Sharma Auto Components" }).click();
-  await expect(page.getByRole("dialog", { name: "Sharma Auto Components" })).toContainText("Order loss");
-  await snap(page, "early-warning-alert");
-  await page.keyboard.press("Escape");
+  await page.getByRole("link", { name: /^Alerts/ }).click();
+  await page.getByRole("button", { name: "Play 6 weeks" }).click();
+  await expect(page.getByText(/Six weeks later: \d+ new alert/)).toBeVisible({ timeout: 60_000 });
+  await page.getByRole("button", { name: "Open high alert for Sharma Auto Components" }).click();
+  await expect(page.getByText("Suggested next step")).toBeVisible();
+  await snap(page, "alerts");
 
+  // Portfolio and system.
+  await page.getByRole("link", { name: "Portfolio" }).click();
+  await snap(page, "portfolio-overview");
+  await page.getByRole("tab", { name: /Band movement/ }).click();
+  await snap(page, "portfolio-band-movement");
+  await page.getByRole("tab", { name: /Exposure/ }).click();
+  await snap(page, "portfolio-exposure");
+  await page.getByRole("link", { name: "System" }).click();
+  await page.waitForTimeout(10_500); // two live samples for the latency chart
+  await snap(page, "system");
+
+  // MSME owner, English then Hindi.
   await switchTo(page, "MSME Owner");
+  await expect(page.getByRole("heading", { name: "My factory" })).toBeVisible();
+  await snap(page, "msme-home");
   await page.getByRole("radio", { name: "हिन्दी" }).click();
-  await expect(page.getByRole("heading", { name: /नमस्ते/ })).toBeVisible();
-  await snap(page, "msme-app-hindi");
-  await page.getByRole("tab", { name: "90 दिन की योजना" }).click();
-  await snap(page, "msme-90-day-plan-hindi");
+  await snap(page, "msme-home-hindi");
+  await page.getByRole("tab", { name: "योजना" }).click();
+  await page.getByRole("checkbox").first().click();
+  await snap(page, "msme-plan-hindi");
+  await page.getByRole("tab", { name: "सहमति" }).click();
+  await snap(page, "msme-consent-hindi");
   await page.getByRole("radio", { name: "English" }).click();
 
+  // Risk head: governance.
   await switchTo(page, "Risk Head");
   await page.getByRole("link", { name: "Governance" }).click();
   await expect(page.getByText("AUC, out-of-time test")).toBeVisible();
-  await snap(page, "governance-model");
-  await page.getByRole("tab", { name: "Data & Models" }).click();
+  await snap(page, "governance-model-card");
+  await page.getByRole("tab", { name: "Data & models" }).click();
   await expect(page.getByRole("heading", { name: "Data provenance" })).toBeVisible();
-  await snap(page, "governance-data-and-models");
+  await snap(page, "governance-data-models");
   await page.getByRole("tab", { name: "Audit trail" }).click();
   await page.getByRole("button", { name: "Verify chain" }).click();
   await expect(page.getByText("Chain intact")).toBeVisible();
-  await snap(page, "audit-chain-verified");
+  await snap(page, "governance-audit-trail");
+  await page.getByRole("tab", { name: "Consent ledger" }).click();
+  await snap(page, "governance-consent-ledger");
+  await page.getByRole("tab", { name: "Responsible AI" }).click();
+  await snap(page, "governance-responsible-ai");
+
+  // Dark mode and the guided demo.
+  await page.getByRole("link", { name: /^Alerts/ }).click();
+  await page.getByRole("button", { name: "Switch to dark theme" }).click();
+  await snap(page, "alerts-dark");
+  await page.getByRole("button", { name: "Switch to light theme" }).click();
   await page.getByRole("button", { name: "Guided demo" }).click();
   await expect(page.getByRole("complementary", { name: "Guided demo" })).toBeVisible();
   await snap(page, "guided-demo");

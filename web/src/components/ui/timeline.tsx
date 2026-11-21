@@ -18,7 +18,8 @@ const DOT: Record<Tone, string> = {
   warning: "bg-warning-tint text-warning",
   danger: "bg-danger-tint text-danger",
   info: "bg-info-tint text-info",
-  brand: "bg-brand-tint text-fg",
+  brand: "bg-brand-tint text-brand",
+  purple: "bg-purple-tint text-purple",
 };
 
 export function Timeline({ items, className }: { items: TimelineItem[]; className?: string }) {

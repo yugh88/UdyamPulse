@@ -6,7 +6,7 @@
 @theme inline {
   --font-sans: "Inter Variable", "Noto Sans Devanagari Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 
-  /* Type scale: 12 / 13 / 14 (body) / 16 / 20 / 24 / 32 */
+  /* Type scale: 12 / 13 / 14 (body) / 16 (section) / 20 / 24 / 26 (page title) / 32 */
   --text-xs: 12px;
   --text-xs--line-height: 1.5;
   --text-13: 13px;
@@ -19,6 +19,8 @@
   --text-xl--line-height: 1.25;
   --text-2xl: 24px;
   --text-2xl--line-height: 1.25;
+  --text-title: 26px;
+  --text-title--line-height: 1.2;
   --text-3xl: 32px;
   --text-3xl--line-height: 1.25;
 
@@ -36,6 +38,11 @@
   --color-on-primary: var(--on-primary);
   --color-brand: var(--brand);
   --color-brand-tint: var(--brand-tint);
+  --color-purple: var(--purple);
+  --color-purple-tint: var(--purple-tint);
+  --color-edge-2: var(--border-2);
+  --color-toast: var(--toast);
+  --color-on-toast: var(--on-toast);
   --color-success: var(--success);
   --color-success-tint: var(--success-tint);
   --color-warning: var(--warning);
@@ -51,10 +58,11 @@
   --color-chart-5: var(--chart-5);
   --color-chart-6: var(--chart-6);
 
-  --radius-card: 12px;
-  --radius-control: 8px;
-  --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.06);
-  --shadow-pop: 0 4px 6px rgba(16, 24, 40, 0.04), 0 12px 24px rgba(16, 24, 40, 0.1);
+  --radius-card: 14px;
+  --radius-control: 9px;
+  /* Very soft, warm depth; no gradients, no heavy shadows. */
+  --shadow-card: 0 1px 2px rgba(60, 45, 20, 0.05), 0 2px 6px rgba(60, 45, 20, 0.04);
+  --shadow-pop: 0 4px 8px rgba(60, 45, 20, 0.06), 0 12px 28px rgba(60, 45, 20, 0.1);
 }
 
 @layer base {
@@ -70,6 +78,10 @@
   h3,
   h4 {
     line-height: 1.25;
+  }
+  /* MSME app on phones: 15px body text for easy reading. */
+  .msme-body {
+    font-size: 15px;
   }
   /* Every number, amount and score lines up in columns. */
   table,
@@ -108,10 +120,36 @@
     transform: translateX(100%);
   }
 }
+/* Toasts never block a primary action: clicks pass through to whatever is underneath (and hovering does not pause
+   them), except on the toast's own close button. */
+[data-sonner-toast] {
+  pointer-events: none;
+}
+[data-sonner-toast] [data-close-button] {
+  pointer-events: auto;
+}
+
+@keyframes up-halo {
+  from {
+    box-shadow: 0 0 0 0 var(--purple-tint);
+  }
+  to {
+    box-shadow: 0 0 0 6px var(--purple-tint);
+  }
+}
 @keyframes up-shimmer {
   to {
     background-position: -200% 0;
   }
+}
+/* Small uppercase labels for stat tiles and table headers: 12px, +0.5 letter-spacing. */
+@utility label-caps {
+  font-size: 12px;
+  line-height: 1.4;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--text-muted);
 }
 @utility animate-fade-in {
   animation: up-fade-in 180ms ease-out;

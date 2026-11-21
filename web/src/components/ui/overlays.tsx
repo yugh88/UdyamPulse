@@ -140,21 +140,31 @@ export function MenuSeparator() {
 }
 
 export const Tabs = T.Root;
+/** Text tabs: 28px gap, a 2.5px forest underline on the active tab. Pair with `useUrlTab` to keep the tab in the URL. */
 export function TabsList({ className, ...rest }: ComponentProps<typeof T.List>) {
-  return <T.List className={cn("flex gap-1 overflow-x-auto border-b border-edge", className)} {...rest} />;
+  return <T.List className={cn("flex gap-7 overflow-x-auto border-b border-edge", className)} {...rest} />;
 }
 export function TabsTrigger({ className, ...rest }: ComponentProps<typeof T.Trigger>) {
   return (
     <T.Trigger
       className={cn(
-        "-mb-px border-b-2 border-transparent px-3 py-2 text-sm font-medium whitespace-nowrap text-fg-muted transition-colors hover:text-fg",
-        "data-[state=active]:border-primary data-[state=active]:text-primary",
+        "group -mb-px inline-flex items-center gap-2 border-b-[2.5px] border-transparent pt-1 pb-2.5 text-sm font-medium whitespace-nowrap text-fg-muted transition-colors duration-150 hover:text-fg",
+        "data-[state=active]:border-primary data-[state=active]:font-semibold data-[state=active]:text-fg",
         className,
       )}
       {...rest}
     />
   );
 }
+/** Count pill inside a tab trigger. */
+export function TabCount({ value }: { value: number | null | undefined }) {
+  if (value == null) return null;
+  return (
+    <span className="tabular rounded-full bg-panel-2 px-2 py-px text-xs font-semibold text-fg-muted group-data-[state=active]:bg-primary-tint group-data-[state=active]:text-primary">
+      {value}
+    </span>
+  );
+}
 export function TabsContent({ className, ...rest }: ComponentProps<typeof T.Content>) {
-  return <T.Content className={cn("pt-4", className)} {...rest} />;
+  return <T.Content className={cn("pt-5 focus-visible:outline-none", className)} {...rest} />;
 }

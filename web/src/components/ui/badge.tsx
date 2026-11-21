@@ -1,9 +1,9 @@
-import { CircleAlert, CircleCheck, Contrast, Info, Sparkles, TriangleAlert } from "lucide-react";
+import { CircleCheck, Contrast, Info, Sparkles, TriangleAlert } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "../../lib/cn";
 import { BAND_LABEL, type Band, type Severity } from "../../lib/format";
 
-export type Tone = "neutral" | "primary" | "success" | "warning" | "danger" | "info" | "brand";
+export type Tone = "neutral" | "primary" | "success" | "warning" | "danger" | "info" | "brand" | "purple";
 
 const TONE: Record<Tone, string> = {
   neutral: "bg-panel-2 text-fg-muted",
@@ -12,12 +12,13 @@ const TONE: Record<Tone, string> = {
   warning: "bg-warning-tint text-warning",
   danger: "bg-danger-tint text-danger",
   info: "bg-info-tint text-info",
-  brand: "bg-brand-tint text-fg",
+  brand: "bg-brand-tint text-brand",
+  purple: "bg-purple-tint text-purple",
 };
 
 export function Badge({ tone = "neutral", icon, children, className }: { tone?: Tone; icon?: ReactNode; children: ReactNode; className?: string }) {
   return (
-    <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap", TONE[tone], className)}>
+    <span className={cn("inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-13 font-medium whitespace-nowrap", TONE[tone], className)}>
       {icon}
       {children}
     </span>
@@ -44,8 +45,8 @@ export function BandPill({ band, className }: { band?: string | null; className?
 }
 
 const SEVERITY: Record<Severity, { tone: Tone; icon: ReactNode; label: string }> = {
-  high: { tone: "danger", icon: <TriangleAlert className={ICON} aria-hidden />, label: "High" },
-  medium: { tone: "warning", icon: <CircleAlert className={ICON} aria-hidden />, label: "Medium" },
+  high: { tone: "danger", icon: <TriangleAlert className={ICON} aria-hidden />, label: "High risk" },
+  medium: { tone: "warning", icon: <Contrast className={ICON} aria-hidden />, label: "Watch" },
   low: { tone: "info", icon: <Info className={ICON} aria-hidden />, label: "Low" },
 };
 
@@ -61,7 +62,7 @@ export function SeverityPill({ severity, className }: { severity?: string | null
 
 export function AiLabel({ className }: { className?: string }) {
   return (
-    <Badge tone="primary" icon={<Sparkles className={ICON} aria-hidden />} className={className}>
+    <Badge tone="purple" icon={<Sparkles className={ICON} aria-hidden />} className={className}>
       AI-generated recommendation · final decision by credit officer
     </Badge>
   );

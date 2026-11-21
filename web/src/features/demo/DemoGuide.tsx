@@ -9,7 +9,7 @@ import { guide, useGuide } from "./guideStore";
 
 interface Step {
   persona: { username: string; role: Role };
-  where: "hero" | "/cockpit" | "/msme" | "/governance";
+  where: "hero" | "/alerts" | "/msme" | "/governance";
   title: string;
   doThis: string;
   say: string;
@@ -21,49 +21,49 @@ export const STEPS: Step[] = [
     persona: { username: "rm1", role: "rm" },
     where: "hero",
     title: "Consent and data pull",
-    doThis: "Click “Request consent and pull data”.",
+    doThis: "Click “Request consent and pull data”. Watch “What changed” gain a consent entry.",
     say: "Consent comes through the Account Aggregator with a stated purpose. GST, e-way bills, bank, power and EPFO data are pulled and cross-checked.",
   },
   {
     persona: { username: "rm1", role: "rm" },
     where: "hero",
     title: "Explainable score",
-    doThis: "Click “Run scoring”, then open the signal tabs.",
-    say: "A Factory Health Score with its five reasons in plain language, and how many points each pillar adds or removes.",
+    doThis: "Click “Run scoring”. The toast shows the new score; the gauge, reasons and timeline update.",
+    say: "A Factory Health Score with its top reasons in plain words, and how many points each one adds or removes.",
   },
   {
     persona: { username: "rm1", role: "rm" },
     where: "hero",
     title: "Credit memo with citations",
-    doThis: "Draft the memo and preview the PDF.",
+    doThis: "Click “Generate memo”. “Memo ready” appears in What changed; open a blue policy chip and the agent trace.",
     say: "Every number comes from the scoring and policy engines; the writer only drafts prose, and a guard rejects invented numbers. Policy clauses are cited.",
   },
   {
     persona: { username: "co1", role: "credit_officer" },
     where: "hero",
     title: "Human decision",
-    doThis: "Add a comment, approve, then disburse.",
-    say: "Only the credit officer can decide. Approval creates the Key Fact Statement stub; disbursal goes through the LOS stub.",
+    doThis: "Click “Review & decide”, add a comment, confirm the approval, then disburse.",
+    say: "Only the credit officer can decide. The stepper moves to Decision ✓, the Key Fact Statement is issued, and the change is on the timeline.",
   },
   {
     persona: { username: "risk1", role: "risk" },
-    where: "/cockpit",
+    where: "/alerts",
     title: "Early warning",
-    doThis: "Press “+1 week” until Sharma’s HIGH alert appears, then open it.",
-    say: "The biggest buyer cut orders: e-way bills fell 42% and power 32%. The alert explains why and proposes a visit and a limit review, about three months before SMA-2 in back-testing.",
+    doThis: "Click “Fast-forward 1 week” (or “Play 6 weeks”) until Sharma’s NEW high-risk alert appears, then read before → after.",
+    say: "The biggest buyer cut orders. The tiles show e-way bills, power and the score before and after, and the alert suggests a visit and a limit review.",
   },
   {
     persona: { username: "sharma", role: "msme" },
     where: "/msme",
     title: "The owner’s view, in Hindi",
-    doThis: "See readiness and the 90-day plan, switch to हिन्दी, then revoke consent.",
-    say: "The owner sees the same truth in simple language. Revoking consent stops pulls immediately and deletes the bank’s copy.",
+    doThis: "See readiness and the plan, switch to हिं, then Consent → “सहमति वापस लें”.",
+    say: "The owner sees the same truth in simple language. Stopping sharing ends pulls immediately and deletes the bank’s copy.",
   },
   {
     persona: { username: "risk1", role: "risk" },
     where: "/governance",
     title: "Governance and honest numbers",
-    doThis: "Open Data & Models, then Audit trail → Verify chain.",
+    doThis: "Open Data & models, then Audit trail → Verify chain.",
     say: "Real benchmarks and synthetic results are reported apart, with confidence intervals. Every action is on a tamper-evident audit chain.",
   },
 ];
@@ -125,7 +125,7 @@ export function DemoGuide() {
   };
 
   return (
-    <aside aria-label="Guided demo" className="fixed bottom-4 left-4 z-50 w-[min(24rem,calc(100vw-2rem))] rounded-xl border border-edge bg-panel p-4 shadow-lg">
+    <aside aria-label="Guided demo" className="fixed bottom-4 left-4 z-50 w-[min(24rem,calc(100vw-2rem))] rounded-card border border-edge bg-panel p-5 shadow-pop">
       <div className="flex items-start justify-between gap-2">
         <div>
           <p className="text-xs font-medium text-fg-muted">
@@ -139,7 +139,7 @@ export function DemoGuide() {
         As <span className="font-medium text-fg">{ROLE_LABEL[s.persona.role]}</span> ({s.persona.username})
       </p>
       <p className="mt-2 text-sm text-fg">{s.doThis}</p>
-      <p className="mt-2 rounded-lg bg-panel-2 p-2 text-sm text-fg-muted">“{s.say}”</p>
+      <p className="mt-2 rounded-control bg-purple-tint p-3 text-sm text-fg">“{s.say}”</p>
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <Button variant="primary" size="sm" loading={busy} onClick={take} icon={<Play className="h-4 w-4" aria-hidden />}>
           {here ? "Open this screen" : `Sign in as ${s.persona.username} and open`}

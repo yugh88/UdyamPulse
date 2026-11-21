@@ -59,17 +59,16 @@ export default function Login() {
     <>
       <PrototypeBanner />
       <div className="grid min-h-screen lg:grid-cols-[1.1fr_1fr]">
-        <section
-          className="hidden flex-col justify-between border-r border-edge bg-panel p-12 lg:flex"
-          style={{ backgroundImage: "radial-gradient(60rem 30rem at 0% 0%, color-mix(in srgb, var(--primary) 4%, transparent), transparent)" }}
-        >
+        <section className="hidden flex-col justify-between border-r border-edge bg-panel p-12 lg:flex">
           <div className="flex items-center gap-2.5">
             <img src="/icon.svg" alt="" className="h-9 w-9 rounded-lg" />
-            <span className="text-xl font-semibold tracking-tight text-fg">UdyamPulse</span>
+            <span className="text-xl font-bold tracking-[-0.3px] text-fg">
+              Udyam<span className="text-primary">Pulse</span>
+            </span>
           </div>
           <div className="max-w-lg">
-            <h1 className="text-3xl font-semibold tracking-tight text-fg">
-              Credit backed by your production, <span className="text-brand">not your property.</span>
+            <h1 className="text-3xl font-bold tracking-[-0.5px] text-fg">
+              Credit backed by your production, <span className="text-primary">not your property.</span>
             </h1>
             <p className="mt-3 text-base text-fg-muted">Decision intelligence for MSME manufacturing credit.</p>
             <ul className="mt-8 space-y-5">

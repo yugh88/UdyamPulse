@@ -1,10 +1,11 @@
-import { BadgeCheck, Ban, Banknote, Lock } from "lucide-react";
+import { Banknote, CircleCheck, CircleDot, CircleX, FileText, Gavel, Lock } from "lucide-react";
 import { useState } from "react";
-import { Badge, Button, Card, Dialog, Field, Input, Textarea, Tooltip } from "../../components/ui";
+import { Badge, Button, Card, Dialog, EmptyState, Field, Input, Textarea, Tooltip } from "../../components/ui";
 import { cn } from "../../lib/cn";
-import { inr, rupees } from "../../lib/format";
+import { inr, pct, rupees } from "../../lib/format";
 import { dateTime } from "../../lib/time";
 import type { AppDetail } from "../../lib/types";
+import { Cited, PolicyChips } from "./Memo";
 
 const KFS_LABEL: Record<string, string> = {
   lender: "Lender",
@@ -41,7 +42,78 @@ export interface DecisionInput {
   sanctioned_limit?: number;
 }
 
-/** Credit-officer decision: choose, justify, preview the Key Fact Statement, then confirm. */
+function Tile({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-control bg-panel-2 px-5 py-4">
+      <p className="label-caps">{label}</p>
+      <p className="tabular mt-1.5 text-2xl font-bold tracking-[-0.5px] text-fg">{value}</p>
+    </div>
+  );
+}
+
+/** Left card: the memo in one screen. Strengths, risks paired with how they are managed, and the clauses cited. */
+export function MemoSummary({ app, onOpenPolicy }: { app: AppDetail; onOpenPolicy: (section: string) => void }) {
+  const memo = app.memo;
+  if (!memo)
+    return (
+      <Card>
+        <EmptyState
+          icon={<FileText className="h-6 w-6" aria-hidden />}
+          title="No memo yet"
+          description="The memo agent drafts it after scoring. The decision opens once the memo is ready."
+        />
+      </Card>
+    );
+  return (
+    <Card title="Memo summary" description="Drafted by the memo agent · every number comes from the scoring and policy engines">
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Tile label="Recommended limit" value={memo.recommended_limit_display} />
+        <Tile label="Pricing" value={memo.pricing_band} />
+        <Tile label="Risk of default · 12 months" value={pct(app.pd_12m, 1)} />
+      </div>
+      <section className="mt-6">
+        <h3 className="text-base font-[650] text-fg">Strengths</h3>
+        <ul className="mt-3 space-y-2.5">
+          {memo.strengths.map((t) => (
+            <li key={t} className="flex gap-2.5 text-sm text-fg">
+              <CircleCheck className="mt-0.5 h-[18px] w-[18px] shrink-0 text-success" aria-hidden />
+              <span>
+                <Cited text={t} onOpen={onOpenPolicy} />
+              </span>
+            </li>
+          ))}
+        </ul>
+      </section>
+      <section className="mt-6">
+        <h3 className="text-base font-[650] text-fg">Risks & how to manage them</h3>
+        <ul className="mt-3 space-y-2.5">
+          {memo.risks.map((t, i) => (
+            <li key={t} className="flex gap-2.5 text-sm text-fg">
+              <CircleDot className="mt-0.5 h-[18px] w-[18px] shrink-0 text-warning" aria-hidden />
+              <span>
+                <Cited text={t} onOpen={onOpenPolicy} />
+                {memo.mitigants[i] && (
+                  <>
+                    <span className="text-fg-muted"> → </span>
+                    <Cited text={memo.mitigants[i]} onOpen={onOpenPolicy} />
+                  </>
+                )}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </section>
+      {memo.citations.length > 0 && (
+        <section className="mt-6 flex flex-wrap items-center gap-3">
+          <h3 className="label-caps">Policy cited</h3>
+          <PolicyChips citations={memo.citations} onOpen={onOpenPolicy} />
+        </section>
+      )}
+    </Card>
+  );
+}
+
+/** Right card: only a credit officer can decide. Choose, set the limit, justify, confirm against the KFS preview. */
 export function DecisionPanel({
   app,
   role,
@@ -67,32 +139,33 @@ export function DecisionPanel({
     const approved = app.decision === "APPROVED";
     return (
       <Card
+        className="border-2 border-primary"
         title="Decision"
         actions={
-          <Badge tone={approved ? "success" : "danger"} icon={approved ? <BadgeCheck className="h-3.5 w-3.5" aria-hidden /> : <Ban className="h-3.5 w-3.5" aria-hidden />}>
+          <Badge tone={approved ? "success" : "danger"} icon={approved ? <CircleCheck className="h-3.5 w-3.5" aria-hidden /> : <CircleX className="h-3.5 w-3.5" aria-hidden />}>
             {approved ? "Approved" : "Rejected"}
           </Badge>
         }
       >
         <p className="text-sm text-fg">“{app.decision_comment}”</p>
-        <p className="mt-1 text-xs text-fg-muted">
+        <p className="mt-1 text-13 text-fg-muted">
           Decided by {app.decided_by}
           {app.decided_at ? ` on ${dateTime(app.decided_at)}` : ""}
           {approved && app.sanctioned_limit ? ` · sanctioned ${inr(app.sanctioned_limit)}` : ""}
         </p>
         {app.kfs && (
-          <div className="mt-4">
-            <h3 className="mb-2 text-13 font-semibold text-fg">Key Fact Statement</h3>
+          <div className="mt-5">
+            <h3 className="mb-2 text-sm font-semibold text-fg">Key Fact Statement</h3>
             <Kfs kfs={app.kfs} />
           </div>
         )}
         {approved && app.state === "DECIDED" && (role === "credit_officer" || role === "rm") && (
-          <Button variant="primary" className="mt-4" loading={disbursing} onClick={onDisburse} icon={<Banknote className="h-4 w-4" aria-hidden />}>
+          <Button variant="primary" size="lg" className="mt-5 w-full" loading={disbursing} onClick={onDisburse} icon={<Banknote className="h-4 w-4" aria-hidden />}>
             Disburse via LOS
           </Button>
         )}
         {app.disbursement_ref && (
-          <p className="mt-3 text-13 text-fg-muted">
+          <p className="mt-4 text-13 text-fg-muted">
             Disbursed on {app.disbursed_on} · reference <span className="tabular font-medium text-fg">{app.disbursement_ref}</span> · directly to the borrower's own account
           </p>
         )}
@@ -121,48 +194,57 @@ export function DecisionPanel({
 
   return (
     <Card
-      title="Decision"
-      description="Final decision by the credit officer. The memo is a recommendation."
+      className="border-2 border-primary"
+      title="Your decision"
+      description="Only a credit officer can decide. AI only recommends."
       actions={
         locked ? (
           <Tooltip content={lockedWhy}>
             <span tabIndex={0}>
               <Badge tone="neutral" icon={<Lock className="h-3 w-3" aria-hidden />}>
-                Locked
+                Read-only
               </Badge>
             </span>
           </Tooltip>
         ) : undefined
       }
     >
-      {locked && <p className="mb-4 rounded-control bg-panel-2 px-3 py-2 text-13 text-fg-muted">{lockedWhy}</p>}
-      <fieldset disabled={locked} className="space-y-4 disabled:opacity-60">
-        <div role="radiogroup" aria-label="Decision" className="grid grid-cols-2 gap-2">
+      {locked && (
+        <p className="mb-4 flex items-start gap-2 rounded-control bg-panel-2 px-3 py-2.5 text-13 text-fg-muted">
+          <Lock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+          {lockedWhy}
+        </p>
+      )}
+      <fieldset disabled={locked} className="space-y-5 disabled:opacity-60">
+        <div role="radiogroup" aria-label="Decision" className="grid grid-cols-2 gap-3">
           {(
             [
-              ["APPROVED", "Approve", BadgeCheck],
-              ["REJECTED", "Reject", Ban],
+              ["APPROVED", "Approve", CircleCheck],
+              ["REJECTED", "Reject", CircleX],
             ] as const
-          ).map(([value, label, Icon]) => (
-            <button
-              key={value}
-              type="button"
-              role="radio"
-              aria-checked={choice === value}
-              onClick={() => setChoice(value)}
-              className={cn(
-                "flex h-10 items-center justify-center gap-2 rounded-control border text-sm font-medium transition-colors disabled:cursor-not-allowed",
-                choice === value
-                  ? value === "APPROVED"
-                    ? "border-success bg-success-tint text-success"
-                    : "border-danger bg-danger-tint text-danger"
-                  : "border-edge-strong bg-panel text-fg-muted hover:text-fg",
-              )}
-            >
-              <Icon className="h-4 w-4" aria-hidden />
-              {label}
-            </button>
-          ))}
+          ).map(([value, label, Icon]) => {
+            const on = choice === value;
+            return (
+              <button
+                key={value}
+                type="button"
+                role="radio"
+                aria-checked={on}
+                onClick={() => setChoice(value)}
+                className={cn(
+                  "flex h-24 flex-col items-center justify-center gap-2 rounded-card border-2 text-base font-semibold transition-colors duration-150 disabled:cursor-not-allowed",
+                  on
+                    ? value === "APPROVED"
+                      ? "border-primary bg-primary-tint text-primary"
+                      : "border-danger bg-danger-tint text-danger"
+                    : "border-edge-2 bg-panel text-fg-muted hover:text-fg",
+                )}
+              >
+                <Icon className="h-6 w-6" aria-hidden />
+                {label}
+              </button>
+            );
+          })}
         </div>
 
         {choice === "APPROVED" && (
@@ -171,18 +253,23 @@ export function DecisionPanel({
             required
             error={touched ? limitError : null}
             hint={
-              limitNum > 0 ? (
-                <>
-                  {rupees(limitNum)} · {inr(limitNum)}
-                  {app.recommended_limit != null && <> · memo recommends {inr(app.recommended_limit)}</>}
-                  {aboveRecommended && <span className="font-medium text-warning"> · above the recommended limit</span>}
-                </>
-              ) : app.recommended_limit != null ? (
-                `Memo recommends ${inr(app.recommended_limit)}`
-              ) : undefined
+              <>
+                {limitNum > 0 && `${inr(limitNum)}`}
+                {app.recommended_limit != null && (
+                  <>
+                    {limitNum > 0 ? " · " : ""}memo recommends {inr(app.recommended_limit)}
+                  </>
+                )}
+                {aboveRecommended && <span className="font-medium text-warning"> · above the recommended limit</span>}
+              </>
             }
           >
-            <Input inputMode="numeric" value={limit} onChange={(e) => setLimit(e.target.value.replace(/[^\d]/g, ""))} />
+            <Input
+              inputMode="numeric"
+              className="tabular h-12 text-base font-semibold"
+              value={limitNum > 0 ? rupees(limitNum) : limit}
+              onChange={(e) => setLimit(e.target.value.replace(/[^\d]/g, ""))}
+            />
           </Field>
         )}
 
@@ -191,25 +278,36 @@ export function DecisionPanel({
             value={comment}
             onChange={(e) => setComment(e.target.value)}
             maxLength={1000}
+            rows={3}
             placeholder={choice === "APPROVED" ? "Why this limit and these conditions" : "Main reasons for declining"}
           />
         </Field>
 
+        {choice === "APPROVED" && (
+          <p className="flex items-start gap-2.5 rounded-control bg-info-tint px-4 py-3 text-13 text-info">
+            <FileText className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+            The Key Fact Statement will be shown to the borrower before signing.
+          </p>
+        )}
+
         <Button
-          variant="primary"
+          variant={choice === "APPROVED" ? "primary" : "danger"}
+          size="lg"
+          className="w-full"
+          icon={<Gavel className="h-4 w-4" aria-hidden />}
           onClick={() => {
             setTouched(true);
             if (!limitError && !commentError) setConfirm(true);
           }}
         >
-          {choice === "APPROVED" ? "Review Key Fact Statement" : "Review rejection"}
+          {choice === "APPROVED" ? "Confirm approval" : "Confirm rejection"}
         </Button>
       </fieldset>
 
       <Dialog
         open={confirm}
         onOpenChange={setConfirm}
-        title={choice === "APPROVED" ? "Confirm approval" : "Confirm rejection"}
+        title={choice === "APPROVED" ? "Approve this application?" : "Reject this application?"}
         description={`${app.name} · application #${app.id}`}
         footer={
           <>
@@ -228,7 +326,7 @@ export function DecisionPanel({
                 }
               }}
             >
-              {choice === "APPROVED" ? "Confirm approval" : "Confirm rejection"}
+              {choice === "APPROVED" ? "Approve and issue KFS" : "Reject application"}
             </Button>
           </>
         }

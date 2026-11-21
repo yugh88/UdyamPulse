@@ -9,7 +9,7 @@ import type { Memo } from "../../lib/types";
 const CITE = /\[§(\d+\.\d+)\]/g;
 
 /** Renders text with every [§x.y] turned into a chip that opens the policy clause. */
-function Cited({ text, onOpen }: { text: string; onOpen: (section: string) => void }) {
+export function Cited({ text, onOpen }: { text: string; onOpen: (section: string) => void }) {
   const parts: ReactNode[] = [];
   let last = 0;
   for (const m of text.matchAll(CITE)) {
@@ -20,7 +20,7 @@ function Cited({ text, onOpen }: { text: string; onOpen: (section: string) => vo
         type="button"
         onClick={() => onOpen(m[1])}
         aria-label={`Open policy clause ${m[1]}`}
-        className="tabular mx-0.5 inline-flex items-center rounded bg-primary-tint px-1.5 py-px align-baseline text-xs font-medium text-primary hover:underline"
+        className="tabular mx-0.5 inline-flex items-center rounded-md bg-info-tint px-1.5 py-px align-baseline text-xs font-semibold text-info hover:underline"
       >
         §{m[1]}
       </button>,
@@ -31,7 +31,7 @@ function Cited({ text, onOpen }: { text: string; onOpen: (section: string) => vo
   return <>{parts}</>;
 }
 
-function PolicySheet({ section, onClose }: { section: string | null; onClose: () => void }) {
+export function PolicySheet({ section, onClose }: { section: string | null; onClose: () => void }) {
   const q = useQuery({
     queryKey: ["policy", section],
     queryFn: () => api<{ section: string; title: string; text: string; source: string }>(`/policy/${section}`),
@@ -80,6 +80,50 @@ const METRIC_LABEL: Record<string, string> = {
   gst_on_time_12m: "GST filed on time",
 };
 
+/** Downloads the memo PDF through the authenticated API. */
+export async function downloadMemo(applicationId: number) {
+  try {
+    const url = await pdfUrl(`/applications/${applicationId}/memo.pdf`);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `credit_memo_${applicationId}.pdf`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    toast.success("Memo PDF downloaded");
+  } catch (e) {
+    toast.error(`PDF not available: ${(e as Error).message}`);
+  }
+}
+
+/** Chips for the policy clauses a memo cites; each opens the clause in a side sheet. */
+export function PolicyChips({ citations, onOpen, max = 6 }: { citations: Memo["citations"]; onOpen: (section: string) => void; max?: number }) {
+  const [all, setAll] = useState(false);
+  const shown = all ? citations : citations.slice(0, max);
+  return (
+    <ul className="flex flex-wrap gap-2">
+      {shown.map((c) => (
+        <li key={c.section}>
+          <button type="button" onClick={() => onOpen(c.section)} className="rounded-full bg-info-tint px-3 py-1 text-13 font-semibold text-info hover:underline">
+            <span className="tabular">§{c.section}</span> {c.title}
+          </button>
+        </li>
+      ))}
+      {citations.length > max && (
+        <li>
+          <button
+            type="button"
+            aria-expanded={all}
+            onClick={() => setAll(!all)}
+            className="rounded-full px-3 py-1 text-13 font-semibold text-fg-muted hover:text-fg hover:underline"
+          >
+            {all ? "Show fewer" : `+${citations.length - max} more`}
+          </button>
+        </li>
+      )}
+    </ul>
+  );
+}
+
 export function MemoView({
   applicationId,
   memo,
@@ -87,7 +131,9 @@ export function MemoView({
   generating,
   onGenerate,
   generateHint,
+  trace,
 }: {
+  trace?: ReactNode;
   applicationId: number;
   memo: Memo | null;
   canGenerate: boolean;
@@ -140,7 +186,7 @@ export function MemoView({
   return (
     <>
       <Card padded={false}>
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-edge bg-primary-tint/50 px-5 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-edge bg-purple-tint/60 px-6 py-3">
           <AiLabel />
           <div className="flex items-center gap-2">
             <Button size="sm" loading={pdfBusy === "preview"} onClick={() => pdf("preview")} icon={<Eye className="h-4 w-4" aria-hidden />}>
@@ -156,7 +202,7 @@ export function MemoView({
             )}
           </div>
         </div>
-        <article className="space-y-6 p-5">
+        <article className="mx-auto max-w-3xl space-y-6 p-6">
           <header>
             <h2 className="text-xl font-semibold text-fg">{memo.title}</h2>
             <p className="mt-1 text-xs text-fg-muted">
@@ -213,17 +259,15 @@ export function MemoView({
             ))}
           </div>
 
+          {trace}
+
           <section>
             <h3 className="mb-2 text-sm font-semibold text-fg">Policy citations</h3>
             <ul className="flex flex-wrap gap-2">
               {memo.citations.map((c) => (
                 <li key={c.section}>
-                  <button
-                    type="button"
-                    onClick={() => setSection(c.section)}
-                    className="rounded-full border border-edge bg-panel px-2.5 py-1 text-xs text-fg hover:border-primary hover:text-primary"
-                  >
-                    <span className="tabular font-semibold">§{c.section}</span> {c.title}
+                  <button type="button" onClick={() => setSection(c.section)} className="rounded-full bg-info-tint px-3 py-1 text-13 font-semibold text-info hover:underline">
+                    <span className="tabular">§{c.section}</span> {c.title}
                   </button>
                 </li>
               ))}

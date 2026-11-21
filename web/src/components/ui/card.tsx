@@ -17,11 +17,11 @@ export function Card({
   padded?: boolean;
 }) {
   return (
-    <section className={cn("rounded-card border border-edge bg-panel shadow-card", padded && "p-5", className)}>
+    <section className={cn("rounded-card border border-edge bg-panel shadow-card", padded && "p-6", className)}>
       {(title || actions) && (
-        <header className={cn("flex items-start justify-between gap-3", padded ? "mb-4" : "px-5 pt-5 pb-3")}>
+        <header className={cn("flex items-start justify-between gap-3", padded ? "mb-4" : "px-6 pt-6 pb-3")}>
           <div className="min-w-0">
-            {title && <h2 className="text-sm font-semibold text-fg">{title}</h2>}
+            {title && <h2 className="text-base font-[650] text-fg">{title}</h2>}
             {description && <p className="mt-0.5 text-13 text-fg-muted">{description}</p>}
           </div>
           {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}

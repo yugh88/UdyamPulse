@@ -6,7 +6,7 @@ test.beforeAll(async ({ request }) => {
   expect((await request.post("/api/v1/demo/reset")).ok()).toBeTruthy();
 });
 
-const HOME: Record<string, RegExp> = { rm1: /\/console$/, co1: /\/console$/, risk1: /\/cockpit$/, sharma: /\/msme$/ };
+const HOME: Record<string, RegExp> = { rm1: /\/console$/, co1: /\/console$/, risk1: /\/alerts$/, sharma: /\/msme$/ };
 
 for (const theme of ["light", "dark"] as const) {
   test.describe(`shell (${theme})`, () => {
@@ -17,7 +17,9 @@ for (const theme of ["light", "dark"] as const) {
         await setTheme(page, theme);
         await loginAs(page, user);
         await expect(page).toHaveURL(home);
-        await page.waitForLoadState("networkidle");
+        // Not "networkidle": the live change stream keeps a connection open by design.
+        await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+        await expect(page.getByRole("status", { name: /Loading/ })).toHaveCount(0);
         await page.screenshot({ path: `test-results/shots/${user}-${theme}.png`, fullPage: true });
         expect(errors).toEqual([]);
       });
@@ -56,14 +58,18 @@ test("command palette jumps to the hero application", async ({ page }) => {
     .first()
     .click();
   await expect(page).toHaveURL(/\/console\/\d+$/);
-  await expect(page.getByRole("navigation", { name: "Breadcrumb" })).toContainText("Application #");
+  await expect(page.getByRole("navigation", { name: "Breadcrumb" })).toContainText("Applications");
+  await expect(page.getByRole("heading", { name: "Sharma Auto Components", level: 1 })).toBeVisible();
 });
 
 test("keyboard shortcuts navigate and open the shortcut sheet", async ({ page }) => {
   await loginAs(page, "rm1");
   await page.keyboard.press("g");
   await page.keyboard.press("p");
-  await expect(page).toHaveURL(/\/cockpit$/);
+  await expect(page).toHaveURL(/\/portfolio$/);
+  await page.keyboard.press("g");
+  await page.keyboard.press("a");
+  await expect(page).toHaveURL(/\/alerts$/);
   await page.keyboard.press("g");
   await page.keyboard.press("c");
   await expect(page).toHaveURL(/\/console$/);
@@ -75,8 +81,8 @@ test("role switcher changes persona", async ({ page }) => {
   await loginAs(page, "rm1");
   await page.getByRole("button", { name: /Account menu/ }).click();
   await page.getByRole("menuitem", { name: /Risk Head/ }).click();
-  await expect(page).toHaveURL(/\/cockpit$/);
-  await expect(page.getByRole("banner")).toContainText("Risk Head");
+  await expect(page).toHaveURL(/\/alerts$/);
+  await expect(page.getByRole("button", { name: /Account menu/ })).toContainText("Risk Head");
 });
 
 test("a reload keeps the session through the refresh cookie, without storing a token", async ({ page }) => {
@@ -88,7 +94,7 @@ test("a reload keeps the session through the refresh cookie, without storing a t
   expect(refresh?.sameSite).toBe("Strict");
   await page.reload();
   await expect(page).toHaveURL(/\/console$/);
-  await expect(page.getByRole("banner")).toContainText("Relationship Manager");
+  await expect(page.getByRole("button", { name: /Account menu/ })).toContainText("Relationship Manager");
 });
 
 test("an ended session returns to login", async ({ page }) => {
@@ -108,12 +114,30 @@ test("sign out revokes the refresh token", async ({ page }) => {
   expect(res.status()).toBe(401);
 });
 
-test("sidebar collapses and stays usable", async ({ page }) => {
+test("the sidebar shows only actionable counts, and the old cockpit link still works", async ({ page }) => {
   await loginAs(page, "rm1");
-  await page.getByRole("button", { name: "Collapse sidebar" }).click();
-  await expect(page.getByRole("button", { name: "Expand sidebar" })).toBeVisible();
-  await page.getByRole("link", { name: "Risk cockpit" }).click();
-  await expect(page).toHaveURL(/\/cockpit$/);
+  const nav = page.getByRole("navigation", { name: "Main" });
+  await expect(nav.getByRole("link", { name: /^Applications \d+ need your action$/ })).toBeVisible();
+  await page.goto("/cockpit");
+  await expect(page).toHaveURL(/\/alerts$/);
+});
+
+test("tabs are kept in the URL", async ({ page }) => {
+  await loginAs(page, "rm1");
+  await page.getByRole("tab", { name: /In progress/ }).click();
+  await expect(page).toHaveURL(/tab=progress/);
+  await page.reload();
+  await expect(page.getByRole("tab", { name: /In progress/ })).toHaveAttribute("aria-selected", "true");
+});
+
+test("a first-visit notice explains the prototype once", async ({ page }) => {
+  await loginAs(page, "rm1");
+  const note = page.getByRole("note").filter({ hasText: "not a lending decision" });
+  await expect(note).toBeVisible();
+  await note.getByRole("button", { name: "Got it" }).click();
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Applications", level: 1 })).toBeVisible();
+  await expect(page.getByRole("note").filter({ hasText: "not a lending decision" })).toHaveCount(0);
 });
 
 test("guided demo signs in the right persona and opens the right screen", async ({ page }) => {
@@ -127,8 +151,8 @@ test("guided demo signs in the right persona and opens the right screen", async 
   for (let i = 0; i < 4; i++) await panel.getByRole("button", { name: "Next step" }).click();
   await expect(panel).toContainText("Early warning");
   await panel.getByRole("button", { name: "Sign in as risk1 and open" }).click();
-  await expect(page).toHaveURL(/\/cockpit$/);
-  await expect(page.getByRole("banner")).toContainText("Risk Head");
+  await expect(page).toHaveURL(/\/alerts$/);
+  await expect(page.getByRole("button", { name: /Account menu/ })).toContainText("Risk Head");
   await expectAccessible(page);
   await panel.getByRole("button", { name: "Close the guided demo" }).click();
   await expect(panel).toBeHidden();

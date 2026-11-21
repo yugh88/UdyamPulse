@@ -17,7 +17,7 @@ export const ROLE_LABEL: Record<Role, string> = { rm: "Relationship Manager", cr
 export const PERSONAS: { username: string; role: Role; title: string; desc: string }[] = [
   { username: "rm1", role: "rm", title: "Relationship Manager", desc: "Open applications, take consent, score, draft memos, act on alerts." },
   { username: "co1", role: "credit_officer", title: "Credit Officer", desc: "Review the memo and approve or reject. The only role that can decide." },
-  { username: "risk1", role: "risk", title: "Risk Head", desc: "Portfolio cockpit, model card, fairness and drift, full audit trail." },
+  { username: "risk1", role: "risk", title: "Risk Head", desc: "Early-warning alerts, portfolio, model card, fairness and drift, full audit trail." },
   { username: "sharma", role: "msme", title: "MSME Owner", desc: "Sharma Auto Components: readiness, cash-flow forecast, 90-day plan, consent." },
 ];
 export const DEMO_PASSWORD = "demo123";
@@ -96,5 +96,5 @@ export function useAuth(): AuthCtx {
 }
 
 export function homeFor(role: Role): string {
-  return { rm: "/console", credit_officer: "/console", risk: "/cockpit", msme: "/msme" }[role];
+  return { rm: "/console", credit_officer: "/console", risk: "/alerts", msme: "/msme" }[role];
 }

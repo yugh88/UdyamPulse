@@ -9,3 +9,4 @@ export * from "./stat";
 export * from "./states";
 export * from "./stepper";
 export * from "./timeline";
+export * from "./page";
