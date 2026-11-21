@@ -26,7 +26,9 @@ COPY core core
 COPY data_gen data_gen
 COPY data_real data_real
 COPY ml ml
-ENV MLFLOW_DISABLE_AGENT_HINT=1
+# Cap native threads: build hosts report many cores but give the build a small CPU share, and LightGBM/OpenMP
+# starting one thread per reported core stalls training (on Render the 7 s train step made no progress in 25 min).
+ENV MLFLOW_DISABLE_AGENT_HINT=1 OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 MKL_NUM_THREADS=2
 RUN python -m data_gen.generate && python -m data_gen.lake && python -m ml.train && python -m ml.ews && rm -rf ml/mlruns
 
 FROM deps AS venv
@@ -44,7 +46,8 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-reco
 ENV PATH=/opt/venv/bin:$PATH PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 MLFLOW_DISABLE_AGENT_HINT=1 \
     PORT=7860 UP_WEB_DIST=/app/web/dist UP_DB_URL=sqlite:////tmp/udyampulse.db UP_DATASET=demo \
     UP_DEMO_MODE=on UP_DATA_REGION=local UP_LLM_PROVIDER=template UP_COOKIE_SECURE=on \
-    UP_FRAME_ANCESTORS="https://huggingface.co" UP_LOG_FORMAT=json
+    UP_FRAME_ANCESTORS="https://huggingface.co" UP_LOG_FORMAT=json \
+    OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1
 WORKDIR /app
 COPY --from=venv /opt/venv /opt/venv
 COPY --chown=user:user api api
