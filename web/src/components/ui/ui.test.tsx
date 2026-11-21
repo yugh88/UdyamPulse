@@ -11,10 +11,10 @@ describe("BandPill and SeverityPill", () => {
         <BandPill band="APPROVE" />
         <BandPill band="WATCH" />
         <BandPill band="HIGH_RISK" />
-        <SeverityPill severity="high" />
+        <SeverityPill severity="low" />
       </>,
     );
-    for (const label of ["Approve", "Watch", "High risk", "High"]) expect(screen.getByText(label)).toBeInTheDocument();
+    for (const label of ["Approve", "Watch", "High risk", "Low"]) expect(screen.getByText(label)).toBeInTheDocument();
     expect(container.querySelectorAll("svg")).toHaveLength(4);
   });
   it("renders a dash when there is no band", () => {
@@ -67,16 +67,25 @@ describe("ScoreGauge", () => {
 describe("Stepper", () => {
   it("marks the current step", () => {
     render(<Stepper current="SCORED" />);
-    const current = screen.getByText("Scored").closest("li");
+    const current = screen.getByText(/^Scored/).closest("li");
     expect(current).toHaveAttribute("aria-current", "step");
-    expect(screen.getByText("Applied").closest("li")).not.toHaveAttribute("aria-current");
+    expect(current).toHaveTextContent("current step");
+    expect(screen.getByText(/^Applied/).closest("li")).toHaveTextContent("done");
+    expect(screen.getByText(/^Memo/).closest("li")).toHaveTextContent("to do");
+  });
+  it("marks a decided application's decision step as done", () => {
+    render(<Stepper current="DECIDED" complete />);
+    expect(screen.getByText(/^Decision/).closest("li")).toHaveTextContent("done");
+    expect(screen.getByText(/^Disbursed/).closest("li")).toHaveAttribute("aria-current", "step");
   });
 });
 
 describe("Stat", () => {
-  it("shows the trend direction in text as well as colour", () => {
-    render(<Stat label="Average score" value="712" delta={-8} deltaLabel="−8 vs last month" />);
-    expect(screen.getByText("−8 vs last month")).toBeInTheDocument();
+  it("shows the label, the value and the delta next to it", () => {
+    render(<Stat label="Waiting on you" value={3} delta={<span>up 2</span>} />);
+    expect(screen.getByText("Waiting on you")).toBeInTheDocument();
+    expect(screen.getByText("3")).toBeInTheDocument();
+    expect(screen.getByText("up 2")).toBeInTheDocument();
   });
 });
 

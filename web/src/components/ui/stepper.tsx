@@ -16,33 +16,48 @@ export const JOURNEY: Step[] = [
   { key: "MONITORING", label: "Monitoring" },
 ];
 
-/** Horizontal progress through ordered steps. Done steps show a tick, the current step is announced. */
-export function Stepper({ steps = JOURNEY, current, state, className }: { steps?: Step[]; current?: string; state?: string; className?: string }) {
-  const idx = steps.findIndex((s) => s.key === (current ?? state));
+/**
+ * The application journey. Done steps are filled forest circles with a tick; the current step is purple with a soft
+ * halo and a bold label; steps still to do are hollow grey. The halo eases in over 200 ms (off with reduced motion).
+ * `complete` marks the current step itself as done (e.g. a decided application has finished "Decision").
+ */
+export function Stepper({
+  steps = JOURNEY,
+  current,
+  state,
+  complete = false,
+  className,
+}: {
+  steps?: Step[];
+  current?: string;
+  state?: string;
+  complete?: boolean;
+  className?: string;
+}) {
+  const at = steps.findIndex((s) => s.key === (current ?? state));
+  const idx = complete ? at + 1 : at;
   return (
-    <ol className={cn("flex items-center overflow-x-auto", className)} aria-label="Progress">
+    <ol className={cn("flex items-start overflow-x-auto pb-1", className)} aria-label="Application progress">
       {steps.map((s, i) => {
         const done = i < idx;
         const active = i === idx;
         return (
-          <li key={s.key} className="flex min-w-0 flex-1 items-center last:flex-none" aria-current={active ? "step" : undefined}>
-            <span className="flex items-center gap-2">
-              <span
-                className={cn(
-                  "tabular flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
-                  done && "bg-success-tint text-success",
-                  active && "bg-primary text-on-primary",
-                  !done && !active && "border border-edge bg-panel-2 text-fg-muted",
-                )}
-              >
-                {done ? <Check className="h-3.5 w-3.5" aria-hidden /> : i + 1}
-              </span>
-              <span className={cn("text-13 whitespace-nowrap", active ? "font-semibold text-fg" : "text-fg-muted")}>
-                {s.label}
-                {done && <span className="sr-only"> (done)</span>}
-              </span>
+          <li key={s.key} className="relative flex min-w-20 flex-1 flex-col items-center" aria-current={active ? "step" : undefined}>
+            {i > 0 && <span className={cn("absolute top-[13px] right-1/2 left-[-50%] mx-6 h-[2px] rounded-full", i <= idx ? "bg-primary" : "bg-edge-2")} aria-hidden />}
+            <span
+              className={cn(
+                "relative z-10 flex h-7 w-7 items-center justify-center rounded-full transition-colors duration-200",
+                done && "bg-primary text-on-primary",
+                active && "bg-purple text-on-primary motion-safe:animate-[up-halo_200ms_ease-out_forwards] shadow-[0_0_0_6px_var(--purple-tint)]",
+                !done && !active && "border-2 border-edge-2 bg-panel",
+              )}
+            >
+              {done ? <Check className="h-4 w-4" strokeWidth={3} aria-hidden /> : active ? <span className="h-2.5 w-2.5 rounded-full bg-on-primary" aria-hidden /> : null}
             </span>
-            {i < steps.length - 1 && <span className={cn("mx-3 h-px min-w-4 flex-1", done ? "bg-success" : "bg-edge")} aria-hidden />}
+            <span className={cn("mt-2 text-13 whitespace-nowrap", done && "font-medium text-fg", active && "font-bold text-purple", !done && !active && "text-fg-muted")}>
+              {s.label}
+              <span className="sr-only">{done ? " (done)" : active ? " (current step)" : " (to do)"}</span>
+            </span>
           </li>
         );
       })}

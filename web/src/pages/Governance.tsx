@@ -4,7 +4,25 @@ import { Bot, CircleCheck, Cloud, HardDrive, Link2, ShieldAlert, ShieldCheck, Tr
 import { useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { AXIS, ChartFrame, GRID, TOOLTIP } from "../components/charts";
-import { Badge, Button, Card, DataTable, EmptyState, ErrorState, Select, Skeleton, Stat, Tabs, TabsContent, TabsList, TabsTrigger, Timeline, type Tone } from "../components/ui";
+import {
+  Badge,
+  Button,
+  Card,
+  DataTable,
+  EmptyState,
+  ErrorState,
+  Select,
+  Skeleton,
+  Stat,
+  PageHeader,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  Timeline,
+  useUrlTab,
+  type Tone,
+} from "../components/ui";
 import { COMPLIANCE } from "../features/governance/compliance";
 import { DataModelsTab } from "../features/governance/DataModels";
 import { ProvenanceBadge } from "../components/provenance";
@@ -574,22 +592,20 @@ function ComplianceTab() {
   );
 }
 
+const TABS = ["model", "data", "audit", "consent", "responsible"] as const;
+
 export default function Governance() {
-  const [tab, setTab] = useState("model");
+  const [tab, setTab] = useUrlTab(TABS, "model");
   return (
-    <div className="space-y-5">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-fg">Governance and compliance</h1>
-        <p className="mt-0.5 text-sm text-fg-muted">Model inventory, audit trail, consent ledger, AI usage and regulatory mapping.</p>
-      </div>
+    <div className="space-y-6">
+      <PageHeader title="Governance" description="Can we trust the model and prove every decision? Model card, data provenance, audit trail, consent and responsible AI." />
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList>
-          <TabsTrigger value="model">Model</TabsTrigger>
-          <TabsTrigger value="data">Data &amp; Models</TabsTrigger>
+        <TabsList aria-label="Governance sections">
+          <TabsTrigger value="model">Model card</TabsTrigger>
+          <TabsTrigger value="data">Data &amp; models</TabsTrigger>
           <TabsTrigger value="audit">Audit trail</TabsTrigger>
           <TabsTrigger value="consent">Consent ledger</TabsTrigger>
-          <TabsTrigger value="ai">AI usage</TabsTrigger>
-          <TabsTrigger value="compliance">Compliance</TabsTrigger>
+          <TabsTrigger value="responsible">Responsible AI</TabsTrigger>
         </TabsList>
         <TabsContent value="model">
           <ModelTab />
@@ -603,11 +619,19 @@ export default function Governance() {
         <TabsContent value="consent">
           <LedgerTab />
         </TabsContent>
-        <TabsContent value="ai">
-          <UsageTab />
-        </TabsContent>
-        <TabsContent value="compliance">
-          <ComplianceTab />
+        <TabsContent value="responsible" className="space-y-8">
+          <section aria-labelledby="gov-ai-usage" className="space-y-4">
+            <h2 id="gov-ai-usage" className="text-base font-[650] text-fg">
+              AI usage
+            </h2>
+            <UsageTab />
+          </section>
+          <section aria-labelledby="gov-compliance" className="space-y-4">
+            <h2 id="gov-compliance" className="text-base font-[650] text-fg">
+              Regulatory mapping
+            </h2>
+            <ComplianceTab />
+          </section>
         </TabsContent>
       </Tabs>
     </div>

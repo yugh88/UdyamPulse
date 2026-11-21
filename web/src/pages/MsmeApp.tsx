@@ -1,18 +1,18 @@
 import "@fontsource-variable/noto-sans-devanagari";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowDown,
   ArrowUp,
+  ArrowDown,
   CircleCheck,
+  CircleDot,
   Download,
   Home,
-  Languages,
   ListChecks,
-  MessageSquare,
+  MessageCircle,
   ShieldCheck,
   ShieldOff,
-  Sparkles,
   TriangleAlert,
+  XCircle,
   type LucideIcon,
 } from "lucide-react";
 import { useState } from "react";
@@ -20,14 +20,14 @@ import { useTranslation } from "react-i18next";
 import { Area, CartesianGrid, ComposedChart, Line, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { toast } from "sonner";
 import { AXIS, ChartFrame, GRID, TOOLTIP, X_AXIS } from "../components/charts";
-import { Badge, BandPill, Button, Card, Dialog, EmptyState, ErrorState, Field, ScoreGauge, Skeleton, Textarea } from "../components/ui";
+import { Badge, Button, Card, Dialog, EmptyState, ErrorState, Field, Skeleton, Textarea } from "../components/ui";
 import { setLang, type Lang } from "../i18n";
 import { api, del, post } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { cn } from "../lib/cn";
-import { signed, type Band } from "../lib/format";
+import { inr, type Band } from "../lib/format";
 import { dateTime, monthLabel } from "../lib/time";
-import type { Consent, Pillar, Reason } from "../lib/types";
+import type { AppDetail, Consent, Pillar, Reason } from "../lib/types";
 
 interface PlanStep {
   key: string;
@@ -76,13 +76,43 @@ interface MyData {
   consent_ledger: { ts: string; event: string; actor: string }[];
 }
 
-type TabKey = "home" | "plan" | "consent" | "messages";
+type TabKey = "home" | "plan" | "consent";
 const TABS: { key: TabKey; icon: LucideIcon }[] = [
   { key: "home", icon: Home },
   { key: "plan", icon: ListChecks },
   { key: "consent", icon: ShieldCheck },
-  { key: "messages", icon: MessageSquare },
 ];
+
+/** Loan-readiness ring: the score's place on the 300–900 scale, with the score in the middle. */
+function ReadinessRing({ score, band, label }: { score: number | null; band: Band | null; label: string }) {
+  const { t } = useTranslation();
+  const r = 62;
+  const c = 2 * Math.PI * r;
+  const f = score == null ? 0 : Math.min(1, Math.max(0, (score - 300) / 600));
+  const colour = band === "HIGH_RISK" ? "var(--danger)" : band === "WATCH" ? "var(--warning)" : "var(--primary)";
+  return (
+    <figure role="img" aria-label={score == null ? label : `${label}: ${score} ${t("home.outOf")}`} className="relative h-40 w-40">
+      <svg viewBox="0 0 160 160" className="h-full w-full -rotate-90">
+        <circle cx={80} cy={80} r={r} fill="none" stroke="var(--surface-2)" strokeWidth={14} />
+        <circle
+          cx={80}
+          cy={80}
+          r={r}
+          fill="none"
+          stroke={colour}
+          strokeWidth={14}
+          strokeLinecap="round"
+          strokeDasharray={`${c * f} ${c}`}
+          style={{ transition: "stroke-dasharray 600ms ease-out" }}
+        />
+      </svg>
+      <span className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="tabular text-[40px] leading-none font-bold tracking-[-1px] text-fg">{score ?? "–"}</span>
+        <span className="mt-1 text-xs text-fg-muted">{t("home.outOf")}</span>
+      </span>
+    </figure>
+  );
+}
 
 function ForecastChart({ forecast }: { forecast: Forecast }) {
   const { t } = useTranslation();
@@ -93,7 +123,7 @@ function ForecastChart({ forecast }: { forecast: Forecast }) {
   const names: Record<string, string> = { actual: t("home.forecastLegendActual"), forecast: t("home.forecastLegendForecast"), range: t("home.forecastLegendRange") };
   return (
     <>
-      <ChartFrame height={200} label={`${t("home.forecast")}: ${fc.map((f) => `${monthLabel(f.month)} ${t("home.lakh", { value: f.forecast.toFixed(1) })}`).join(", ")}`}>
+      <ChartFrame height={190} label={`${t("home.forecast")}: ${fc.map((f) => `${monthLabel(f.month)} ${t("home.lakh", { value: f.forecast.toFixed(1) })}`).join(", ")}`}>
         <ResponsiveContainer>
           <ComposedChart data={rows} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
             <CartesianGrid {...GRID} />
@@ -132,37 +162,6 @@ function ForecastChart({ forecast }: { forecast: Forecast }) {
   );
 }
 
-function ReasonList({ title, reasons, empty, hi, tone }: { title: string; reasons: (Reason & { text_hi: string })[]; empty: string; hi: boolean; tone: "up" | "down" }) {
-  const { t } = useTranslation();
-  const Icon = tone === "up" ? ArrowUp : ArrowDown;
-  return (
-    <Card title={title}>
-      {reasons.length === 0 ? (
-        <p className="text-13 text-fg-muted">{empty}</p>
-      ) : (
-        <ul className="space-y-2.5">
-          {reasons.map((r) => (
-            <li key={r.feature} className="flex items-start gap-2.5">
-              <span
-                className={cn(
-                  "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full",
-                  tone === "up" ? "bg-success-tint text-success" : "bg-danger-tint text-danger",
-                )}
-              >
-                <Icon className="h-3.5 w-3.5" aria-hidden />
-              </span>
-              <span className="flex-1 text-sm text-fg">{hi ? r.text_hi : r.text}</span>
-              <span className={cn("tabular shrink-0 text-13 font-semibold", tone === "up" ? "text-success" : "text-danger")}>
-                {t("home.points", { points: signed(r.points, 0) })}
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
-    </Card>
-  );
-}
-
 export default function MsmeApp() {
   const { session } = useAuth();
   const fid = session!.factory_id!;
@@ -176,7 +175,14 @@ export default function MsmeApp() {
   const [note, setNote] = useState("");
 
   const r = useQuery({ queryKey: ["msme", fid, "readiness"], queryFn: () => api<Readiness>(`/msme/${fid}/readiness`) });
-  const notes = useQuery({ queryKey: ["msme", fid, "notifications"], queryFn: () => api<Note[]>(`/msme/${fid}/notifications`), enabled: tab === "messages" });
+  // The owner's own application: the recommended limit and last month's score, for "you can ask for" and the delta.
+  const app = useQuery({
+    queryKey: ["msme", fid, "application", r.data?.application_id],
+    queryFn: () => api<AppDetail>(`/applications/${r.data!.application_id}`),
+    enabled: !!r.data,
+    retry: false,
+  });
+  const notes = useQuery({ queryKey: ["msme", fid, "notifications"], queryFn: () => api<Note[]>(`/msme/${fid}/notifications`), enabled: tab === "home" });
   const mine = useQuery({ queryKey: ["msme", fid, "my-data"], queryFn: () => api<MyData>(`/msme/${fid}/my-data`), enabled: tab === "consent" });
   const refresh = () => qc.invalidateQueries({ queryKey: ["msme", fid] });
   const fail = (e: unknown) => {
@@ -233,47 +239,58 @@ export default function MsmeApp() {
   }
 
   const d = r.data;
-  const helping = d?.reasons?.filter((x) => x.direction === "risk_down") ?? [];
-  const hurting = d?.reasons?.filter((x) => x.direction === "risk_up") ?? [];
-  const status = !d
-    ? ""
-    : d.decision === "APPROVED"
-      ? d.state === "MONITORING"
-        ? t("home.monitoring")
-        : t("home.approved")
-      : d.decision === "REJECTED"
-        ? t("home.rejected")
-        : t("home.inProgress");
+  const helping = (d?.reasons ?? []).filter((x) => x.points >= 0).slice(0, 2);
+  const improve = (d?.reasons ?? []).filter((x) => x.points < 0).sort((a, b) => a.points - b.points)[0];
+  const hist = app.data?.score_history ?? [];
+  const prev = hist.length >= 2 ? hist[hist.length - 2].score : null;
+  const delta = d?.score != null && prev != null ? d.score - prev : null;
+  const limit = app.data?.recommended_limit ?? null;
   const consentActive = !!d?.consent.active;
   const consentLabel = consentActive ? t("consent.active") : d?.consent.status === "REVOKED" ? t("consent.revoked") : t("consent.none");
+  const readyText = !d?.band ? t("home.notScored") : d.band === "APPROVE" ? t("home.ready") : d.band === "WATCH" ? t("home.almost") : t("home.notReady");
+  const statusLine = !d
+    ? ""
+    : d.state === "MONITORING"
+      ? t("home.statusActive")
+      : d.decision === "APPROVED"
+        ? t("home.statusApproved")
+        : d.decision === "REJECTED"
+          ? t("home.statusRejected")
+          : d.state === "MEMO_DRAFTED"
+            ? t("home.statusWithOfficer")
+            : t("home.statusAssessing");
+  const latest = notes.data?.[notes.data.length - 1];
 
   return (
-    <div lang={lang} className="mx-auto max-w-2xl pb-20 sm:pb-0">
-      <header className="mb-4 flex items-start justify-between gap-3">
+    <div lang={lang} className="msme-body mx-auto max-w-xl pb-24 sm:pb-6">
+      <header className="mb-5 flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="truncate text-xl font-semibold tracking-tight text-fg">{t("home.greeting", { name: d?.name ?? session!.display_name })}</h1>
-          <p className="text-13 text-fg-muted">{t("home.subtitle")}</p>
+          <p className="text-13 text-fg-muted">{t("home.greeting", { name: d?.name ?? session!.display_name })}</p>
+          <h1 className="text-title font-bold tracking-[-0.5px] text-fg">{t(`titles.${tab}`)}</h1>
         </div>
-        <div role="radiogroup" aria-label={t("lang.label")} className="flex shrink-0 items-center gap-1 rounded-control bg-panel-2 p-1">
-          <Languages className="mx-1 h-4 w-4 text-fg-muted" aria-hidden />
+        <div role="radiogroup" aria-label={t("lang.label")} className="flex shrink-0 items-center rounded-full border border-edge-2 bg-panel p-1">
           {(["en", "hi"] as const).map((l) => (
             <button
               key={l}
               type="button"
               role="radio"
               aria-checked={lang === l}
+              aria-label={t(`lang.${l}`)}
               lang={l}
               onClick={() => setLang(l)}
-              className={cn("rounded-md px-2.5 py-1 text-13 font-medium", lang === l ? "bg-panel text-fg shadow-card" : "text-fg-muted hover:text-fg")}
+              className={cn(
+                "h-9 min-w-11 rounded-full px-3 text-sm font-semibold transition-colors duration-150",
+                lang === l ? "bg-primary-tint text-primary" : "text-fg-muted hover:text-fg",
+              )}
             >
-              {t(`lang.${l}`)}
+              {l === "en" ? "EN" : "हिं"}
             </button>
           ))}
         </div>
       </header>
 
-      <nav aria-label="Sections" className="fixed inset-x-0 bottom-0 z-20 border-t border-edge bg-panel sm:static sm:mb-4 sm:rounded-control sm:border sm:p-1">
-        <ul role="tablist" className="grid grid-cols-4">
+      <nav aria-label="Sections" className="fixed inset-x-0 bottom-0 z-20 border-t border-edge bg-panel sm:static sm:mb-5 sm:rounded-card sm:border sm:p-1">
+        <ul role="tablist" className="grid grid-cols-3">
           {TABS.map(({ key, icon: Icon }) => (
             <li key={key} role="presentation">
               <button
@@ -284,11 +301,11 @@ export default function MsmeApp() {
                 aria-controls="msme-panel"
                 onClick={() => setTab(key)}
                 className={cn(
-                  "flex w-full flex-col items-center gap-0.5 px-1 py-2 text-xs font-medium sm:flex-row sm:justify-center sm:gap-2 sm:rounded-md sm:py-1.5 sm:text-13",
+                  "flex min-h-14 w-full flex-col items-center justify-center gap-1 px-1 text-13 font-semibold sm:min-h-11 sm:flex-row sm:gap-2 sm:rounded-control",
                   tab === key ? "text-primary sm:bg-primary-tint" : "text-fg-muted hover:text-fg",
                 )}
               >
-                <Icon className="h-5 w-5 sm:h-4 sm:w-4" aria-hidden />
+                <Icon className="h-5 w-5" aria-hidden />
                 {t(`tabs.${key}`)}
               </button>
             </li>
@@ -299,7 +316,7 @@ export default function MsmeApp() {
       <div id="msme-panel" role="tabpanel" aria-labelledby={`msme-tab-${tab}`} className="space-y-4">
         {r.isLoading ? (
           <div role="status" aria-label={t("common.loading")} className="space-y-4">
-            <Skeleton className="h-64" />
+            <Skeleton className="h-72" />
             <Skeleton className="h-40" />
           </div>
         ) : r.isError || !d ? (
@@ -307,44 +324,131 @@ export default function MsmeApp() {
         ) : tab === "home" ? (
           <>
             {d.data_stale && (
-              <p role="status" className="flex items-start gap-2 rounded-control bg-warning-tint px-3 py-2.5 text-sm text-warning">
-                <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+              <p role="status" className="flex items-start gap-2 rounded-control bg-warning-tint px-4 py-3 text-warning">
+                <TriangleAlert className="mt-1 h-4 w-4 shrink-0" aria-hidden />
                 {t("home.stale")}
               </p>
             )}
             <Card>
               <div className="flex flex-col items-center text-center">
-                <ScoreGauge score={d.score} band={d.band} size={280} caption={t("home.scoreCaption")} />
-                <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
-                  {d.band && <BandPill band={d.band} />}
-                  <Badge>
-                    {t("home.status")}: {status}
-                  </Badge>
-                </div>
-                {d.plan && (
-                  <p className="mt-3 text-base font-medium text-fg">
-                    {d.plan.points_to_target > 0
-                      ? t("home.toTarget", { points: d.plan.points_to_target, target: d.plan.target })
-                      : t("home.aboveTarget", { target: d.plan.target })}
-                  </p>
+                <ReadinessRing score={d.score} band={d.band} label={t("home.scoreCaption")} />
+                <h2 className="mt-4 text-xl font-bold text-fg">{readyText}</h2>
+                {limit != null && d.decision !== "REJECTED" && (
+                  <p className="mt-1 text-fg-muted">{t("home.askUpTo", { amount: hi ? inr(limit).replace(" L", " लाख").replace(" Cr", " करोड़") : inr(limit) })}</p>
                 )}
-                {d.data_month && <p className="mt-1 text-xs text-fg-muted">{t("home.dataAsOf", { month: monthLabel(d.data_month) })}</p>}
-                {d.score == null && <p className="mt-1 text-sm text-fg-muted">{t("home.notScored")}</p>}
-                <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-primary-tint px-2.5 py-1 text-xs text-primary">
-                  <Sparkles className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                  {t("home.ai")}
-                </p>
+                {delta != null && delta !== 0 && (
+                  <span
+                    className={cn(
+                      "mt-3 inline-flex items-center gap-1.5 rounded-md px-3 py-1 text-sm font-semibold",
+                      delta > 0 ? "bg-success-tint text-success" : "bg-danger-tint text-danger",
+                    )}
+                  >
+                    {delta > 0 ? <ArrowUp className="h-4 w-4" aria-hidden /> : <ArrowDown className="h-4 w-4" aria-hidden />}
+                    {t("home.sinceLastMonth", { points: Math.abs(delta) })}
+                  </span>
+                )}
+                {d.data_month && <p className="mt-3 text-xs text-fg-muted">{t("home.dataAsOf", { month: monthLabel(d.data_month) })}</p>}
               </div>
             </Card>
 
             {d.reasons && (
-              <div className="grid gap-4 sm:grid-cols-2">
-                <ReasonList title={t("home.helping")} reasons={helping} empty={t("home.noneHelping")} hi={hi} tone="up" />
-                <ReasonList title={t("home.hurting")} reasons={hurting} empty={t("home.noneHurting")} hi={hi} tone="down" />
-              </div>
+              <Card>
+                <h2 className="text-base font-[650] text-fg">{t("home.helping")}</h2>
+                {helping.length ? (
+                  <ul className="mt-3 space-y-3">
+                    {helping.map((x) => (
+                      <li key={x.feature} className="flex items-start gap-3">
+                        <CircleCheck className="mt-0.5 h-5 w-5 shrink-0 text-success" aria-hidden />
+                        <span className="text-fg">{hi ? x.text_hi : x.text}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mt-2 text-fg-muted">{t("home.noneHelping")}</p>
+                )}
+                <h2 className="mt-5 text-base font-[650] text-fg">{t("home.improve")}</h2>
+                {improve ? (
+                  <p className="mt-3 flex items-start gap-3">
+                    <CircleDot className="mt-0.5 h-5 w-5 shrink-0 text-warning" aria-hidden />
+                    <span className="text-fg">{hi ? improve.text_hi : improve.text}</span>
+                  </p>
+                ) : (
+                  <p className="mt-2 text-fg-muted">{t("home.nothingToImprove")}</p>
+                )}
+              </Card>
             )}
 
-            {d.plan && (
+            <div className="flex items-start gap-3 rounded-card bg-info-tint px-5 py-4">
+              <MessageCircle className="mt-0.5 h-5 w-5 shrink-0 text-info" aria-hidden />
+              <div className="min-w-0">
+                <p className="text-fg">
+                  <span className="font-semibold">{t("home.update")}: </span>
+                  {latest ? (hi && latest.text_hi ? latest.text_hi : latest.text) : statusLine}
+                </p>
+                {d.score != null && !d.review_requested && (
+                  <button type="button" onClick={() => setReviewing(true)} className="mt-2 min-h-11 text-sm font-semibold text-info hover:underline">
+                    {t("home.reviewCta")}
+                  </button>
+                )}
+                {d.review_requested && <p className="mt-1 text-sm text-fg-muted">{t("home.reviewDone")}</p>}
+              </div>
+            </div>
+          </>
+        ) : tab === "plan" ? (
+          !d.plan ? (
+            <Card>
+              <EmptyState title={t("plan.title")} description={t("plan.empty")} />
+            </Card>
+          ) : (
+            <>
+              <Card>
+                <div className="flex items-center justify-between gap-3">
+                  <h2 className="text-base font-[650] text-fg">{t("plan.title90")}</h2>
+                  <Badge tone="success" className="font-semibold">
+                    {t("plan.badge", { done: d.plan.steps_done, total: d.plan.steps.length })}
+                  </Badge>
+                </div>
+                <div
+                  className="mt-3 h-2.5 overflow-hidden rounded-full bg-panel-2"
+                  role="progressbar"
+                  aria-label={t("plan.progress", { done: d.plan.steps_done, total: d.plan.steps.length })}
+                  aria-valuemin={0}
+                  aria-valuemax={d.plan.steps.length}
+                  aria-valuenow={d.plan.steps_done}
+                >
+                  <div
+                    className="h-full rounded-full bg-primary transition-[width] duration-200"
+                    style={{ width: `${(d.plan.steps_done / Math.max(1, d.plan.steps.length)) * 100}%` }}
+                  />
+                </div>
+                <p className="sr-only" aria-live="polite">
+                  {t("plan.progress", { done: d.plan.steps_done, total: d.plan.steps.length })}
+                </p>
+                <ul className="mt-2 divide-y divide-edge">
+                  {d.plan.steps.map((s) => {
+                    const text = hi ? s.action_hi : s.action;
+                    return (
+                      <li key={s.key}>
+                        <label className="flex min-h-14 cursor-pointer items-start gap-3 py-3.5">
+                          <input
+                            type="checkbox"
+                            className="mt-0.5 h-6 w-6 shrink-0 accent-[var(--primary)]"
+                            checked={s.done}
+                            onChange={(e) => step.mutate({ key: s.key, done: e.target.checked })}
+                            aria-label={t("plan.markDone", { step: text })}
+                          />
+                          <span className="min-w-0 flex-1">
+                            <span className={cn("block font-semibold", s.done ? "text-fg-muted line-through" : "text-fg")}>{text}</span>
+                            <span className="mt-0.5 block text-13 text-fg-muted">
+                              {hi ? s.phase_hi : s.phase} · {t(`plan.pillar.${s.pillar}`)}
+                            </span>
+                          </span>
+                        </label>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </Card>
               <Card title={t("home.forecast")} description={t("home.forecastSub")}>
                 <ForecastChart forecast={d.plan.forecast} />
                 <p
@@ -361,97 +465,28 @@ export default function MsmeApp() {
                   {d.plan.forecast.negative_months.length ? t("home.forecastWarn", { months: d.plan.forecast.negative_months.map(monthLabel).join(", ") }) : t("home.forecastOk")}
                 </p>
               </Card>
-            )}
-
-            {d.score != null && (
-              <Card title={t("home.reviewTitle")}>
-                <p className="text-13 text-fg-muted">{d.review_requested ? t("home.reviewDone") : t("home.reviewBody")}</p>
-                {!d.review_requested && (
-                  <Button className="mt-3" onClick={() => setReviewing(true)}>
-                    {t("home.reviewCta")}
-                  </Button>
-                )}
-              </Card>
-            )}
-          </>
-        ) : tab === "plan" ? (
-          !d.plan ? (
-            <Card>
-              <EmptyState title={t("plan.title")} description={t("plan.empty")} />
-            </Card>
-          ) : (
-            <Card title={t("plan.title")} description={hi ? d.plan.hindi_summary : d.plan.summary}>
-              <div className="mb-4">
-                <p className="tabular text-13 font-medium text-fg" aria-live="polite">
-                  {t("plan.progress", { done: d.plan.steps_done, total: d.plan.steps.length })}
-                </p>
-                <div
-                  className="mt-1.5 h-2 overflow-hidden rounded-full bg-panel-2"
-                  role="progressbar"
-                  aria-label={t("plan.title")}
-                  aria-valuemin={0}
-                  aria-valuemax={d.plan.steps.length}
-                  aria-valuenow={d.plan.steps_done}
-                >
-                  <div
-                    className="h-full rounded-full bg-success transition-[width] duration-200"
-                    style={{ width: `${(d.plan.steps_done / Math.max(1, d.plan.steps.length)) * 100}%` }}
-                  />
-                </div>
-              </div>
-              <ul className="space-y-2">
-                {d.plan.steps.map((s) => {
-                  const text = hi ? s.action_hi : s.action;
-                  return (
-                    <li key={s.key}>
-                      <label
-                        className={cn(
-                          "flex cursor-pointer items-start gap-3 rounded-control border px-3 py-3 transition-colors",
-                          s.done ? "border-success/40 bg-success-tint" : "border-edge hover:bg-panel-2",
-                        )}
-                      >
-                        <input
-                          type="checkbox"
-                          className="mt-0.5 h-5 w-5 shrink-0 accent-[var(--success)]"
-                          checked={s.done}
-                          onChange={(e) => step.mutate({ key: s.key, done: e.target.checked })}
-                          aria-label={t("plan.markDone", { step: text })}
-                        />
-                        <span className="min-w-0 flex-1">
-                          <span className={cn("block text-sm", s.done ? "text-fg-muted line-through" : "text-fg")}>{text}</span>
-                          <span className="mt-1.5 flex flex-wrap gap-1.5">
-                            <Badge>{hi ? s.phase_hi : s.phase}</Badge>
-                            <Badge tone="primary">{t(`plan.pillar.${s.pillar}`)}</Badge>
-                          </span>
-                        </span>
-                      </label>
-                    </li>
-                  );
-                })}
-              </ul>
-            </Card>
+            </>
           )
-        ) : tab === "consent" ? (
+        ) : (
           <>
-            <Card
-              title={t("consent.title")}
-              actions={
+            <Card>
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="text-base font-[650] text-fg">{t("consent.title")}</h2>
                 <Badge
                   tone={consentActive ? "success" : "danger"}
                   icon={consentActive ? <ShieldCheck className="h-3.5 w-3.5" aria-hidden /> : <ShieldOff className="h-3.5 w-3.5" aria-hidden />}
                 >
                   {consentLabel}
                 </Badge>
-              }
-            >
+              </div>
               {mine.isLoading ? (
-                <Skeleton className="h-40" />
+                <Skeleton className="mt-4 h-40" />
               ) : mine.isError || !mine.data ? (
                 <ErrorState title={t("common.error")} error={mine.error} onRetry={() => mine.refetch()} />
               ) : (
-                <dl className="space-y-4 text-sm">
+                <dl className="mt-4 space-y-4">
                   <div>
-                    <dt className="text-xs font-medium text-fg-muted">{t("consent.what")}</dt>
+                    <dt className="label-caps">{t("consent.what")}</dt>
                     <dd className="mt-1.5 flex flex-wrap gap-1.5">
                       {mine.data.data_categories.map((c) => (
                         <Badge key={c}>{c}</Badge>
@@ -459,41 +494,58 @@ export default function MsmeApp() {
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-xs font-medium text-fg-muted">{t("consent.why")}</dt>
+                    <dt className="label-caps">{t("consent.why")}</dt>
                     <dd className="mt-0.5 text-fg">{d.consent.purpose ?? mine.data.purpose}</dd>
                   </div>
                   {consentActive && d.consent.expires_on && (
                     <div>
-                      <dt className="text-xs font-medium text-fg-muted">{t("consent.until")}</dt>
+                      <dt className="label-caps">{t("consent.until")}</dt>
                       <dd className="tabular mt-0.5 text-fg">{monthLabel(d.consent.expires_on)}</dd>
                     </div>
                   )}
                   <div>
-                    <dt className="text-xs font-medium text-fg-muted">{t("consent.notCollected")}</dt>
+                    <dt className="label-caps">{t("consent.notCollected")}</dt>
                     <dd className="mt-0.5 text-fg">{mine.data.not_collected.join(" · ")}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs font-medium text-fg-muted">{t("consent.retention")}</dt>
-                    <dd className="mt-0.5 text-fg">{mine.data.retention}</dd>
                   </div>
                 </dl>
               )}
-              <div className="mt-5 flex flex-wrap gap-2">
+              <div className="mt-5 space-y-2">
                 {consentActive ? (
-                  <Button variant="danger" onClick={() => setRevoking(true)} icon={<ShieldOff className="h-4 w-4" aria-hidden />}>
+                  <Button
+                    variant="secondary"
+                    size="lg"
+                    className="w-full border-danger text-danger hover:bg-danger-tint"
+                    onClick={() => setRevoking(true)}
+                    icon={<XCircle className="h-5 w-5" aria-hidden />}
+                  >
                     {t("consent.revoke")}
                   </Button>
                 ) : (
-                  <Button variant="primary" loading={grant.isPending} onClick={() => grant.mutate()} icon={<ShieldCheck className="h-4 w-4" aria-hidden />}>
+                  <Button
+                    variant="primary"
+                    size="lg"
+                    className="w-full"
+                    loading={grant.isPending}
+                    onClick={() => grant.mutate()}
+                    icon={<ShieldCheck className="h-5 w-5" aria-hidden />}
+                  >
                     {t("consent.grant")}
                   </Button>
                 )}
-                <Button onClick={downloadData} icon={<Download className="h-4 w-4" aria-hidden />}>
-                  {t("consent.download")}
-                </Button>
-                <Button variant="ghost" loading={erase.isPending} onClick={() => erase.mutate()}>
-                  {t("consent.erase")}
-                </Button>
+                <div className="flex flex-wrap items-center justify-center gap-x-5">
+                  <button type="button" onClick={downloadData} className="inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-info hover:underline">
+                    <Download className="h-4 w-4" aria-hidden />
+                    {t("consent.download")}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={erase.isPending}
+                    onClick={() => erase.mutate()}
+                    className="min-h-11 text-sm font-medium text-fg-muted hover:text-fg hover:underline"
+                  >
+                    {t("consent.erase")}
+                  </button>
+                </div>
               </div>
             </Card>
             {mine.data && (
@@ -501,7 +553,7 @@ export default function MsmeApp() {
                 <ol className="space-y-2">
                   {[...mine.data.consent_ledger]
                     .reverse()
-                    .slice(0, 12)
+                    .slice(0, 8)
                     .map((e, i) => (
                       <li key={`${e.ts}-${i}`} className="flex items-baseline justify-between gap-3 text-13">
                         <span className="text-fg">{t(`consent.events.${e.event}`, { defaultValue: e.event })}</span>
@@ -512,25 +564,6 @@ export default function MsmeApp() {
               </Card>
             )}
           </>
-        ) : (
-          <Card title={t("messages.title")} description={t("messages.channel")}>
-            {notes.isLoading ? (
-              <Skeleton className="h-32" />
-            ) : notes.isError ? (
-              <ErrorState title={t("common.error")} error={notes.error} onRetry={() => notes.refetch()} />
-            ) : !notes.data?.length ? (
-              <EmptyState icon={<MessageSquare className="h-6 w-6" aria-hidden />} title={t("messages.empty")} />
-            ) : (
-              <ol className="space-y-3 rounded-control bg-panel-2 p-3">
-                {notes.data.map((n) => (
-                  <li key={n.id} className="max-w-[88%] rounded-card rounded-tl-sm border border-edge bg-panel px-3 py-2 shadow-card">
-                    <p className="text-sm text-fg">{hi && n.text_hi ? n.text_hi : n.text}</p>
-                    <p className="tabular mt-1 text-right text-xs text-fg-muted">{monthLabel(n.sim_date)}</p>
-                  </li>
-                ))}
-              </ol>
-            )}
-          </Card>
         )}
       </div>
 

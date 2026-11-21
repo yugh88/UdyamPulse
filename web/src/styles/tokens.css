@@ -1,64 +1,80 @@
-/* Design tokens. Hex values only, one per line: scripts/check-contrast.ts parses this file. */
+/* Design tokens: the "cream" palette. Hex values only, one per line: scripts/check-contrast.ts parses this file.
+ * Meaning is fixed: forest = primary / good / Approve · blue = info and policy citations · purple = AI agents and
+ * the current step · pink = change markers only · ochre = Watch / to improve · brick = High risk / worse / delete.
+ * Text colours on tints are darkened where needed to pass WCAG 2.2 AA (pink, ochre).
+ * Charts: chart-1..4 are the categorical series (blue, ochre, purple, green; validated for colour-vision
+ * separation in this order, light and dark); chart-5/6 are neutral greys for "other" and baselines. Pink is
+ * never a series colour: it marks change. */
 :root {
   color-scheme: light;
-  --bg: #f5f6f8;
-  --surface: #ffffff;
-  --surface-2: #f0f2f5;
-  --border: #e3e6eb;
-  --border-strong: #7d8394;
-  --text: #1f2430;
-  --text-muted: #5f6675;
-  --text-subtle: #7d8394;
-  --primary: #4f5bc4;
-  --primary-hover: #434ead;
-  --primary-tint: #eef0fa;
-  --on-primary: #ffffff;
-  --brand: #b9577c;
-  --brand-tint: #f8eef2;
-  --success: #2a7352;
-  --success-tint: #e7f3ed;
-  --warning: #8e5a12;
-  --warning-tint: #faf1e1;
-  --danger: #b5473d;
-  --danger-tint: #faebe9;
-  --info: #2e7486;
-  --info-tint: #e6f1f4;
-  --chart-1: #4f5bc4;
-  --chart-2: #2e9a9e;
-  --chart-3: #c08a3e;
-  --chart-4: #b9577c;
-  --chart-5: #4f9d74;
-  --chart-6: #7a8194;
+  --bg: #fbf8f2;
+  --surface: #fffdf9;
+  --surface-2: #f4efe6;
+  --border: #e7e0d3;
+  --border-2: #d9d0bf;
+  --border-strong: #8f877a;
+  --text: #2a2722;
+  --text-muted: #6b655b;
+  --text-subtle: #8a8275;
+  --primary: #2f6b4f;
+  --primary-hover: #275a42;
+  --primary-tint: #e6f0ea;
+  --on-primary: #fffdf9;
+  --brand: #a44a6d;
+  --brand-tint: #f8eaf0;
+  --purple: #6b5ca5;
+  --purple-tint: #efecf8;
+  --success: #2f6b4f;
+  --success-tint: #e6f0ea;
+  --warning: #8a5c1e;
+  --warning-tint: #f7eedc;
+  --danger: #a8473f;
+  --danger-tint: #f6e6e3;
+  --info: #3e5c9a;
+  --info-tint: #e8edf7;
+  --toast: #2a2722;
+  --on-toast: #fffdf9;
+  --chart-1: #3e5c9a;
+  --chart-2: #a9742a;
+  --chart-3: #6b5ca5;
+  --chart-4: #3c8a5e;
+  --chart-5: #7d7568;
+  --chart-6: #6b655b;
 }
 
 [data-theme="dark"] {
   color-scheme: dark;
-  --bg: #0f1218;
-  --surface: #161a22;
-  --surface-2: #1d222c;
-  --border: #2a303c;
-  --border-strong: #7a8191;
-  --text: #e6e8ee;
-  --text-muted: #a0a7b5;
-  --text-subtle: #7a8191;
-  --primary: #8e99ee;
-  --primary-hover: #a3acf2;
-  --primary-tint: #1f2440;
-  --on-primary: #0f1218;
-  --brand: #d98aa6;
-  --brand-tint: #2e1f27;
-  --success: #6bbf95;
-  --success-tint: #16281f;
-  --warning: #d9a65a;
-  --warning-tint: #2b2314;
-  --danger: #e08a80;
-  --danger-tint: #2e1b19;
-  --info: #6fb3c4;
-  --info-tint: #152a30;
-  --chart-1: #8e99ee;
-  --chart-2: #4fb8bc;
-  --chart-3: #d9a65a;
-  --chart-4: #d98aa6;
-  --chart-5: #6bbf95;
-  --chart-6: #a0a7b5;
+  --bg: #16140f;
+  --surface: #1e1b16;
+  --surface-2: #27231c;
+  --border: #332e26;
+  --border-2: #423b31;
+  --border-strong: #7d7568;
+  --text: #ede7dc;
+  --text-muted: #b3aa9c;
+  --text-subtle: #8c8477;
+  --primary: #6fb08f;
+  --primary-hover: #86c2a3;
+  --primary-tint: #1d2a22;
+  --on-primary: #16140f;
+  --brand: #e08aab;
+  --brand-tint: #33202a;
+  --purple: #aea2de;
+  --purple-tint: #25213a;
+  --success: #6fb08f;
+  --success-tint: #1d2a22;
+  --warning: #d9a75e;
+  --warning-tint: #2d2414;
+  --danger: #e58f86;
+  --danger-tint: #33201d;
+  --info: #8fa8da;
+  --info-tint: #1e2533;
+  --toast: #ede7dc;
+  --on-toast: #16140f;
+  --chart-1: #6f92da;
+  --chart-2: #b9822f;
+  --chart-3: #8e7bd3;
+  --chart-4: #4fa676;
+  --chart-5: #a39a8b;
+  --chart-6: #8c8477;
 }

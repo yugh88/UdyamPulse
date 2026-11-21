@@ -19,6 +19,72 @@ export interface AppSummary {
   created_at: string | null;
   last_activity: string | null;
   review_requested: boolean;
+  /** Change tracking (from the API): set when the item changed after the user last looked at it. */
+  changed_since_seen?: boolean;
+  change_kind?: ChangeKind;
+  prev_score?: number | null;
+  score_delta?: number | null;
+  next_step?: { text: string; owner_role: string | null; yours: boolean } | null;
+}
+
+export type ChangeKind = "new" | "updated" | null;
+
+/** A stat tile from the API: the value, the previous value, the difference and the period compared. */
+export interface Tile {
+  value: number | null;
+  prev_value: number | null;
+  delta: number | null;
+  period: string;
+  good_when_up: boolean;
+}
+
+/** One entry of an application's change timeline (`GET /applications/{id}/changes`) or the live stream. */
+export interface ChangeEvent {
+  id: number;
+  entity_type: string;
+  entity_id: string;
+  application_id?: number | null;
+  event_type: string;
+  summary: string;
+  before: Record<string, unknown> | null;
+  after: Record<string, unknown> | null;
+  actor: string | null;
+  created_at: string;
+  new?: boolean;
+}
+
+export interface AlertSignalChange {
+  key: string;
+  label: string;
+  unit: string;
+  good_when_up: boolean;
+  before: number | null;
+  after: number | null;
+  before_period: string;
+  after_period: string;
+}
+
+export interface AlertDetail {
+  id: number;
+  application_id: number;
+  factory_id: string;
+  name: string;
+  cluster: string;
+  sector: string;
+  month: string;
+  severity: Severity;
+  rules: string[];
+  reasons: string[];
+  next_best_action: string;
+  briefing: string;
+  status: string;
+  action_taken: string | null;
+  outcome: string | null;
+  raised_on: string;
+  changed_since_seen: boolean;
+  change_kind: ChangeKind;
+  signals: AlertSignalChange[];
+  score: { before: number | null; after: number | null; before_period?: string; after_period?: string } | null;
 }
 
 export interface AppStats {
@@ -29,6 +95,7 @@ export interface AppStats {
   approval_rate: number | null;
   avg_decision_hours: number | null;
   review_requested: number;
+  tiles: { waiting_on_you: Tile; avg_hours_to_memo: Tile; approval_rate_30d: Tile };
 }
 
 export interface Reason {
@@ -239,6 +306,8 @@ export interface AlertRow extends AlertEvent {
   days_open: number;
   exposure: number;
   timeline: AlertEvent[];
+  changed_since_seen?: boolean;
+  change_kind?: ChangeKind;
 }
 
 export interface Migration {

@@ -121,7 +121,7 @@ export function CommandPalette({ open, onOpenChange, onShortcuts }: { open: bool
         {staff && !!alerts.data?.length && (
           <Command.Group heading="Open alerts" className={GROUP}>
             {alerts.data.slice(0, 8).map((a) => (
-              <Item key={a.id} value={`alert ${a.id} ${a.name} ${a.severity}`} onSelect={() => go(`/cockpit?alert=${a.id}`)}>
+              <Item key={a.id} value={`alert ${a.id} ${a.name} ${a.severity}`} onSelect={() => go(`/alerts?alert=${a.id}`)}>
                 <Bell className="h-4 w-4 text-fg-muted" aria-hidden />
                 <span className="truncate">{a.name}</span>
                 <span className="text-xs text-fg-muted">{a.month}</span>

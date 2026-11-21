@@ -43,14 +43,18 @@ const PAIRS: [string, string, number][] = [
     ["warning", bg, TEXT],
     ["danger", bg, TEXT],
     ["info", bg, TEXT],
-    ["brand", bg, UI], // accent: logo and large highlights only
+    ["brand", bg, TEXT], // change markers: "Updated" / "New" badges are text
+    ["purple", bg, TEXT],
   ]),
   ["on-primary", "primary", TEXT],
   ["on-primary", "primary-hover", TEXT],
   ["on-primary", "danger", TEXT], // danger button
   ["primary", "primary-tint", TEXT],
   ["text", "primary-tint", TEXT],
-  ["brand", "brand-tint", UI],
+  ["brand", "brand-tint", TEXT],
+  ["purple", "purple-tint", TEXT],
+  ["text", "surface-2", TEXT],
+  ["on-toast", "toast", TEXT],
   ["success", "success-tint", TEXT],
   ["warning", "warning-tint", TEXT],
   ["danger", "danger-tint", TEXT],

@@ -29,7 +29,10 @@ function ThemedToaster() {
       theme={theme}
       position="bottom-right"
       closeButton
-      toastOptions={{ style: { background: "var(--surface)", color: "var(--text)", border: "1px solid var(--border)", fontFamily: "inherit" } }}
+      duration={4000}
+      offset={24}
+      // Dark, compact toasts at the bottom right: a live change ("Score updated · 698 → 723") or a confirmation.
+      toastOptions={{ style: { background: "var(--toast)", color: "var(--on-toast)", border: "none", borderRadius: 12, fontFamily: "inherit", fontSize: 14, fontWeight: 500 } }}
     />
   );
 }

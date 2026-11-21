@@ -28,6 +28,9 @@ export async function setTheme(page: Page, theme: "light" | "dark") {
 export async function expectAccessible(page: Page, scope?: string) {
   let axe = new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]);
   if (scope) axe = axe.include(scope);
+  // Toasts fade in and out, so axe can catch one half-transparent and misreport its contrast. Their colours are
+  // checked statically instead (--on-toast on --toast in scripts/check-contrast.ts).
+  axe = axe.exclude("[data-sonner-toaster]");
   const results = await axe.analyze();
   const bad = results.violations.filter((v) => v.impact === "serious" || v.impact === "critical");
   expect(bad.map((v) => `${v.id}: ${v.help} (${v.nodes.length}) e.g. ${v.nodes[0]?.html.slice(0, 120)}`)).toEqual([]);

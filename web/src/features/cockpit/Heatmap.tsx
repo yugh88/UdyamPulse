@@ -11,6 +11,15 @@ export interface CellFilter {
 /** 0..1 intensity → a wash of the metric colour over the card surface. Text stays the normal foreground. */
 const wash = (color: string, t: number) => `color-mix(in srgb, ${color} ${Math.round(8 + t * 42)}%, var(--surface))`;
 
+/** Average score → the band palette: brick tint (High risk), ochre tint (Watch), then forest shades that deepen as
+ * the score rises. The number is always printed in the cell, so colour is never the only signal. */
+function scoreFill(score: number): string {
+  if (score < 550) return "var(--danger-tint)";
+  if (score < 650) return "var(--warning-tint)";
+  const t = Math.min(1, (score - 650) / 150);
+  return `color-mix(in srgb, var(--primary) ${Math.round(12 + t * 22)}%, var(--surface))`;
+}
+
 export function Heatmap({ cells, selected, onSelect }: { cells: Portfolio["heatmap"]; selected: CellFilter | null; onSelect: (c: CellFilter | null) => void }) {
   const [metric, setMetric] = useState<Metric>("score");
   const clusters = useMemo(() => [...new Set(cells.map((c) => c.cluster))].sort(), [cells]);
@@ -76,7 +85,7 @@ export function Heatmap({ cells, selected, onSelect }: { cells: Portfolio["heatm
                       </td>
                     );
                   const density = c.alerts / c.accounts;
-                  const t = metric === "score" ? Math.min(1, Math.max(0, (780 - c.avg_score) / 180)) : density / maxDensity;
+                  const t = density / maxDensity;
                   const isSel = selected?.cluster === cl && selected.sector === s;
                   return (
                     <td key={s} className="p-0">
@@ -89,7 +98,7 @@ export function Heatmap({ cells, selected, onSelect }: { cells: Portfolio["heatm
                           "tabular flex h-12 w-full min-w-16 flex-col items-center justify-center rounded-md text-fg transition-shadow hover:shadow-pop",
                           isSel && "outline-2 outline-primary",
                         )}
-                        style={{ background: wash(metric === "score" ? "var(--danger)" : "var(--warning)", t) }}
+                        style={{ background: metric === "score" ? scoreFill(c.avg_score) : wash("var(--warning)", t) }}
                       >
                         <span className="text-sm font-semibold">{metric === "score" ? c.avg_score : c.alerts ? `${c.alerts} / ${c.accounts}` : "0"}</span>
                         <span className="text-xs text-fg">{metric === "score" ? `${c.accounts} acct${c.accounts === 1 ? "" : "s"}` : "alerts / accts"}</span>
@@ -102,9 +111,25 @@ export function Heatmap({ cells, selected, onSelect }: { cells: Portfolio["heatm
           </tbody>
         </table>
       </div>
-      <p className="mt-2 text-xs text-fg-muted">
-        {metric === "score" ? "Stronger shading means a lower average score." : "Stronger shading means more open alerts per account."} Every cell shows its number.
-      </p>
+      {metric === "score" ? (
+        <ul className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-13 text-fg-muted">
+          <li className="inline-flex items-center gap-1.5">
+            <span className="h-3 w-5 rounded-sm bg-danger-tint ring-1 ring-edge" aria-hidden />
+            below 550 (High risk)
+          </li>
+          <li className="inline-flex items-center gap-1.5">
+            <span className="h-3 w-5 rounded-sm bg-warning-tint ring-1 ring-edge" aria-hidden />
+            550–649 (Watch)
+          </li>
+          <li className="inline-flex items-center gap-1.5">
+            <span className="h-3 w-5 rounded-sm ring-1 ring-edge" style={{ background: scoreFill(700) }} aria-hidden />
+            650+ (Approve), deeper green = higher
+          </li>
+          <li>Every cell shows its number.</li>
+        </ul>
+      ) : (
+        <p className="mt-3 text-13 text-fg-muted">Stronger shading means more open alerts per account. Every cell shows its number.</p>
+      )}
     </div>
   );
 }
