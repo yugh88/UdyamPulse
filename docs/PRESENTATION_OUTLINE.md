@@ -23,7 +23,7 @@
 
 ### 1 · UdyamPulse: credit backed by production, not property · footer: *Checklist 1*
 - **Body:** Decision intelligence for MSME manufacturing credit. Team Legit, VIT Bhopal: Yugh Juneja (Tech Lead),
-  Kinjal Gupta (Product & UX), Aditya Raj (Data & ML).
+  Kinjal Gupta (Product & UX), Aditya Raj (Database, Data Validation & QA).
 - **Visual:** logo, three names with roles and programmes, track line, **live demo URL + QR** (*pending Y2*)
 - **Speaker (Yugh, 0:20):** one-line pitch; "we'll show it live in a few minutes".
 
@@ -68,7 +68,7 @@
 
 ### 6 · Live demo · footer: *Checklist 10*
 - **Body:** Live: guided demo, Sharma Auto Components. Backup: video link.
-- **Visual:** demo URL + QR; backup screenshot `docs/media/slides/14-guided-demo.png`
+- **Visual:** demo URL + QR; backup screenshot `docs/media/slides/28-guided-demo.png`
 - **Path (2:00):**
   1. apply → consent → score + reasons;
   2. memo with citations and the agent trace (*pending Y5*);
@@ -84,10 +84,10 @@
     - product model 0.848 (0.842–0.854), *synthetic*;
     - SBA 0.687 (0.658–0.713), *real*;
     - Polish 0.958, *real*;
-  - leakage chart 0.915 → 0.687 (*pending A5*);
-  - EWS precision@k before/after (*pending A1*);
+  - leakage chart 0.915 → 0.687 (*pending Y14*);
+  - EWS precision@k before/after (*pending Y10*);
   - test counts and CI badge;
-  - validation highlights (*pending K4*: only real sessions).
+  - validation highlights (*pending K5*: only real sessions).
 - **Speaker (Aditya, 1:00):** results → the leak story → EWS → "tested in CI on every change".
 
 ### 8 · Feasible today, scales tomorrow · footer: *Checklist 11 · 13*
@@ -112,7 +112,7 @@
 - **Body:** Memo in seconds (measured). 90-day early warning (synthetic). The ask: a pilot with one lender.
 - **Visual:**
   - impact tiles, each labelled measured, estimate or synthetic: memo time, lead time, approval uplift
-    (*pending A2*), ROI example;
+    (*pending Y11*), ROI example;
   - 3-column ownership strip from `docs/TEAM.md`.
 - **Speaker:** Kinjal (0:25) on impact → Yugh (0:15) closes with the ask.
 
