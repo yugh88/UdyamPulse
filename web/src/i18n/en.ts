@@ -1,6 +1,11 @@
 const en = {
   lang: { label: "Language", en: "English", hi: "हिन्दी" },
-  banner: { prototype: "Prototype · synthetic data · not a lending decision", chip: "Prototype · synthetic data", dismiss: "Got it" },
+  banner: {
+    prototype: "Prototype · synthetic data · not a lending decision",
+    chip: "Prototype · synthetic data",
+    dismiss: "Got it",
+    roles: "No sign-in needed: switch role from your name in the menu",
+  },
   tabs: { home: "Home", plan: "Plan", consent: "Consent" },
   titles: { home: "My factory", plan: "My plan", consent: "My consent" },
   home: {

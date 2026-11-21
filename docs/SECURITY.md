@@ -25,7 +25,7 @@ Summary of the controls. The full STRIDE analysis, with evidence for every contr
 ## Public demo hardening
 
 The live demo is a prototype on synthetic data:
-- **Accounts:** published demo personas only, password `demo123`.
+- **Accounts:** published demo personas only, password `demo123`. The prototype UI enters them automatically (no sign-in form); the API still issues tokens and checks the role on every call. `VITE_REQUIRE_SIGN_IN=1` brings the sign-in page back.
 - **Data:** synthetic only. Nothing is persisted, and the database is reseeded on every start.
 - **Visible notice:** a "Prototype · synthetic data · not a lending decision" banner on every screen.
 - **No indexing:** `noindex` meta tag and `X-Robots-Tag` header, plus a `robots.txt` that disallows everything.

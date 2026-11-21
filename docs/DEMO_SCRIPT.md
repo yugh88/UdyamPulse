@@ -3,9 +3,10 @@
 **Setup:**
 - Open the live link 10 minutes before presenting, to wake a sleeping free instance.
 - Locally, run `make demo` and open http://localhost:5173.
-- On the login page, click **Guided demo**. Each step signs in the right persona and opens the right screen.
+- The app opens as the Relationship Manager, with no sign-in. Click **Guided demo** in the top bar. Each step switches
+  to the right persona and opens the right screen.
   Step 1 offers **Reset demo data first**.
-- Every password is `demo123`. All numbers on screen come from synthetic data.
+- To change role by hand, open the name menu (bottom left). All numbers on screen come from synthetic data.
 
 | # | Time | Persona | Do | Say |
 |---|---|---|---|---|

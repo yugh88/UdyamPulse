@@ -5,7 +5,8 @@ import { DemoGuide } from "./features/demo/DemoGuide";
 import { SkeletonRows } from "./components/ui";
 import { homeFor, useAuth, type Role } from "./lib/auth";
 
-// Each screen is its own chunk so the login page does not pay for charts and tables.
+// Each screen is its own chunk so the first screen does not pay for every chart and table.
+// The sign-in page is only a fallback: the prototype enters a demo persona automatically (AUTO_ENTER in lib/auth).
 const Login = lazy(() => import("./pages/Login"));
 const Console = lazy(() => import("./pages/Console"));
 const ApplicationDetail = lazy(() => import("./pages/ApplicationDetail"));
@@ -33,7 +34,15 @@ function CockpitRedirect() {
 }
 
 export default function App() {
-  const { session } = useAuth();
+  const { session, entering } = useAuth();
+  // Opening the prototype: wait for the demo persona without touching the URL, so a shared deep link still works.
+  if (entering)
+    return (
+      <div role="status" aria-label="Opening the demo" className="mx-auto max-w-3xl p-8">
+        <p className="mb-4 text-sm text-fg-muted">Opening the demo…</p>
+        <SkeletonRows rows={6} />
+      </div>
+    );
   return (
     <Suspense fallback={<SkeletonRows rows={6} className="mx-auto max-w-3xl p-8" />}>
       <Routes>

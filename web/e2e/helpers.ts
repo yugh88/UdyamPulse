@@ -11,9 +11,18 @@ export function watchErrors(page: Page): string[] {
   return errors;
 }
 
-export async function loginAs(page: Page, username: string) {
-  await page.goto("/login");
-  await page.getByRole("button", { name: new RegExp(username) }).click();
+const TITLE: Record<string, string> = { rm1: "Relationship Manager", co1: "Credit Officer", risk1: "Risk Head", sharma: "MSME Owner" };
+
+/** Opens the prototype (it enters the Relationship Manager by itself, no sign-in form) and switches role if needed. */
+export async function enterAs(page: Page, username: string) {
+  await page.goto("/");
+  const menu = page.getByRole("button", { name: /Account menu/ });
+  await expect(menu).toBeVisible();
+  if (!((await menu.getAttribute("aria-label")) ?? "").includes(TITLE[username]!)) {
+    await menu.click();
+    await page.getByRole("menuitem", { name: new RegExp(TITLE[username]!) }).click();
+    await expect(page.getByRole("button", { name: new RegExp(`Account menu.*${TITLE[username]}`) })).toBeVisible();
+  }
   await expect(page.getByRole("banner")).toBeVisible();
 }
 

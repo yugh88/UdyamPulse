@@ -69,8 +69,8 @@ and uploads it; the app appears at `https://<user>-udyampulse.hf.space`.
 
 - [ ] Open the live link **10 minutes before** presenting, to wake a sleeping instance (Render free sleeps after 15 minutes idle). `/healthz` answers
       within seconds once the container is up.
-- [ ] Sign in as `rm1` and check the hero, Sharma Auto Components, is in the queue. If a previous visitor
-      changed the state, use "Reset demo" on the login page.
+- [ ] Open the link (it enters as `rm1`, no sign-in) and check the hero, Sharma Auto Components, is in the queue. If a
+      previous visitor changed the state, use **Reset demo data first** in the Guided demo panel.
 - [ ] Backups: the recorded video (link in the README), `make demo` on a laptop, and the README screenshots.
 
 ## Security on the public demo

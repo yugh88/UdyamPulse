@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { post, setAccessToken, UNAUTHORIZED_EVENT } from "./api";
 
 export type Role = "rm" | "credit_officer" | "risk" | "msme";
@@ -22,10 +22,18 @@ export const PERSONAS: { username: string; role: Role; title: string; desc: stri
 ];
 export const DEMO_PASSWORD = "demo123";
 
+/** The prototype opens straight into the product: a visitor is entered as a demo persona (Relationship Manager first)
+ * and switches role from the account menu, so reviewers never meet a sign-in form. The API still authenticates and
+ * enforces each role on every call. Build with VITE_REQUIRE_SIGN_IN=1 to get the sign-in page back. */
+export const AUTO_ENTER = import.meta.env.VITE_REQUIRE_SIGN_IN !== "1";
+const FIRST_PERSONA = "rm1";
+
 interface AuthCtx {
   session: Session | null;
   /** True when the last sign-out was forced by an expired session. */
   expired: boolean;
+  /** True while the prototype is entering a demo persona automatically. */
+  entering: boolean;
   login: (username: string, password: string) => Promise<Session>;
   logout: () => void;
 }
@@ -48,6 +56,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const qc = useQueryClient();
   const [session, setSession] = useState<Session | null>(stored);
   const [expired, setExpired] = useState(false);
+  // Auto-entry stops after a failure (for example, demo personas not seeded) and the sign-in page is shown instead.
+  const [enterFailed, setEnterFailed] = useState(!AUTO_ENTER);
+  const inFlight = useRef(false);
+  const lastUser = useRef(session?.username ?? FIRST_PERSONA);
 
   const clear = useCallback(() => {
     setAccessToken(null);
@@ -64,6 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setAccessToken(r.access_token);
       localStorage.setItem("up_session", JSON.stringify(s));
       setExpired(false);
+      lastUser.current = username;
       setSession(s);
       return s;
     },
@@ -77,6 +90,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clear();
   }, [clear]);
 
+  // No session: enter the last persona again (an expired session simply renews), or the first one on a first visit.
+  useEffect(() => {
+    if (session || enterFailed || inFlight.current) return;
+    inFlight.current = true;
+    login(lastUser.current, DEMO_PASSWORD)
+      .catch(() => setEnterFailed(true))
+      .finally(() => {
+        inFlight.current = false;
+      });
+  }, [session, enterFailed, login]);
+
   useEffect(() => {
     const onUnauthorized = () => {
       setExpired(true);
@@ -86,7 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
   }, [clear]);
 
-  return <Ctx.Provider value={{ session, expired, login, logout }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ session, expired, entering: !session && !enterFailed, login, logout }}>{children}</Ctx.Provider>;
 }
 
 export function useAuth(): AuthCtx {

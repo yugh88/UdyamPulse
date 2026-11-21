@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarDays, ChevronsUpDown, Keyboard, LogOut, Moon, PanelLeft, Search, Sun } from "lucide-react";
+import { CalendarDays, ChevronsUpDown, Keyboard, Moon, PanelLeft, Search, Sun } from "lucide-react";
 import { Suspense, useEffect, useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -115,7 +115,7 @@ const initials = (name: string) =>
     .join("");
 
 function AccountMenu({ compact, onShortcuts }: { compact?: boolean; onShortcuts: () => void }) {
-  const { session, login, logout } = useAuth();
+  const { session, login } = useAuth();
   const nav = useNavigate();
   const [switching, setSwitching] = useState(false);
   if (!session) return null;
@@ -126,7 +126,7 @@ function AccountMenu({ compact, onShortcuts }: { compact?: boolean; onShortcuts:
     try {
       const s = await login(username, DEMO_PASSWORD);
       nav(homeFor(s.role));
-      toast.success(`Now signed in as ${ROLE_LABEL[s.role]}`);
+      toast.success(`Now viewing as ${ROLE_LABEL[s.role]}`);
     } catch (e) {
       toast.error(`Could not switch role: ${(e as Error).message}`);
     } finally {
@@ -160,7 +160,7 @@ function AccountMenu({ compact, onShortcuts }: { compact?: boolean; onShortcuts:
         {session.display_name} · {session.tenant_name}
       </MenuLabel>
       <MenuSeparator />
-      <MenuLabel>Switch role (demo only)</MenuLabel>
+      <MenuLabel>View the demo as</MenuLabel>
       {PERSONAS.map((p) => (
         <MenuItem key={p.username} disabled={switching} onSelect={() => switchTo(p.username)}>
           <span className="flex-1">{p.title}</span>
@@ -171,15 +171,6 @@ function AccountMenu({ compact, onShortcuts }: { compact?: boolean; onShortcuts:
       <MenuItem onSelect={onShortcuts}>
         <Keyboard className="h-4 w-4 text-fg-muted" aria-hidden />
         Keyboard shortcuts
-      </MenuItem>
-      <MenuItem
-        onSelect={() => {
-          logout();
-          nav("/login");
-        }}
-      >
-        <LogOut className="h-4 w-4 text-fg-muted" aria-hidden />
-        Sign out
       </MenuItem>
     </DropdownMenu>
   );

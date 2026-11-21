@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { expectAccessible, loginAs, setTheme, watchErrors } from "./helpers";
+import { expectAccessible, enterAs, setTheme, watchErrors } from "./helpers";
 
 async function reset(page: Page) {
   const r = await page.request.post("/api/v1/demo/reset");
@@ -8,7 +8,7 @@ async function reset(page: Page) {
 async function switchTo(page: Page, role: string) {
   await page.getByRole("button", { name: /Account menu/ }).click();
   await page.getByRole("menuitem", { name: new RegExp(role) }).click();
-  await expect(page.getByText(new RegExp(`Now signed in as ${role}`))).toBeVisible();
+  await expect(page.getByText(new RegExp(`Now viewing as ${role}`))).toBeVisible();
 }
 const shot = (page: Page, name: string) => page.screenshot({ path: `test-results/shots/${name}.png`, fullPage: true });
 
@@ -17,13 +17,11 @@ for (const theme of ["light", "dark"] as const) {
     test.setTimeout(120_000); // the whole story in one test: about 30 s locally, slower on CI runners
     const errors = watchErrors(page);
     await reset(page);
-    await page.goto("/login");
+    await page.goto("/");
     await setTheme(page, theme);
-    await expectAccessible(page);
-    await shot(page, `login-${theme}`);
 
     // Relationship manager: consent, score, memo.
-    await loginAs(page, "rm1");
+    await enterAs(page, "rm1");
     await expect(page.getByRole("heading", { name: "Applications", level: 1 })).toBeVisible();
     await expect(page.getByRole("tab", { name: /Needs your action/ })).toHaveAttribute("aria-selected", "true");
     await expect(page.getByRole("row", { name: /Sharma Auto Components/ })).toBeVisible();
@@ -35,7 +33,7 @@ for (const theme of ["light", "dark"] as const) {
     await expect(page.getByRole("list", { name: "Application progress" })).toBeVisible();
 
     await page.getByRole("button", { name: "Request consent and pull data" }).click();
-    await expect(page.getByText("Consent received")).toBeVisible();
+    await expect(page.getByText("Consent received").first()).toBeVisible();
     await page.getByRole("button", { name: "Run scoring" }).first().click();
     await expect(page.getByRole("img", { name: /Factory Health Score 742 out of 900, band Approve/ })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Why this score" })).toBeVisible();

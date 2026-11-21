@@ -14,7 +14,7 @@
 
 Visionet Techthon 2026 · Round 2 · BFSI: Data & Decision Intelligence · **Team Legit, VIT Bhopal University**
 
-**[▶ Open the live demo](https://udyampulse-demo.onrender.com)**: one-click personas on the login page, then **Guided demo**
+**[▶ Open the live demo](https://udyampulse-demo.onrender.com)**: no sign-in, it opens as the Relationship Manager; switch role from the name menu, or press **Guided demo**
 
 <img src="docs/media/slides/03-application-overview.png" alt="Application overview: Factory Health Score with its top reasons" width="900">
 
@@ -169,8 +169,9 @@ Full design and ADRs: [docs/SYSTEM_DESIGN.md](docs/SYSTEM_DESIGN.md) · [docs/SE
 
 ## 10. Prototype and progress
 
-- **Live:** https://udyampulse-demo.onrender.com. Personas `rm1`, `co1`, `risk1`, `sharma` (password `demo123`),
-  or the one-click buttons. **Guided demo** walks the whole story; script: [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md).
+- **Live:** https://udyampulse-demo.onrender.com. No sign-in form: it opens as the Relationship Manager, and the name
+  menu switches to Credit Officer, Risk Head or MSME Owner (the API still checks every role). **Guided demo** walks the
+  whole story; script: [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md).
 
 | Area | Done ✅ | Partial 🟡 | Future 🔭 |
 |---|---|---|---|

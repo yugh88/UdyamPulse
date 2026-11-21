@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { loginAs, setTheme } from "./helpers";
+import { enterAs, setTheme } from "./helpers";
 
 /**
  * Screenshots of every screen at 1920x1080 from the real running app, light theme, walking the demo story.
@@ -24,25 +24,28 @@ const snap = async (page: Page, name: string) => {
 async function switchTo(page: Page, role: string) {
   await page.getByRole("button", { name: /Account menu/ }).click();
   await page.getByRole("menuitem", { name: new RegExp(role) }).click();
-  await expect(page.getByText(new RegExp(`Now signed in as ${role}`))).toBeVisible();
+  await expect(page.getByText(new RegExp(`Now viewing as ${role}`))).toBeVisible();
 }
 
 test("screens", async ({ page }) => {
   test.setTimeout(240_000);
   expect((await page.request.post("/api/v1/demo/reset")).ok()).toBeTruthy();
-  await page.goto("/login");
+  await page.goto("/");
   await setTheme(page, "light");
-  await page.evaluate(() => localStorage.setItem("up_notice_dismissed", "1")); // the one-time notice is not on slides
   await page.reload();
-  await snap(page, "login");
+  // What a reviewer sees first: the app opens straight on the RM's queue, with the one-time prototype notice.
+  const note = page.getByRole("note").filter({ hasText: "not a lending decision" });
+  await expect(note).toBeVisible();
+  await snap(page, "first-visit");
+  await note.getByRole("button", { name: "Got it" }).click();
 
   // Relationship manager.
-  await loginAs(page, "rm1");
+  await enterAs(page, "rm1");
   await expect(page.getByRole("row", { name: /Sharma Auto Components/ })).toBeVisible();
   await snap(page, "applications");
   await page.getByRole("row", { name: /Sharma Auto Components/ }).click();
   await page.getByRole("button", { name: "Request consent and pull data" }).click();
-  await expect(page.getByText("Consent received")).toBeVisible();
+  await expect(page.getByText("Consent received").first()).toBeVisible();
   await page.getByRole("button", { name: "Run scoring" }).first().click();
   await expect(page.getByRole("heading", { name: "Why this score" })).toBeVisible();
   await expect(page.getByRole("img", { name: /Factory Health Score \d+ out of 900/ })).toBeVisible();

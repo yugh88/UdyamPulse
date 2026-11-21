@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Button } from "../../components/ui";
 import { api, post } from "../../lib/api";
-import { DEMO_PASSWORD, ROLE_LABEL, useAuth, type Role } from "../../lib/auth";
+import { DEMO_PASSWORD, homeFor, ROLE_LABEL, useAuth, type Role } from "../../lib/auth";
 import { guide, useGuide } from "./guideStore";
 
 interface Step {
@@ -87,7 +87,7 @@ export function GuideLauncher({ className }: { className?: string }) {
 
 export function DemoGuide() {
   const { open, step } = useGuide();
-  const { session, login, logout } = useAuth();
+  const { session, login } = useAuth();
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
   if (!open) return null;
@@ -97,10 +97,7 @@ export function DemoGuide() {
   const take = async () => {
     setBusy(true);
     try {
-      if (!here) {
-        if (session) logout();
-        await login(s.persona.username, DEMO_PASSWORD);
-      }
+      if (!here) await login(s.persona.username, DEMO_PASSWORD);
       navigate(s.where === "hero" ? await heroPath() : s.where);
     } catch (e) {
       toast.error(`Could not open this step: ${(e as Error).message}`);
@@ -115,8 +112,9 @@ export function DemoGuide() {
       const r = await post<{ took_ms: number }>("/demo/reset");
       toast.success(`Demo reset in ${(r.took_ms / 1000).toFixed(1)} s.`);
       guide.go(0);
-      if (session) logout();
-      navigate("/login");
+      // The reset reseeds the users, so start the story again as the first persona.
+      const first = await login(STEPS[0].persona.username, DEMO_PASSWORD);
+      navigate(homeFor(first.role));
     } catch (e) {
       toast.error(`Reset failed: ${(e as Error).message}`);
     } finally {
@@ -142,7 +140,7 @@ export function DemoGuide() {
       <p className="mt-2 rounded-control bg-purple-tint p-3 text-sm text-fg">“{s.say}”</p>
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <Button variant="primary" size="sm" loading={busy} onClick={take} icon={<Play className="h-4 w-4" aria-hidden />}>
-          {here ? "Open this screen" : `Sign in as ${s.persona.username} and open`}
+          {here ? "Open this screen" : `Open as ${ROLE_LABEL[s.persona.role]}`}
         </Button>
         <div className="ml-auto flex gap-1">
           <Button

@@ -34,7 +34,9 @@ export function FirstVisitNotice() {
   return (
     <div role="note" className="flex items-center justify-center gap-3 border-b border-edge bg-panel-2 px-4 py-2 text-13 text-fg-muted">
       <FlaskConical className="h-4 w-4 shrink-0" aria-hidden />
-      <span>{t("banner.prototype")}</span>
+      <span>
+        {t("banner.prototype")} · {t("banner.roles")}
+      </span>
       <button
         type="button"
         onClick={() => {

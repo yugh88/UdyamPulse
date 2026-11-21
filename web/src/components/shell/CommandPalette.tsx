@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Command } from "cmdk";
-import { Bell, Factory, FileText, Keyboard, LogOut, Moon, Search, Sun } from "lucide-react";
+import { Bell, Factory, FileText, Keyboard, Moon, Search, Sun } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../lib/api";
@@ -42,7 +42,7 @@ function Item({ children, onSelect, value }: { children: ReactNode; onSelect: ()
 }
 
 export function CommandPalette({ open, onOpenChange, onShortcuts }: { open: boolean; onOpenChange: (o: boolean) => void; onShortcuts: () => void }) {
-  const { session, logout } = useAuth();
+  const { session } = useAuth();
   const { theme, toggle } = useTheme();
   const nav = useNavigate();
   const [q, setQ] = useState("");
@@ -156,10 +156,6 @@ export function CommandPalette({ open, onOpenChange, onShortcuts }: { open: bool
             <Keyboard className="h-4 w-4 text-fg-muted" aria-hidden />
             Keyboard shortcuts
             <kbd className="ml-auto text-xs text-fg-muted">?</kbd>
-          </Item>
-          <Item value="action sign out logout" onSelect={() => run(logout)}>
-            <LogOut className="h-4 w-4 text-fg-muted" aria-hidden />
-            Sign out
           </Item>
         </Command.Group>
       </Command.List>
