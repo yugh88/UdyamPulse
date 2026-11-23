@@ -261,7 +261,8 @@ export function WhatChanged({
     <ol className={cn("space-y-5", className)}>
       {shown.map((e) => {
         const { icon: Icon, tone } = look(e);
-        const [title, detail] = split(e.summary);
+        const [title, fromSummary] = split(e.summary);
+        const detail = e.detail ?? fromSummary;
         return (
           <li key={e.id} className="flex gap-3">
             <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-control", tone)} aria-hidden>

@@ -42,9 +42,9 @@ async function readyz(): Promise<Ready & { roundtrip_ms: number }> {
 
 const CHECKS: { key: keyof Ready["checks"]; label: string; icon: LucideIcon; detail: (c: Check) => string }[] = [
   { key: "database", label: "Database", icon: Database, detail: (c) => c.dialect ?? "" },
-  { key: "cache", label: "Cache and queue", icon: Layers, detail: (c) => (c.backend === "memory" ? "in-process (demo)" : (c.backend ?? "")) },
-  { key: "model", label: "Scoring model", icon: Server, detail: () => "artifact loaded" },
-  { key: "lake", label: "Data lake", icon: HardDrive, detail: () => "gold layer present" },
+  { key: "cache", label: "Cache and queue", icon: Layers, detail: (c) => (c.backend === "memory" ? "built in (demo)" : (c.backend ?? "")) },
+  { key: "model", label: "Scoring model", icon: Server, detail: () => "model file loaded" },
+  { key: "lake", label: "Data lake", icon: HardDrive, detail: () => "final data layer present" },
 ];
 
 const PATH = ["Browser", "Web (React)", "API (FastAPI)", "Agents and scoring engine", "Database and data lake", "Worker (jobs, batch)"];
@@ -123,7 +123,7 @@ export default function System() {
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
         <Card
           title="Response time, live"
-          description="Measured from this browser every 10 seconds while the page is open: the readiness round trip and the database check inside it."
+          description="Measured from this browser every 10 seconds while the page is open: the full health-check request, and the database check inside it."
         >
           {samples.length < 2 ? (
             <Skeleton className="h-60" />
@@ -167,7 +167,7 @@ export default function System() {
         </Card>
       </div>
 
-      <Card title="Benchmarks" description="Batch runs are measured on this deployment. The load test has not been run yet, so it shows no number.">
+      <Card title="Benchmarks" description="These batch runs were measured on this server. The load test has not been run yet, so there is no number.">
         {runs.isLoading ? (
           <Skeleton className="h-40" />
         ) : runs.isError ? (
@@ -200,7 +200,7 @@ export default function System() {
                 );
               })}
               <tr>
-                <td className="py-2.5 text-fg">Load test, 50 → 300 virtual users (k6)</td>
+                <td className="py-2.5 text-fg">Load test: 50 to 300 simulated users (k6)</td>
                 <td className="py-2.5 text-fg-muted">Not run yet</td>
                 <td className="py-2.5 text-fg-muted">–</td>
                 <td className="py-2.5">
@@ -211,7 +211,7 @@ export default function System() {
           </table>
         )}
         {!runs.isLoading && !runs.isError && done.length === 0 && (
-          <EmptyState className="py-6" title="No batch run yet" description="The risk head can start the nightly early-warning batch; its throughput appears here." />
+          <EmptyState className="py-6" title="No batch run yet" description="The risk head can start the nightly early-warning run. Its speed will show here." />
         )}
       </Card>
     </div>

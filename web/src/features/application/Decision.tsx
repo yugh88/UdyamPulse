@@ -4,6 +4,7 @@ import { Badge, Button, Card, Dialog, EmptyState, Field, Input, Textarea, Toolti
 import { cn } from "../../lib/cn";
 import { inr, pct, rupees } from "../../lib/format";
 import { dateTime } from "../../lib/time";
+import { dejargon, plainDetail } from "../../lib/reasons";
 import type { AppDetail } from "../../lib/types";
 import { Cited, PolicyChips } from "./Memo";
 
@@ -54,6 +55,7 @@ function Tile({ label, value }: { label: string; value: string }) {
 /** Left card: the memo in one screen. Strengths, risks paired with how they are managed, and the clauses cited. */
 export function MemoSummary({ app, onOpenPolicy }: { app: AppDetail; onOpenPolicy: (section: string) => void }) {
   const memo = app.memo;
+  const [more, setMore] = useState(false);
   if (!memo)
     return (
       <Card>
@@ -64,6 +66,17 @@ export function MemoSummary({ app, onOpenPolicy }: { app: AppDetail; onOpenPolic
         />
       </Card>
     );
+  // The two strongest of each, in plain words; the full memo is one click away (and on the Credit memo tab).
+  // Lines built from a score reason are restated with that reason's plain detail; the rest lose their jargon.
+  const reasons = app.score_detail?.reasons ?? [];
+  const plain = (t: string) => {
+    const r = reasons.find((x) => t.startsWith(x.text));
+    return r ? dejargon(plainDetail(r) + t.slice(r.text.length)) : dejargon(t);
+  };
+  const strengths = memo.strengths.map(plain);
+  const risks = memo.risks.map(plain);
+  const mitigants = memo.mitigants.map(dejargon);
+  const hidden = Math.max(0, strengths.length - 2) + Math.max(0, risks.length - 2);
   return (
     <Card title="Memo summary" description="Drafted by the memo agent · every number comes from the scoring and policy engines">
       <div className="grid gap-4 sm:grid-cols-3">
@@ -74,7 +87,7 @@ export function MemoSummary({ app, onOpenPolicy }: { app: AppDetail; onOpenPolic
       <section className="mt-6">
         <h3 className="text-base font-[650] text-fg">Strengths</h3>
         <ul className="mt-3 space-y-2.5">
-          {memo.strengths.map((t) => (
+          {strengths.slice(0, more ? undefined : 2).map((t) => (
             <li key={t} className="flex gap-2.5 text-sm text-fg">
               <CircleCheck className="mt-0.5 h-[18px] w-[18px] shrink-0 text-success" aria-hidden />
               <span>
@@ -87,15 +100,15 @@ export function MemoSummary({ app, onOpenPolicy }: { app: AppDetail; onOpenPolic
       <section className="mt-6">
         <h3 className="text-base font-[650] text-fg">Risks & how to manage them</h3>
         <ul className="mt-3 space-y-2.5">
-          {memo.risks.map((t, i) => (
+          {risks.slice(0, more ? undefined : 2).map((t, i) => (
             <li key={t} className="flex gap-2.5 text-sm text-fg">
               <CircleDot className="mt-0.5 h-[18px] w-[18px] shrink-0 text-warning" aria-hidden />
               <span>
                 <Cited text={t} onOpen={onOpenPolicy} />
-                {memo.mitigants[i] && (
+                {mitigants[i] && (
                   <>
                     <span className="text-fg-muted"> → </span>
-                    <Cited text={memo.mitigants[i]} onOpen={onOpenPolicy} />
+                    <Cited text={mitigants[i]} onOpen={onOpenPolicy} />
                   </>
                 )}
               </span>
@@ -103,6 +116,11 @@ export function MemoSummary({ app, onOpenPolicy }: { app: AppDetail; onOpenPolic
           ))}
         </ul>
       </section>
+      {hidden > 0 && (
+        <button type="button" onClick={() => setMore((m) => !m)} aria-expanded={more} className="mt-4 text-13 font-semibold text-primary hover:underline">
+          {more ? "Show less" : `Show ${hidden} more`}
+        </button>
+      )}
       {memo.citations.length > 0 && (
         <section className="mt-6 flex flex-wrap items-center gap-3">
           <h3 className="label-caps">Policy cited</h3>
@@ -249,7 +267,7 @@ export function DecisionPanel({
 
         {choice === "APPROVED" && (
           <Field
-            label="Sanctioned limit (₹)"
+            label="Sanctioned limit"
             required
             error={touched ? limitError : null}
             hint={

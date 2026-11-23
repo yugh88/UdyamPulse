@@ -1,6 +1,7 @@
 import { ArrowDown, ArrowUp } from "lucide-react";
 import { cn } from "../../lib/cn";
 import { PILLAR_COLORS, signed } from "../../lib/format";
+import { plainDetail } from "../../lib/reasons";
 import type { Pillar, Reason } from "../../lib/types";
 
 /** Top reasons as plain-language cards. Each shows direction with an arrow, a signed number and a bar. */
@@ -14,7 +15,7 @@ export function ReasonCards({ reasons }: { reasons: Reason[] }) {
           <li key={r.feature} className="rounded-control border border-edge px-3 py-2.5">
             <div className="flex items-start gap-2.5">
               <span className="tabular mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-panel-2 text-xs font-medium text-fg-muted">{i + 1}</span>
-              <p className="flex-1 text-13 text-fg">{r.text}</p>
+              <p className="flex-1 text-13 text-fg">{plainDetail(r)}</p>
               <span className={cn("tabular inline-flex shrink-0 items-center gap-0.5 text-13 font-semibold", up ? "text-success" : "text-danger")}>
                 {up ? <ArrowUp className="h-3.5 w-3.5" aria-hidden /> : <ArrowDown className="h-3.5 w-3.5" aria-hidden />}
                 {signed(r.points, 1)}

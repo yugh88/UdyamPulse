@@ -163,3 +163,4 @@ def test_marking_the_same_new_item_seen_twice_at_once_does_not_fail(client, monk
     monkeypatch.setattr(changes, "_seen_rows", real)
     rs = [client.post("/seen", headers=login(client, "co1"), json={"entity_type": "application", "ids": [app_id]}) for _ in range(2)]
     assert [r.status_code for r in rs] == [200, 200]
+

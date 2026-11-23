@@ -55,8 +55,10 @@ export function Heatmap({ cells, selected, onSelect }: { cells: Portfolio["heatm
           </button>
         )}
       </div>
+      {/* Phones: the grid keeps a readable width and scrolls sideways, so no sector name is squeezed or cut. */}
+      <p className="mb-1 text-xs text-fg-muted sm:hidden">Swipe sideways to see every sector →</p>
       <div className="overflow-x-auto">
-        <table className="w-full border-separate border-spacing-1 text-13">
+        <table className="w-full min-w-[640px] border-separate border-spacing-1 text-13">
           <caption className="sr-only">
             {metric === "score" ? "Average Factory Health Score" : "Open alerts per account"} by cluster and sector. Select a cell to filter the tables below.
           </caption>
@@ -64,7 +66,7 @@ export function Heatmap({ cells, selected, onSelect }: { cells: Portfolio["heatm
             <tr>
               <td />
               {sectors.map((s) => (
-                <th key={s} scope="col" className="px-1 pb-1 text-center text-xs font-medium text-fg-muted">
+                <th key={s} scope="col" className="px-1 pb-1 text-center text-xs font-medium whitespace-nowrap text-fg-muted">
                   {s}
                 </th>
               ))}

@@ -24,7 +24,7 @@ const ROUTES: { path: string; page: LazyExoticComponent<ComponentType>; roles: R
   { path: "/alerts", page: Alerts, roles: STAFF },
   { path: "/portfolio", page: Portfolio, roles: STAFF },
   { path: "/system", page: System, roles: STAFF },
-  { path: "/governance", page: Governance, roles: ["risk"] },
+  { path: "/governance", page: Governance, roles: STAFF },
   { path: "/msme", page: MsmeApp, roles: ["msme"] },
 ];
 

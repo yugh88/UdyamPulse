@@ -46,14 +46,9 @@ export function Field({
   const describedBy = error ? `${id}-error` : hint ? `${id}-hint` : undefined;
   return (
     <div className={cn("space-y-1.5", className)}>
-      <label htmlFor={id} className="block text-13 font-medium text-fg">
+      <label htmlFor={id} className="label-caps block">
         {label}
-        {required && (
-          <span className="text-danger" aria-hidden>
-            {" "}
-            *
-          </span>
-        )}
+        {required && <span aria-hidden> (required)</span>}
       </label>
       {cloneElement(children, { id, "aria-invalid": error ? true : undefined, "aria-describedby": describedBy, required })}
       {error ? (

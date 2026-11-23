@@ -31,7 +31,7 @@ function Logo() {
   );
 }
 
-/** Pink counts on the sidebar: only things that need action (applications waiting on you, new high alerts). */
+/** Pink counts on the sidebar: only things that need action (applications waiting on you, open alerts). */
 function useNavCounts(role: Role) {
   const staff = role !== "msme";
   const apps = useQuery({
@@ -48,7 +48,7 @@ function useNavCounts(role: Role) {
   });
   return {
     applications: apps.data?.tiles?.waiting_on_you?.value ?? null,
-    alerts: alerts.data ? alerts.data.filter((a) => a.severity === "high" && a.changed_since_seen).length : null,
+    alerts: alerts.data ? alerts.data.length : null,
   };
 }
 
@@ -76,7 +76,7 @@ function SideNav({ onNavigate }: { onNavigate?: () => void }) {
             {count ? (
               <span className="tabular rounded-full bg-brand-tint px-2 py-px text-xs font-bold text-brand">
                 {count}
-                <span className="sr-only">{n.count === "alerts" ? " new high alerts" : " need your action"}</span>
+                <span className="sr-only">{n.count === "alerts" ? " open alerts" : " need your action"}</span>
               </span>
             ) : null}
           </NavLink>
@@ -148,7 +148,7 @@ function AccountMenu({ compact, onShortcuts }: { compact?: boolean; onShortcuts:
           </span>
           {!compact && (
             <span className="min-w-0 flex-1">
-              <span className="line-clamp-2 block text-sm leading-snug font-semibold text-fg">{session.display_name}</span>
+              <span className="block truncate text-sm leading-snug font-semibold text-fg">{session.display_name}</span>
               <span className="block truncate text-13 text-fg-muted">{ROLE_LABEL[session.role]}</span>
             </span>
           )}
@@ -224,7 +224,7 @@ export function AppShell() {
       </a>
 
       {!msme && (
-        <aside aria-label="Sidebar" className="sticky top-0 hidden h-screen w-56 shrink-0 flex-col border-r border-edge bg-panel md:flex">
+        <aside aria-label="Sidebar" className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-edge bg-panel md:flex">
           <div className="flex h-[76px] items-center px-5">
             <Logo />
           </div>
@@ -266,7 +266,10 @@ export function AppShell() {
 
           <div className="ml-auto flex items-center gap-2">
             <PrototypeChip />
-            <ClockChip />
+            {/* The owner's phone keeps only what they need in the top bar. */}
+            <span className={cn(msme && "hidden sm:inline-flex")}>
+              <ClockChip />
+            </span>
             <GuideLauncher className="hidden lg:inline-flex" />
             <Tooltip content={`Switch to ${theme === "dark" ? "light" : "dark"} theme (t)`}>
               <Button

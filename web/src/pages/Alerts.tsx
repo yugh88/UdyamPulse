@@ -32,6 +32,7 @@ import { useAuth } from "../lib/auth";
 import { useMarkSeen } from "../lib/changes";
 import { cn } from "../lib/cn";
 import { runJob } from "../lib/jobs";
+import { nextStepSentence } from "../lib/alerts";
 import { monthLabel } from "../lib/time";
 import type { AdvanceResult, AlertDetail, AlertRow, AppDetail, SignalPoint } from "../lib/types";
 
@@ -49,7 +50,7 @@ export const RULE_PLAIN: Record<string, string> = {
   compliance_slip: "GST filed late",
   anomaly: "Unusual pattern",
 };
-const plain = (a: { rules: string[]; reasons: string[] }) => RULE_PLAIN[a.rules[0]] ?? a.reasons[0] ?? "Signals turned bad";
+const plain = (a: { rules: string[]; reasons: string[] }) => RULE_PLAIN[a.rules[0]] ?? a.reasons[0] ?? "Warning signs found";
 const age = (d: number) => (d <= 0 ? "Today" : d === 1 ? "1 day" : `${d} days`);
 /** "2026-07" → "Jul 2026"; other period labels ("8-week baseline") as they are. */
 const period = (p: string) => (/^\d{4}-\d{2}(-\d{2})?$/.test(p) ? monthLabel(p) : p);
@@ -62,20 +63,39 @@ const STORY_WEEKS = 6;
 function AlertChart({ signals, keys, labels, alertMonth }: { signals: SignalPoint[]; keys: (keyof SignalPoint)[]; labels: string[]; alertMonth: string }) {
   const rows = useMemo(() => {
     const last = signals.slice(-24);
+    // A zero reading means no data that month (before the factory started filing or metering), not a collapse to
+    // zero, so it is a gap in the line. The base is the average of the first 12 months that have data.
+    const val = (p: SignalPoint, k: keyof SignalPoint) => {
+      const v = p[k] as number | null;
+      return v == null || !Number.isFinite(v) || v <= 0 ? null : v;
+    };
     const base = Object.fromEntries(
       keys.map((k) => {
-        const first = last.slice(0, 12).map((p) => p[k] as number);
+        const first = last
+          .map((p) => val(p, k))
+          .filter((v): v is number => v != null)
+          .slice(0, 12);
         const mean = first.reduce((a, b) => a + b, 0) / Math.max(1, first.length);
         return [k, mean || 1];
       }),
     );
-    return last.map((p) => ({ month: p.month, ...Object.fromEntries(keys.map((k) => [k, Math.round(((p[k] as number) / base[k]) * 1000) / 10])) }));
+    return last.map((p) => ({
+      month: p.month,
+      ...Object.fromEntries(
+        keys.map((k) => {
+          const v = val(p, k);
+          return [k, v == null ? null : Math.round((v / base[k]) * 1000) / 10];
+        }),
+      ),
+    }));
   }, [signals, keys]);
-  if (rows.length < 3) return <EmptyState title="No signal history" description="Signal history shows while the MSME's consent is active." className="py-8" />;
+  if (rows.length < 3) return <EmptyState title="No signal history" description="History shows only while the owner's consent is on." className="py-8" />;
   const idx = rows.findIndex((r) => r.month === alertMonth);
   const from = rows[Math.max(0, (idx >= 0 ? idx : rows.length - 1) - 1)].month;
   const to = rows[rows.length - 1].month;
-  const lastRow = rows[rows.length - 1] as Record<string, number | string>;
+  const lastRow = rows[rows.length - 1] as Record<string, number | string | null>;
+  const peak = Math.max(140, ...rows.flatMap((r) => keys.map((k) => (r as unknown as Record<string, number | null>)[k] ?? 0)));
+  const top = Math.ceil(peak / 35) * 35;
   return (
     <div>
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
@@ -92,10 +112,10 @@ function AlertChart({ signals, keys, labels, alertMonth }: { signals: SignalPoin
       </div>
       <ChartFrame
         height={280}
-        label={`${labels.join(" and ")} indexed to their first-year average, ${monthLabel(rows[0].month)} to ${monthLabel(to)}. Latest: ${keys.map((k, i) => `${labels[i]} ${lastRow[k]}`).join(", ")}.`}
+        label={`${labels.join(" and ")} indexed to their first-year average, ${monthLabel(rows[0].month)} to ${monthLabel(to)}. Latest: ${keys.map((k, i) => `${labels[i]} ${lastRow[k] ?? "no data"}`).join(", ")}.`}
       >
         <ResponsiveContainer>
-          <LineChart data={rows} margin={{ top: 22, right: 14, left: -10, bottom: 0 }}>
+          <LineChart data={rows} margin={{ top: 26, right: 14, left: -10, bottom: 0 }}>
             <CartesianGrid {...GRID} />
             <ReferenceArea
               x1={from}
@@ -103,22 +123,22 @@ function AlertChart({ signals, keys, labels, alertMonth }: { signals: SignalPoin
               fill="var(--brand-tint)"
               fillOpacity={1}
               strokeOpacity={0}
-              label={{ value: `Since ${monthLabel(from).split(" ")[0]}`, position: "insideTop", fontSize: 12, fontWeight: 600, fill: "var(--brand)" }}
+              label={{ value: `Since ${monthLabel(from).split(" ")[0]}`, position: "top", offset: 8, fontSize: 12, fontWeight: 600, fill: "var(--brand)" }}
             />
             <ReferenceLine y={100} stroke="var(--text-subtle)" strokeDasharray="5 4" />
             <XAxis dataKey="month" {...X_AXIS} interval={2} tickFormatter={(m: string) => monthLabel(m).split(" ")[0]} />
-            <YAxis {...AXIS} width={44} />
+            <YAxis {...AXIS} width={44} domain={[0, top]} ticks={Array.from({ length: top / 35 + 1 }, (_, i) => i * 35)} allowDataOverflow={false} />
             <Tooltip
               {...TOOLTIP}
               labelFormatter={(m: string) => monthLabel(m)}
-              formatter={(v: number, n: string) => [v.toFixed(0), labels[keys.indexOf(n as keyof SignalPoint)] ?? n]}
+              formatter={(v: unknown, n: string) => [typeof v === "number" ? v.toFixed(0) : "no data", labels[keys.indexOf(n as keyof SignalPoint)] ?? n]}
             />
             {keys.map((k, i) => (
               <Line key={k} dataKey={k} stroke={CHART[i]} strokeWidth={2} dot={false} activeDot={{ r: 4 }} isAnimationActive={false} />
             ))}
-            {keys.map((k, i) => (
-              <ReferenceDot key={`end-${k}`} x={to} y={lastRow[k] as number} r={5} fill="var(--surface)" stroke={CHART[i]} strokeWidth={2.5} isFront />
-            ))}
+            {keys.map((k, i) =>
+              lastRow[k] == null ? null : <ReferenceDot key={`end-${k}`} x={to} y={lastRow[k] as number} r={5} fill="var(--surface)" stroke={CHART[i]} strokeWidth={2.5} isFront />,
+            )}
           </LineChart>
         </ResponsiveContainer>
       </ChartFrame>
@@ -178,7 +198,7 @@ function LogAction({ alert, open, onOpenChange, onDone }: { alert: AlertDetail; 
             </Select>
           </Field>
         </div>
-        <Field label="Note" hint="What you found and agreed with the borrower.">
+        <Field label="Note" hint="What you saw and what you agreed with the owner.">
           <Textarea value={note} onChange={(e) => setNote(e.target.value)} maxLength={1000} />
         </Field>
       </div>
@@ -192,7 +212,7 @@ function AlertDetailPane({ id, canAct, onChanged }: { id: number; canAct: boolea
   const app = useQuery({ queryKey: ["application", d.data?.application_id], queryFn: () => api<AppDetail>(`/applications/${d.data!.application_id}`), enabled: !!d.data });
   const ack = useMutation({
     mutationFn: () => post<{ updated: number }>("/alerts/bulk", { ids: [id], action: "acknowledge" }),
-    onSuccess: () => (toast.success("Alert acknowledged. It stays open until an action is logged."), onChanged()),
+    onSuccess: () => (toast.success("Alert acknowledged. It stays open until you log an action."), onChanged()),
     onError: (e) => toast.error(`Could not acknowledge: ${(e as Error).message}`),
   });
 
@@ -270,7 +290,7 @@ function AlertDetailPane({ id, canAct, onChanged }: { id: number; canAct: boolea
           alertMonth={a.month}
         />
       ) : (
-        <EmptyState title="No signal history" description="Signal history shows while the MSME's consent is active." className="py-8" />
+        <EmptyState title="No signal history" description="History shows only while the owner's consent is on." className="py-8" />
       )}
 
       {a.status === "OPEN" ? (
@@ -278,16 +298,16 @@ function AlertDetailPane({ id, canAct, onChanged }: { id: number; canAct: boolea
           <Lightbulb className="h-6 w-6 shrink-0 text-purple" aria-hidden />
           <div className="min-w-0 flex-1">
             <p className="text-base font-semibold text-purple">Suggested next step</p>
-            <p className="text-[15px] text-fg first-letter:uppercase">{a.next_best_action}</p>
+            <p className="text-[15px] text-fg">{nextStepSentence(a.next_best_action)}</p>
           </div>
-          <Tip content={canAct ? "Marks the alert as seen by you; it stays open until an action is logged." : "Only relationship managers and credit officers act on alerts."}>
+          <Tip content={canAct ? "Shows you have seen this alert. It stays open until you log an action." : "Only relationship managers and credit officers can act on alerts."}>
             <span tabIndex={canAct ? -1 : 0}>
               <Button size="lg" disabled={!canAct} loading={ack.isPending} onClick={() => ack.mutate()} icon={<CheckCheck className="h-4 w-4" aria-hidden />}>
                 Acknowledge
               </Button>
             </span>
           </Tip>
-          <Tip content={canAct ? null : "Only relationship managers and credit officers act on alerts."}>
+          <Tip content={canAct ? null : "Only relationship managers and credit officers can act on alerts."}>
             <span tabIndex={canAct ? -1 : 0}>
               <Button variant="primary" size="lg" disabled={!canAct} onClick={() => setLogging(true)} icon={<Check className="h-4 w-4" aria-hidden />}>
                 {a.next_best_action.startsWith("visit") ? "Log visit" : "Log action"}
@@ -350,7 +370,7 @@ export default function Alerts() {
       }
       toast.success(`Six weeks later: ${total} new alert${total === 1 ? "" : "s"} raised by the early-warning agent.`);
     } catch (e) {
-      toast.error(`Story stopped: ${(e as Error).message}`);
+      toast.error(`The demo stopped: ${(e as Error).message}`);
     } finally {
       setStory(null);
     }
@@ -376,7 +396,9 @@ export default function Alerts() {
     if (row?.changed_since_seen) seen.mutate({ entity_type: "alert", ids: [id] });
   };
   const busy = advance.isPending || story !== null;
-  const unseen = (alerts.data ?? []).filter((a) => a.changed_since_seen).length;
+  // "Mark all seen" counts what this list shows, so the number always matches the pink bars on screen.
+  const unseen = rows.filter((a) => a.changed_since_seen).length;
+  const unseenIn = (k: TabKey) => (alerts.data ?? []).some((a) => tabOf(a) === k && a.changed_since_seen);
 
   return (
     <div className="space-y-6">
@@ -432,6 +454,11 @@ export default function Alerts() {
             <TabsTrigger key={k} value={k}>
               {TAB_LABEL[k]}
               <TabCount value={alerts.data ? counts[k] : null} />
+              {k !== tab && unseenIn(k) && (
+                <span className="h-2 w-2 rounded-full bg-brand" title="Has alerts that changed since you last looked">
+                  <span className="sr-only">, has changes since you last looked</span>
+                </span>
+              )}
             </TabsTrigger>
           ))}
         </TabsList>
@@ -451,7 +478,7 @@ export default function Alerts() {
                   ) : rows.length === 0 ? (
                     <EmptyState
                       title={tab === "open" ? "No open alerts" : tab === "acted" ? "Nothing acted on yet" : "Nothing resolved yet"}
-                      description={tab === "open" ? "Fast-forward the clock to let the early-warning agent scan new data." : "Alerts move here when an action is logged."}
+                      description={tab === "open" ? "Fast-forward the clock so the early-warning agent can check new data." : "Alerts move here when an action is logged."}
                     />
                   ) : (
                     <ul aria-label={`${TAB_LABEL[tab]} alerts`} className="divide-y divide-edge">
@@ -492,7 +519,12 @@ export default function Alerts() {
                   <ChangedHint
                     action={
                       unseen > 0 ? (
-                        <Button size="sm" variant="ghost" loading={seen.isPending} onClick={() => seen.mutate({ entity_type: "alert", all: true })}>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          loading={seen.isPending}
+                          onClick={() => seen.mutate({ entity_type: "alert", ids: rows.filter((a) => a.changed_since_seen).map((a) => a.id) })}
+                        >
                           Mark all seen ({unseen})
                         </Button>
                       ) : undefined

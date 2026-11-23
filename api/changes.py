@@ -247,8 +247,45 @@ def timeline(db: Session, user, app: Application, limit: int = 100) -> list[dict
     rows = (db.query(ChangeEvent).filter(ChangeEvent.application_id == app.id)
             .order_by(ChangeEvent.id.desc()).limit(limit).all())
     return [{"id": r.id, "entity_type": r.entity_type, "entity_id": r.entity_id, "event_type": r.event_type,
-             "summary": r.summary, "before": r.before, "after": r.after, "actor": r.actor,
-             "created_at": _aware(r.created_at).isoformat(), "new": _aware(r.created_at) > seen} for r in rows]
+             "summary": r.summary, "detail": event_detail(r, app), "before": r.before, "after": r.after,
+             "actor": r.actor, "created_at": _aware(r.created_at).isoformat(), "new": _aware(r.created_at) > seen}
+            for r in rows]
+
+
+def event_detail(r: ChangeEvent, app: Application) -> str | None:
+    """One short line under an event in "What changed": the facts behind it, in plain words."""
+    from agents.policy_engine import inr
+
+    a, b, t = r.after or {}, r.before or {}, r.event_type
+    if t == "opened":
+        return f"Asks for {inr(app.requested_amount)} · {'opened at the branch' if app.channel == 'rm' else 'applied on the app'}"
+    if t == "state_changed" and a.get("state") == "CONSENTED":
+        checks = app.data_checks or []
+        passed = sum(1 for c in checks if c.get("status") == "pass")
+        return f"{passed}/{len(checks)} data checks passed" if checks else "Data pulled through the account aggregator"
+    if t == "state_changed" and a.get("state") == "DISBURSED":
+        return f"Paid into the borrower's account · ref {app.disbursement_ref}" if app.disbursement_ref else None
+    if t == "state_changed" and a.get("state") == "MONITORING":
+        return "Early-warning checks run on new data every week"
+    if t == "scored":
+        return f"{_band(a.get('band'))} band · risk of default {app.pd_12m:.1%} in 12 months" if app.pd_12m is not None else None
+    if t == "score_changed":
+        return f"Was {b.get('score')} ({_band(b.get('band'))}), now {a.get('score')} ({_band(a.get('band'))})"
+    if t in ("memo_ready", "memo_updated"):
+        cites = len((app.memo or {}).get("citations") or [])
+        limit = inr(a["recommended_limit"]) if a.get("recommended_limit") else "–"
+        return f"Limit {limit} · {a.get('pricing_band') or '–'} · {cites} policy citation{'' if cites == 1 else 's'}"
+    if t == "decided":
+        if a.get("decision") == "APPROVED" and a.get("sanctioned_limit"):
+            return f"Sanctioned {inr(a['sanctioned_limit'])} · Key Fact Statement issued"
+        return "Reasons recorded in the audit trail"
+    if t == "consent_granted":
+        return "GST, e-way bill, bank, power and payroll data · can be stopped any time"
+    if t == "consent_revoked":
+        return "No new data is collected and stored copies are deleted"
+    if t == "alert_actioned":
+        return a.get("outcome") or a.get("action")
+    return None
 
 
 def _seen_rows(db: Session, username: str, entity_type: str, ids: list[str]) -> dict[str, UserSeen]:

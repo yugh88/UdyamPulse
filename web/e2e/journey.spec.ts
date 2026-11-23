@@ -132,8 +132,8 @@ for (const theme of ["light", "dark"] as const) {
     // MSME owner, in Hindi: readiness, the plan, then stop sharing.
     await switchTo(page, "MSME Owner");
     await expect(page.getByRole("heading", { name: "My factory" })).toBeVisible();
-    await expect(page.getByText(/Namaste/)).toBeVisible();
-    await page.getByRole("radio", { name: "हिन्दी" }).click();
+    await expect(page.getByText(/Good (morning|afternoon|evening), Suresh ji/)).toBeVisible();
+    await page.getByRole("button", { name: "Switch to हिन्दी" }).click();
     await expect(page.getByRole("heading", { name: "मेरी फ़ैक्टरी" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "सुधारने लायक एक बात" })).toBeVisible();
     await expectAccessible(page);
@@ -151,7 +151,7 @@ for (const theme of ["light", "dark"] as const) {
     await expect(page.getByText("सहमति वापस ले ली गई है").first()).toBeVisible();
     await page.getByRole("tab", { name: "होम" }).click();
     await expect(page.getByText(/अब कोई नया डेटा नहीं लिया जा रहा/)).toBeVisible();
-    await page.getByRole("radio", { name: "English" }).click();
+    await page.getByRole("button", { name: "English में देखें" }).click();
 
     // Risk head: governance and system.
     await switchTo(page, "Risk Head");

@@ -1,5 +1,5 @@
 const en = {
-  lang: { label: "Language", en: "English", hi: "हिन्दी" },
+  lang: { label: "Language", en: "English", hi: "हिन्दी", switchTo: "Switch to हिन्दी", pill: "EN → हिं" },
   banner: {
     prototype: "This is a prototype with sample data. It is not a lending decision.",
     chip: "Prototype · synthetic data",
@@ -9,7 +9,9 @@ const en = {
   tabs: { home: "Home", plan: "Plan", consent: "Consent" },
   titles: { home: "My factory", plan: "My plan", consent: "My consent" },
   home: {
-    greeting: "Namaste, {{name}}",
+    greetingMorning: "Good morning, {{name}} ji",
+    greetingAfternoon: "Good afternoon, {{name}} ji",
+    greetingEvening: "Good evening, {{name}} ji",
     subtitle: "How ready you are for a loan, in plain words.",
     scoreCaption: "Loan-readiness score",
     dataAsOf: "Based on your data up to {{month}}",
@@ -68,6 +70,19 @@ const en = {
     markDone: "Mark as done: {{step}}",
     saved: "Progress saved",
     pillar: { order_book: "Orders", cash_flow: "Cash flow", production: "Production", receivables: "Payments due", compliance: "Rules & filings" },
+    steps: {
+      "order_book-1": { title: "Share your orders with the bank", help: "Send confirmed purchase orders every month" },
+      "order_book-2": { title: "Add two new buyers", help: "So one slow buyer hurts less" },
+      "cash_flow-1": { title: "Keep one instalment in the bank", help: "So no cheque or auto-debit bounces" },
+      "cash_flow-2": { title: "Take buyer payments in this account", help: "So the bank sees your real sales" },
+      "production-1": { title: "Buy raw material against orders", help: "It protects your cash" },
+      "production-2": { title: "Keep power and stock records up to date", help: "They show you are producing" },
+      "receivables-1": { title: "Get slow bills paid early", help: "Sell bills older than 45 days on a bill-discounting site (TReDS)" },
+      "receivables-2": { title: "Claim overdue payments", help: "Complain about bills unpaid after 45 days on the MSME Samadhaan site" },
+      "compliance-1": { title: "File GST returns on time", help: "Every month, before the 20th" },
+      "compliance-2": { title: "Keep staff PF filings regular", help: "So your staff record has no gaps" },
+      "cash-warning": { title: "Talk to your RM about cash", help: "Cash may run short in {{months}}" },
+    },
   },
   consent: {
     title: "Your data and consent",
@@ -78,6 +93,9 @@ const en = {
     why: "Why",
     until: "Until",
     notCollected: "Never collected",
+    purpose: "Your bank uses it only to decide on your loan and to look after it",
+    cats: { gst: "GST returns and invoices", eway: "E-way bills", bank: "Bank statements", power: "Electricity bills", erp: "Stock and orders", payroll: "Staff on payroll (PF)" },
+    never: { bio: "Fingerprints or face scans", contacts: "Personal contacts", location: "Where you go" },
     retention: "How long we keep it",
     revoke: "Stop sharing",
     revokeTitle: "Stop sharing your data?",

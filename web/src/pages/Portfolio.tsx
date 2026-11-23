@@ -119,7 +119,7 @@ export default function Portfolio() {
         description={
           portfolio.data
             ? `${portfolio.data.kpis.accounts} monitored accounts · data through ${monthLabel(portfolio.data.data_month)}`
-            : "The monitored book, by cluster, sector and band."
+            : "Monitored accounts, by cluster, sector and score band."
         }
       />
       <Tabs value={tab} onValueChange={setTab}>
@@ -148,14 +148,14 @@ export default function Portfolio() {
                 k && (
                   <Tooltip content={`${k.slippage_formula}. Estimated slippage avoided: ${inr(k.expected_slippage_avoided)}.`}>
                     <span tabIndex={0} className="underline decoration-dotted underline-offset-2">
-                      {k.alerts_by_severity.high} high · {flagged.length} accounts flagged
+                      {k.alerts_by_severity.high} high · {flagged.length} account{flagged.length === 1 ? "" : "s"} flagged
                     </span>
                   </Tooltip>
                 )
               }
             />
           </div>
-          <Card title="Cluster × sector" description="Average health score of monitored accounts. Select a cell to see those accounts under Exposure.">
+          <Card title="Cluster × sector" description="Average score of monitored accounts. Click a cell to see those accounts under Exposure.">
             {portfolio.data ? (
               <Heatmap
                 cells={portfolio.data.heatmap}
@@ -172,7 +172,7 @@ export default function Portfolio() {
         </TabsContent>
 
         <TabsContent value="movement">
-          <Card title="Band movement" description="Accounts that changed band since last month">
+          <Card title="Band movement" description="Accounts that moved to a different score band since last month">
             {migration.isError ? (
               <ErrorState error={migration.error} onRetry={() => migration.refetch()} />
             ) : migration.data ? (
@@ -184,7 +184,7 @@ export default function Portfolio() {
         </TabsContent>
 
         <TabsContent value="exposure">
-          <Card title="Monitored accounts" description={cell ? `Filtered to ${cell.cluster} · ${cell.sector}` : "Every disbursed account under early-warning monitoring"}>
+          <Card title="Monitored accounts" description={cell ? `Filtered to ${cell.cluster} · ${cell.sector}` : "Every disbursed account we are watching for early warning signs"}>
             {cell && (
               <button type="button" onClick={() => setCell(null)} className="mb-3 text-13 font-semibold text-info hover:underline">
                 Clear filter
@@ -202,7 +202,7 @@ export default function Portfolio() {
               csvName="monitored_accounts"
               maxHeight={640}
               emptyTitle="No monitored accounts"
-              emptyDescription="Accounts appear here after disbursal."
+              emptyDescription="Accounts show here once a loan is paid out."
             />
           </Card>
         </TabsContent>

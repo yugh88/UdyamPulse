@@ -15,6 +15,14 @@ export function dateTime(iso: string | null | undefined): string {
 }
 
 /** "2026-06" → "Jun 2026"; "2026-06-30" → "30 Jun 2026" */
+const HI_MONTHS = ["जनवरी", "फ़रवरी", "मार्च", "अप्रैल", "मई", "जून", "जुलाई", "अगस्त", "सितंबर", "अक्टूबर", "नवंबर", "दिसंबर"];
+/** monthLabel in the MSME app's language: "Jun 2026" or "जून 2026". */
+export function monthIn(ym: string, lang: "en" | "hi"): string {
+  if (lang === "en") return monthLabel(ym);
+  const [y, m, d] = ym.split("-").map(Number);
+  return d ? `${d} ${HI_MONTHS[m - 1]} ${y}` : `${HI_MONTHS[m - 1]} ${y}`;
+}
+
 export function monthLabel(ym: string): string {
   const [y, m, d] = ym.split("-").map(Number);
   const mon = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][m - 1];

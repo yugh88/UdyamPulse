@@ -25,21 +25,22 @@ from core.timeline import month_end
 DEMO_PASSWORD = "demo123"  # nosec B105
 HERO = "UP-F0001"
 # (username, display name, role, factory, branch scope: clusters covered or "*" for the zonal hub)
+# Display names are fictional people (synthetic, like every other record); the role is stored separately.
 USERS = [
-    ("rm1", "Relationship Manager · Zonal hub", "rm", None, "*"),
-    ("rm3", "Relationship Manager · Morbi branch", "rm", None, "Morbi"),
-    ("co1", "Credit Officer · MSME Hub", "credit_officer", None, "*"),
-    ("risk1", "Chief Risk Office", "risk", None, None),
-    ("sharma", "Sharma Auto Components", "msme", HERO, None),
+    ("rm1", "Rohan Bedi", "rm", None, "*"),
+    ("rm3", "Neha Joshi", "rm", None, "Morbi"),
+    ("co1", "Priya Malhotra", "credit_officer", None, "*"),
+    ("risk1", "Meera Iyer", "risk", None, None),
+    ("sharma", "Suresh Sharma", "msme", HERO, None),
 ]
 PORTFOLIO_SIZE = 140
 # Two banks prove tenant isolation. Bank A carries the demo story; bank B is a small second portfolio.
 BANK_A, BANK_B = "bank-a", "bank-b"
 TENANTS = {BANK_A: "Sample Bank Ltd", BANK_B: "Second Bank Ltd"}
 USERS_B = [
-    ("rm2", "Relationship Manager · Second Bank", "rm", None, "*"),
-    ("co2", "Credit Officer · Second Bank", "credit_officer", None, "*"),
-    ("risk2", "Risk Office · Second Bank", "risk", None, None),
+    ("rm2", "Vikram Rao", "rm", None, "*"),
+    ("co2", "Sana Qureshi", "credit_officer", None, "*"),
+    ("risk2", "Arjun Nair", "risk", None, None),
 ]
 PORTFOLIO_SIZE_B = 20
 
@@ -70,7 +71,7 @@ def main() -> None:
     watch_factory = pending[2]
 
     for username, display, role, fid, branch in USERS + [
-            ("msme2", profiles.loc[watch_factory, "name"], "msme", watch_factory, None)]:
+            ("msme2", "Kavita Rao", "msme", watch_factory, None)]:
         db.add(User(username=username, display_name=display, role=role, factory_id=fid, branch=branch,
                     password_hash=hash_password(DEMO_PASSWORD)))
     db.commit()

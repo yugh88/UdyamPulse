@@ -65,18 +65,37 @@ describe("ScoreGauge", () => {
 });
 
 describe("Stepper", () => {
+  const steps = () => within(screen.getByRole("list", { name: "Application progress" }));
   it("marks the current step", () => {
     render(<Stepper current="SCORED" />);
-    const current = screen.getByText(/^Scored/).closest("li");
+    const current = steps()
+      .getByText(/^Scored/)
+      .closest("li");
     expect(current).toHaveAttribute("aria-current", "step");
     expect(current).toHaveTextContent("current step");
-    expect(screen.getByText(/^Applied/).closest("li")).toHaveTextContent("done");
-    expect(screen.getByText(/^Memo/).closest("li")).toHaveTextContent("to do");
+    expect(
+      steps()
+        .getByText(/^Applied/)
+        .closest("li"),
+    ).toHaveTextContent("done");
+    expect(steps().getByText(/^Memo/).closest("li")).toHaveTextContent("to do");
   });
   it("marks a decided application's decision step as done", () => {
     render(<Stepper current="DECIDED" complete />);
-    expect(screen.getByText(/^Decision/).closest("li")).toHaveTextContent("done");
-    expect(screen.getByText(/^Disbursed/).closest("li")).toHaveAttribute("aria-current", "step");
+    expect(
+      steps()
+        .getByText(/^Decision/)
+        .closest("li"),
+    ).toHaveTextContent("done");
+    expect(
+      steps()
+        .getByText(/^Disbursed/)
+        .closest("li"),
+    ).toHaveAttribute("aria-current", "step");
+  });
+  it("gives phones a one-line summary of where the application is", () => {
+    render(<Stepper current="SCORED" />);
+    expect(screen.getByText("Step 3 of 7:")).toBeInTheDocument();
   });
 });
 

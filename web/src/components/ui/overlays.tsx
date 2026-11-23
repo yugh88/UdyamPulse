@@ -1,6 +1,6 @@
 import { X } from "lucide-react";
 import { Dialog as D, DropdownMenu as M, Popover as P, Tabs as T, Tooltip as TT } from "radix-ui";
-import type { ComponentProps, ReactNode } from "react";
+import { useEffect, useRef, useState, type ComponentProps, type ReactNode } from "react";
 import { cn } from "../../lib/cn";
 
 const OVERLAY = "fixed inset-0 z-40 bg-black/40 data-[state=open]:animate-[up-fade-in_150ms_ease-out]";
@@ -140,9 +140,38 @@ export function MenuSeparator() {
 }
 
 export const Tabs = T.Root;
-/** Text tabs: 28px gap, a 2.5px forest underline on the active tab. Pair with `useUrlTab` to keep the tab in the URL. */
+/**
+ * Text tabs: 28px gap, a 2.5px forest underline on the active tab. Pair with `useUrlTab` to keep the tab in the URL.
+ * On a narrow screen the row scrolls sideways with no scrollbar; a soft fade at either edge shows there is more, and
+ * every tab stays reachable by swipe, arrow keys and Tab (the focused tab scrolls into view).
+ */
 export function TabsList({ className, ...rest }: ComponentProps<typeof T.List>) {
-  return <T.List className={cn("flex gap-7 overflow-x-auto border-b border-edge", className)} {...rest} />;
+  const ref = useRef<HTMLDivElement>(null);
+  const [edges, setEdges] = useState({ left: false, right: false });
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const update = () => setEdges({ left: el.scrollLeft > 2, right: el.scrollLeft + el.clientWidth < el.scrollWidth - 2 });
+    update();
+    el.addEventListener("scroll", update, { passive: true });
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(update) : null;
+    ro?.observe(el);
+    return () => {
+      el.removeEventListener("scroll", update);
+      ro?.disconnect();
+    };
+  }, []);
+  return (
+    <div className="relative min-w-0">
+      <T.List
+        ref={ref}
+        className={cn("flex gap-7 overflow-x-auto overflow-y-hidden border-b border-edge [scrollbar-width:none] [&::-webkit-scrollbar]:hidden", className)}
+        {...rest}
+      />
+      {edges.left && <span className="pointer-events-none absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-canvas to-transparent" aria-hidden />}
+      {edges.right && <span className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-canvas to-transparent" aria-hidden />}
+    </div>
+  );
 }
 export function TabsTrigger({ className, ...rest }: ComponentProps<typeof T.Trigger>) {
   return (

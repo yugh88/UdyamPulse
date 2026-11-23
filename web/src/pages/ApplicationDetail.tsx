@@ -30,6 +30,7 @@ import { SignalExplorer } from "../features/application/SignalExplorer";
 import { WhatIf } from "../features/application/WhatIf";
 import { WhyScore } from "../features/application/WhyScore";
 import { api, ApiError, del, post } from "../lib/api";
+import { nextStepSentence } from "../lib/alerts";
 import { useAuth, type Role } from "../lib/auth";
 import { inr, pct } from "../lib/format";
 import { ASYNC, runJob } from "../lib/jobs";
@@ -83,7 +84,7 @@ function HealthCard({ app, onScore, canScore, scoring }: { app: AppDetail; onSco
       <Card title="Health score">
         <EmptyState
           title="Not scored yet"
-          description={app.consent.active ? "Consent is active and the data is in. Run the score next." : "The score needs the MSME's consent and data first."}
+          description={app.consent.active ? "Consent is on and the data is in. Now run the score." : "The owner needs to give consent and share data first."}
           action={
             canScore && app.state === "CONSENTED" ? (
               <Button variant="primary" loading={scoring} onClick={onScore}>
@@ -187,7 +188,7 @@ export default function ApplicationDetail() {
   });
   const revoke = useMutation({
     mutationFn: () => del(`/applications/${appId}/consent`),
-    onSuccess: () => (toast.success("Consent revoked. Data pulls stopped and stored copies deleted."), setRevoking(false), refresh()),
+    onSuccess: () => (toast.success("Consent revoked. No new data will be collected, and stored copies are deleted."), setRevoking(false), refresh()),
     onError: fail("Revocation"),
   });
 
@@ -248,25 +249,38 @@ export default function ApplicationDetail() {
           </>
         }
         actions={
-          <>
-            {app.memo && (
-              <Button size="lg" onClick={() => downloadMemo(app.id)} icon={<FileDown className="h-4 w-4" aria-hidden />}>
-                Download memo
-              </Button>
-            )}
-            {primary && (
-              <Button variant="primary" size="lg" loading={busy[primary.action]} onClick={() => run(primary.action)} icon={ACTION_ICON[primary.action]}>
-                {primary.label}
-              </Button>
-            )}
-          </>
+          tab === "decision" ? (
+            app.band ? (
+              <span className="flex items-center">
+                <span className="sr-only">AI recommendation: </span>
+                <BandPill band={app.band} className="px-3.5 py-1.5 text-sm" />
+              </span>
+            ) : undefined
+          ) : (
+            <>
+              {app.memo && (
+                <Button size="lg" onClick={() => downloadMemo(app.id)} icon={<FileDown className="h-4 w-4" aria-hidden />}>
+                  Download memo
+                </Button>
+              )}
+              {primary && (
+                <Button variant="primary" size="lg" loading={busy[primary.action]} onClick={() => run(primary.action)} icon={ACTION_ICON[primary.action]}>
+                  {primary.label}
+                </Button>
+              )}
+            </>
+          )
         }
       />
 
-      <Card className="py-5">
-        <Stepper current={app.state} complete={decidedDone} />
-        {app.state === "MONITORING" && <p className="mt-3 text-center text-13 text-fg-muted">Disbursed and under continuous early-warning monitoring.</p>}
-      </Card>
+      {/* The Decision tab is about the memo and the decision only, so it leaves the progress stepper out. */}
+      {tab === "decision" && app.state === "MONITORING" && <p className="text-13 text-fg-muted">Disbursed and under continuous early-warning monitoring.</p>}
+      {tab !== "decision" && (
+        <Card className="py-5">
+          <Stepper current={app.state} complete={decidedDone} />
+          {app.state === "MONITORING" && <p className="mt-3 text-center text-13 text-fg-muted">Disbursed and under continuous early-warning monitoring.</p>}
+        </Card>
+      )}
 
       {(app.review_requested || openAlerts.length > 0) && (
         <div className="space-y-2">
@@ -274,7 +288,7 @@ export default function ApplicationDetail() {
             <p className="flex items-start gap-2 rounded-control bg-warning-tint px-4 py-2.5 text-sm text-fg">
               <Flag className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden />
               <span>
-                <span className="font-semibold">The MSME asked for a human review</span>
+                <span className="font-semibold">The owner asked for a human review</span>
                 {app.review_note ? `: “${app.review_note}”` : "."}
               </span>
             </p>
@@ -285,7 +299,7 @@ export default function ApplicationDetail() {
               <span className="font-semibold">
                 {openAlerts.length} open early-warning alert{openAlerts.length === 1 ? "" : "s"}
               </span>
-              <span className="text-fg-muted">· next step: {openAlerts[0].next_best_action}</span>
+              <span className="text-fg-muted">· {nextStepSentence(openAlerts[0].next_best_action)}</span>
               <Link to={`/alerts?alert=${openAlerts[0].id}`} className="ml-auto font-semibold text-danger hover:underline">
                 Open alert
               </Link>
@@ -315,7 +329,7 @@ export default function ApplicationDetail() {
                   </button>
                 </>
               ) : (
-                <p className="text-13 text-fg-muted">Reasons appear once the factory is scored.</p>
+                <p className="text-13 text-fg-muted">Reasons show after the factory is scored.</p>
               )}
             </Card>
             <Card title="What changed" description="Latest first">
@@ -333,7 +347,7 @@ export default function ApplicationDetail() {
           <div className="space-y-5">
             <Card
               title="Signals"
-              description={app.signals.length ? `${app.signals.length} months of consented operating data · pink = the recent change window` : undefined}
+              description={app.signals.length ? `${app.signals.length} months of data shared with consent · pink = recent change` : undefined}
               actions={
                 app.consent.active && worker ? (
                   <Button size="sm" onClick={() => setWhatIf(true)} icon={<FlaskConical className="h-4 w-4" aria-hidden />}>
@@ -390,7 +404,7 @@ export default function ApplicationDetail() {
                   </Button>
                 )}
               </Card>
-              <Card title="Peer comparison" description={app.peers ? `Against the median of ${app.peers.peer_count} factories in ${app.peers.cluster}` : undefined}>
+              <Card title="Peer comparison" description={app.peers ? `Compared with the typical result of ${app.peers.peer_count} factories in ${app.peers.cluster}` : undefined}>
                 {app.peers?.rows.length ? (
                   <table className="w-full text-13">
                     <thead>
@@ -419,7 +433,7 @@ export default function ApplicationDetail() {
                     </tbody>
                   </table>
                 ) : (
-                  <p className="text-13 text-fg-muted">Available once consent is active.</p>
+                  <p className="text-13 text-fg-muted">Shows once consent is on.</p>
                 )}
               </Card>
             </div>
@@ -454,7 +468,7 @@ export default function ApplicationDetail() {
         </TabsContent>
 
         <TabsContent value="activity">
-          <Card title="Activity" description="Everything that happened on this application, newest first. “New” = since you last looked.">
+          <Card title="Activity" description="Everything that happened on this application, newest first. “New” means it happened since you last looked.">
             {changes.isError ? <ErrorState error={changes.error} onRetry={() => changes.refetch()} /> : <WhatChanged items={changes.data} loading={changes.isLoading} />}
           </Card>
         </TabsContent>
@@ -468,7 +482,7 @@ export default function ApplicationDetail() {
         open={revoking}
         onOpenChange={setRevoking}
         title="Revoke consent?"
-        description="Do this only when the MSME has asked for it."
+        description="Do this only if the owner has asked for it."
         footer={
           <>
             <Button onClick={() => setRevoking(false)} disabled={revoke.isPending}>

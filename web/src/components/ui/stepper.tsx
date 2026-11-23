@@ -36,8 +36,36 @@ export function Stepper({
 }) {
   const at = steps.findIndex((s) => s.key === (current ?? state));
   const idx = complete ? at + 1 : at;
+  const shown = Math.min(Math.max(idx, 0), steps.length - 1);
+  const allDone = idx >= steps.length;
   return (
-    <ol className={cn("flex items-start overflow-x-auto pb-1", className)} aria-label="Application progress">
+    <>
+      {/* Phones: a one-line summary with a progress bar, so no step label is cut off. */}
+      <div className={cn("sm:hidden", className)}>
+        <p className="text-sm text-fg">
+          <span className="font-semibold">
+            Step {shown + 1} of {steps.length}:
+          </span>{" "}
+          <span className={cn("font-bold", allDone ? "text-primary" : "text-purple")}>
+            {steps[shown]?.label}
+            {allDone ? " (done)" : ""}
+          </span>
+        </p>
+        <div className="mt-2 flex gap-1" aria-hidden>
+          {steps.map((s, i) => (
+            <span key={s.key} className={cn("h-1.5 flex-1 rounded-full", i < idx ? "bg-primary" : i === idx ? "bg-purple" : "bg-edge-2")} />
+          ))}
+        </div>
+        <p className="mt-1.5 text-xs text-fg-muted">{steps.map((s) => s.label).join(" · ")}</p>
+      </div>
+      <Steps steps={steps} idx={idx} className={className} />
+    </>
+  );
+}
+
+function Steps({ steps, idx, className }: { steps: Step[]; idx: number; className?: string }) {
+  return (
+    <ol className={cn("hidden items-start pb-1 sm:flex", className)} aria-label="Application progress">
       {steps.map((s, i) => {
         const done = i < idx;
         const active = i === idx;

@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowUp,
   ArrowDown,
+  Check,
   CircleCheck,
   CircleDot,
   Download,
@@ -26,7 +27,8 @@ import { api, del, post } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { cn } from "../lib/cn";
 import { inr, type Band } from "../lib/format";
-import { dateTime, monthLabel } from "../lib/time";
+import { plainReasons } from "../lib/reasons";
+import { dateTime, monthIn } from "../lib/time";
 import type { AppDetail, Consent, Pillar, Reason } from "../lib/types";
 
 interface PlanStep {
@@ -60,13 +62,6 @@ interface Readiness {
   reasons?: (Reason & { text_hi: string })[];
   plan: { target: number; points_to_target: number; summary: string; hindi_summary: string; steps: PlanStep[]; steps_done: number; forecast: Forecast } | null;
 }
-interface Note {
-  id: number;
-  channel: string;
-  text: string;
-  text_hi: string | null;
-  sim_date: string;
-}
 interface MyData {
   purpose: string;
   data_categories: string[];
@@ -75,6 +70,19 @@ interface MyData {
   retention: string;
   consent_ledger: { ts: string; event: string; actor: string }[];
 }
+
+/** The API's consent wording mapped to translation keys, so the Hindi screen is fully Hindi. */
+const CAT_KEY: Record<string, string> = {
+  "GST returns & e-invoices": "gst",
+  "E-way bills": "eway",
+  "Bank statements (Account Aggregator)": "bank",
+  "Electricity consumption": "power",
+  "ERP stock/orders": "erp",
+  "EPFO headcount": "payroll",
+};
+const NEVER_KEY: Record<string, string> = { Biometrics: "bio", "Personal contacts": "contacts", "Location history": "location" };
+/** First names of the demo owners in Devanagari for the Hindi greeting; other names stay as typed. */
+const NAME_HI: Record<string, string> = { Suresh: "सुरेश", Kavita: "कविता" };
 
 type TabKey = "home" | "plan" | "consent";
 const TABS: { key: TabKey; icon: LucideIcon }[] = [
@@ -115,7 +123,8 @@ function ReadinessRing({ score, band, label }: { score: number | null; band: Ban
 }
 
 function ForecastChart({ forecast }: { forecast: Forecast }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language === "hi" ? "hi" : "en";
   const hist = forecast.history.slice(-9).map((h) => ({ month: h.month, actual: h.actual / 1e5 }));
   const last = hist[hist.length - 1];
   const fc = forecast.forecast.map((f) => ({ month: f.month, forecast: f.yhat / 1e5, range: [f.lo / 1e5, f.hi / 1e5] as [number, number] }));
@@ -123,16 +132,25 @@ function ForecastChart({ forecast }: { forecast: Forecast }) {
   const names: Record<string, string> = { actual: t("home.forecastLegendActual"), forecast: t("home.forecastLegendForecast"), range: t("home.forecastLegendRange") };
   return (
     <>
-      <ChartFrame height={190} label={`${t("home.forecast")}: ${fc.map((f) => `${monthLabel(f.month)} ${t("home.lakh", { value: f.forecast.toFixed(1) })}`).join(", ")}`}>
+      <ChartFrame height={190} label={`${t("home.forecast")}: ${fc.map((f) => `${monthIn(f.month, lang)} ${t("home.lakh", { value: f.forecast.toFixed(1) })}`).join(", ")}`}>
         <ResponsiveContainer>
           <ComposedChart data={rows} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
             <CartesianGrid {...GRID} />
-            <XAxis dataKey="month" {...X_AXIS} interval={2} tickFormatter={(m: string) => monthLabel(m).slice(0, 3)} />
+            <XAxis
+              dataKey="month"
+              {...X_AXIS}
+              interval={2}
+              tickFormatter={(m: string) =>
+                monthIn(m, lang)
+                  .split(" ")[0]!
+                  .slice(0, lang === "hi" ? 6 : 3)
+              }
+            />
             <YAxis {...AXIS} tickFormatter={(v: number) => `${Math.round(v)}L`} width={44} />
             <ReferenceLine y={0} stroke="var(--border-strong)" />
             <Tooltip
               {...TOOLTIP}
-              labelFormatter={(m: string) => monthLabel(m)}
+              labelFormatter={(m: string) => monthIn(m, lang)}
               formatter={(v: number | [number, number], name: string) => [
                 Array.isArray(v) ? `${v[0].toFixed(1)} – ${v[1].toFixed(1)}` : t("home.lakh", { value: v.toFixed(1) }),
                 names[name] ?? name,
@@ -182,7 +200,6 @@ export default function MsmeApp() {
     enabled: !!r.data,
     retry: false,
   });
-  const notes = useQuery({ queryKey: ["msme", fid, "notifications"], queryFn: () => api<Note[]>(`/msme/${fid}/notifications`), enabled: tab === "home" });
   const mine = useQuery({ queryKey: ["msme", fid, "my-data"], queryFn: () => api<MyData>(`/msme/${fid}/my-data`), enabled: tab === "consent" });
   const refresh = () => qc.invalidateQueries({ queryKey: ["msme", fid] });
   const fail = (e: unknown) => {
@@ -239,8 +256,13 @@ export default function MsmeApp() {
   }
 
   const d = r.data;
-  const helping = (d?.reasons ?? []).filter((x) => x.points >= 0).slice(0, 2);
-  const improve = (d?.reasons ?? []).filter((x) => x.points < 0).sort((a, b) => a.points - b.points)[0];
+  // Plain titles an owner would say ("Orders are growing", "One buyer gives most of your sales"), one per theme.
+  const plain = plainReasons(d?.reasons ?? [], lang);
+  const helping = plain.filter((x) => x.helps).slice(0, 2);
+  const improve = plain.find((x) => !x.helps);
+  const first = session!.display_name.split(" ")[0] ?? session!.display_name;
+  const hour = new Date().getHours();
+  const greeting = t(hour < 12 ? "home.greetingMorning" : hour < 17 ? "home.greetingAfternoon" : "home.greetingEvening", { name: hi ? (NAME_HI[first] ?? first) : first });
   const hist = app.data?.score_history ?? [];
   const prev = hist.length >= 2 ? hist[hist.length - 2].score : null;
   const delta = d?.score != null && prev != null ? d.score - prev : null;
@@ -259,34 +281,22 @@ export default function MsmeApp() {
           : d.state === "MEMO_DRAFTED"
             ? t("home.statusWithOfficer")
             : t("home.statusAssessing");
-  const latest = notes.data?.[notes.data.length - 1];
 
   return (
     <div lang={lang} className="msme-body mx-auto max-w-xl pb-24 sm:pb-6">
       <header className="mb-5 flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-13 text-fg-muted">{t("home.greeting", { name: d?.name ?? session!.display_name })}</p>
+          <p className="text-13 text-fg-muted">{greeting}</p>
           <h1 className="text-title font-bold tracking-[-0.5px] text-fg">{t(`titles.${tab}`)}</h1>
         </div>
-        <div role="radiogroup" aria-label={t("lang.label")} className="flex shrink-0 items-center rounded-full border border-edge-2 bg-panel p-1">
-          {(["en", "hi"] as const).map((l) => (
-            <button
-              key={l}
-              type="button"
-              role="radio"
-              aria-checked={lang === l}
-              aria-label={t(`lang.${l}`)}
-              lang={l}
-              onClick={() => setLang(l)}
-              className={cn(
-                "h-9 min-w-11 rounded-full px-3 text-sm font-semibold transition-colors duration-150",
-                lang === l ? "bg-primary-tint text-primary" : "text-fg-muted hover:text-fg",
-              )}
-            >
-              {l === "en" ? "EN" : "हिं"}
-            </button>
-          ))}
-        </div>
+        <button
+          type="button"
+          onClick={() => setLang(hi ? "en" : "hi")}
+          aria-label={t("lang.switchTo")}
+          className="h-10 shrink-0 rounded-full border border-edge-2 bg-panel px-4 text-sm font-semibold text-fg transition-colors duration-150 hover:bg-panel-2"
+        >
+          <span aria-hidden>{t("lang.pill")}</span>
+        </button>
       </header>
 
       <nav aria-label="Sections" className="fixed inset-x-0 bottom-0 z-20 border-t border-edge bg-panel sm:static sm:mb-5 sm:rounded-card sm:border sm:p-1">
@@ -347,7 +357,7 @@ export default function MsmeApp() {
                     {t("home.sinceLastMonth", { points: Math.abs(delta) })}
                   </span>
                 )}
-                {d.data_month && <p className="mt-3 text-xs text-fg-muted">{t("home.dataAsOf", { month: monthLabel(d.data_month) })}</p>}
+                {d.data_month && <p className="mt-3 text-xs text-fg-muted">{t("home.dataAsOf", { month: monthIn(d.data_month, lang) })}</p>}
               </div>
             </Card>
 
@@ -357,9 +367,9 @@ export default function MsmeApp() {
                 {helping.length ? (
                   <ul className="mt-3 space-y-3">
                     {helping.map((x) => (
-                      <li key={x.feature} className="flex items-start gap-3">
+                      <li key={x.key} className="flex items-start gap-3">
                         <CircleCheck className="mt-0.5 h-5 w-5 shrink-0 text-success" aria-hidden />
-                        <span className="text-fg">{hi ? x.text_hi : x.text}</span>
+                        <span className="text-fg">{x.title}</span>
                       </li>
                     ))}
                   </ul>
@@ -370,7 +380,7 @@ export default function MsmeApp() {
                 {improve ? (
                   <p className="mt-3 flex items-start gap-3">
                     <CircleDot className="mt-0.5 h-5 w-5 shrink-0 text-warning" aria-hidden />
-                    <span className="text-fg">{hi ? improve.text_hi : improve.text}</span>
+                    <span className="text-fg">{improve.title}</span>
                   </p>
                 ) : (
                   <p className="mt-2 text-fg-muted">{t("home.nothingToImprove")}</p>
@@ -383,10 +393,10 @@ export default function MsmeApp() {
               <div className="min-w-0">
                 <p className="text-fg">
                   <span className="font-semibold">{t("home.update")}: </span>
-                  {latest ? (hi && latest.text_hi ? latest.text_hi : latest.text) : statusLine}
+                  {statusLine}
                 </p>
                 {d.score != null && !d.review_requested && (
-                  <button type="button" onClick={() => setReviewing(true)} className="mt-2 min-h-11 text-sm font-semibold text-info hover:underline">
+                  <button type="button" onClick={() => setReviewing(true)} className="mt-1 min-h-9 text-13 font-semibold text-info hover:underline">
                     {t("home.reviewCta")}
                   </button>
                 )}
@@ -426,23 +436,36 @@ export default function MsmeApp() {
                 </p>
                 <ul className="mt-2 divide-y divide-edge">
                   {d.plan.steps.map((s) => {
-                    const text = hi ? s.action_hi : s.action;
+                    const months = d.plan!.forecast.negative_months.map((m) => monthIn(m, lang)).join(", ");
+                    const title = t(`plan.steps.${s.key}.title`, { defaultValue: hi ? s.action_hi : s.action });
+                    const help = t(`plan.steps.${s.key}.help`, { months, defaultValue: "" });
                     return (
                       <li key={s.key}>
                         <label className="flex min-h-14 cursor-pointer items-start gap-3 py-3.5">
-                          <input
-                            type="checkbox"
-                            className="mt-0.5 h-6 w-6 shrink-0 accent-[var(--primary)]"
-                            checked={s.done}
-                            onChange={(e) => step.mutate({ key: s.key, done: e.target.checked })}
-                            aria-label={t("plan.markDone", { step: text })}
-                          />
-                          <span className="min-w-0 flex-1">
-                            <span className={cn("block font-semibold", s.done ? "text-fg-muted line-through" : "text-fg")}>{text}</span>
-                            <span className="mt-0.5 block text-13 text-fg-muted">
-                              {hi ? s.phase_hi : s.phase} · {t(`plan.pillar.${s.pillar}`)}
+                          {/* A round tick: the real checkbox sits invisibly on top, so taps, keys and screen readers all use it. */}
+                          <span className="relative mt-0.5 h-6 w-6 shrink-0">
+                            <input
+                              type="checkbox"
+                              className="peer absolute inset-0 z-10 m-0 h-6 w-6 cursor-pointer opacity-0"
+                              checked={s.done}
+                              onChange={(e) => step.mutate({ key: s.key, done: e.target.checked })}
+                              aria-label={t("plan.markDone", { step: title })}
+                            />
+                            <span
+                              className={cn(
+                                "flex h-6 w-6 items-center justify-center rounded-full border-2 transition-colors peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-primary",
+                                s.done ? "border-primary text-primary" : "border-edge-strong text-transparent",
+                              )}
+                              aria-hidden
+                            >
+                              <Check className="h-3.5 w-3.5" strokeWidth={3} />
                             </span>
                           </span>
+                          <span className="min-w-0 flex-1">
+                            <span className={cn("block font-semibold", s.done ? "text-fg-muted line-through" : "text-fg")}>{title}</span>
+                            {help && <span className="mt-0.5 block text-13 text-fg-muted">{help}</span>}
+                          </span>
+                          <span className="shrink-0 pt-0.5 text-xs text-fg-muted">{hi ? s.phase_hi : s.phase}</span>
                         </label>
                       </li>
                     );
@@ -462,7 +485,9 @@ export default function MsmeApp() {
                   ) : (
                     <CircleCheck className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
                   )}
-                  {d.plan.forecast.negative_months.length ? t("home.forecastWarn", { months: d.plan.forecast.negative_months.map(monthLabel).join(", ") }) : t("home.forecastOk")}
+                  {d.plan.forecast.negative_months.length
+                    ? t("home.forecastWarn", { months: d.plan.forecast.negative_months.map((m) => monthIn(m, lang)).join(", ") })
+                    : t("home.forecastOk")}
                 </p>
               </Card>
             </>
@@ -489,23 +514,23 @@ export default function MsmeApp() {
                     <dt className="label-caps">{t("consent.what")}</dt>
                     <dd className="mt-1.5 flex flex-wrap gap-1.5">
                       {mine.data.data_categories.map((c) => (
-                        <Badge key={c}>{c}</Badge>
+                        <Badge key={c}>{CAT_KEY[c] ? t(`consent.cats.${CAT_KEY[c]}`) : c}</Badge>
                       ))}
                     </dd>
                   </div>
                   <div>
                     <dt className="label-caps">{t("consent.why")}</dt>
-                    <dd className="mt-0.5 text-fg">{d.consent.purpose ?? mine.data.purpose}</dd>
+                    <dd className="mt-0.5 text-fg">{t("consent.purpose")}</dd>
                   </div>
                   {consentActive && d.consent.expires_on && (
                     <div>
                       <dt className="label-caps">{t("consent.until")}</dt>
-                      <dd className="tabular mt-0.5 text-fg">{monthLabel(d.consent.expires_on)}</dd>
+                      <dd className="tabular mt-0.5 text-fg">{monthIn(d.consent.expires_on, lang)}</dd>
                     </div>
                   )}
                   <div>
                     <dt className="label-caps">{t("consent.notCollected")}</dt>
-                    <dd className="mt-0.5 text-fg">{mine.data.not_collected.join(" · ")}</dd>
+                    <dd className="mt-0.5 text-fg">{mine.data.not_collected.map((c) => (NEVER_KEY[c] ? t(`consent.never.${NEVER_KEY[c]}`) : c)).join(" · ")}</dd>
                   </div>
                 </dl>
               )}

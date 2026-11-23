@@ -24,7 +24,7 @@ def test_personal_fields_are_ciphertext_at_rest_and_plaintext_through_the_api(cl
     raw = _raw("SELECT display_name FROM users WHERE username = 'sharma'")
     assert raw.startswith(crypto.PREFIX) and "Sharma" not in raw
     r = client.post("/auth/login", json={"username": "sharma", "password": "demo123"})
-    assert r.json()["display_name"] == "Sharma Auto Components"
+    assert r.json()["display_name"] == "Suresh Sharma"
 
 
 def test_consented_data_snapshot_is_encrypted(client):
@@ -68,7 +68,7 @@ def test_key_rotation_keeps_old_values_readable_then_reencrypts(client, monkeypa
     monkeypatch.setattr(crypto, "get_settings", lambda: s)
     with SessionLocal() as db:
         allow_cross_tenant(db)
-        assert db.query(User).filter_by(username="co1").one().display_name == "Credit Officer · MSME Hub"
+        assert db.query(User).filter_by(username="co1").one().display_name == "Priya Malhotra"
     counts = crypto.rotate()
     assert counts["users.display_name"] >= 4
     after = _raw("SELECT display_name FROM users WHERE username = 'co1'")
@@ -76,7 +76,7 @@ def test_key_rotation_keeps_old_values_readable_then_reencrypts(client, monkeypa
     # With only the new key the rotated value still decrypts; the old key is no longer needed.
     only_new = replace(get_settings(), field_keys_raw=new_key)
     monkeypatch.setattr(crypto, "get_settings", lambda: only_new)
-    assert crypto.decrypt(after) == "Credit Officer · MSME Hub"
+    assert crypto.decrypt(after) == "Priya Malhotra"
     with pytest.raises(ValueError, match="cannot be decrypted"):
         crypto.decrypt(before)
     # Put the demo key back for the rest of the suite.

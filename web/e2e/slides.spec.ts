@@ -106,14 +106,14 @@ test("screens", async ({ page }) => {
   await switchTo(page, "MSME Owner");
   await expect(page.getByRole("heading", { name: "My factory" })).toBeVisible();
   await snap(page, "msme-home");
-  await page.getByRole("radio", { name: "हिन्दी" }).click();
+  await page.getByRole("button", { name: "Switch to हिन्दी" }).click();
   await snap(page, "msme-home-hindi");
   await page.getByRole("tab", { name: "योजना" }).click();
   await page.getByRole("checkbox").first().click();
   await snap(page, "msme-plan-hindi");
   await page.getByRole("tab", { name: "सहमति" }).click();
   await snap(page, "msme-consent-hindi");
-  await page.getByRole("radio", { name: "English" }).click();
+  await page.getByRole("button", { name: "English में देखें" }).click();
 
   // Risk head: governance.
   await switchTo(page, "Risk Head");

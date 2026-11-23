@@ -179,7 +179,25 @@ def list_applications(request: Request, response: Response, state: str | None = 
     page = rows[:limit]
     pagination.link_next(request, response, [page[-1].id] if len(rows) > limit else None)
     changes = application_change_fields(db, user, page)
-    return [{**_summary(a, lake.profile(a.factory_id)), **changes[a.id]} for a in page]
+    trends = _score_trends(db, lake, page)
+    return [{**_summary(a, lake.profile(a.factory_id)), **changes[a.id], "score_trend": trends.get(a.id)} for a in page]
+
+
+def _score_trends(db: Session, lake, apps: list[Application]) -> dict[int, dict]:
+    """Score change against last month's score for each scored application (the same comparison as the overview)."""
+    scored = [a for a in apps if a.score is not None]
+    if not scored:
+        return {}
+    vm = visible_month(db)
+    sc = lake.scores(vm)
+    prev = sc[(sc.month == vm - 1) & sc.factory_id.isin({a.factory_id for a in scored})]
+    by_factory = dict(zip(prev.factory_id, prev.score.astype(int), strict=True))
+    out = {}
+    for a in scored:
+        p = by_factory.get(a.factory_id)
+        if p is not None:
+            out[a.id] = {"prev": p, "delta": int(a.score) - p, "since": month_label(vm - 1)}
+    return out
 
 
 @router.post("", status_code=201)

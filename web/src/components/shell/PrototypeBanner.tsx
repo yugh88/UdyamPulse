@@ -32,9 +32,16 @@ export function FirstVisitNotice() {
   const [open, setOpen] = useState(() => !dismissed());
   if (!open) return null;
   return (
-    <div role="note" className="flex items-center justify-center gap-3 border-b border-edge bg-panel-2 px-4 py-2 text-13 text-fg-muted">
+    <div role="note" className="flex items-center justify-center gap-3 border-b border-edge bg-panel-2 px-4 py-1.5 text-13 text-fg-muted sm:py-2">
       <FlaskConical className="h-4 w-4 shrink-0" aria-hidden />
-      <span>
+      {/* One line on a phone: the short label, with the full sentence for screen readers. */}
+      <span className="min-w-0 truncate sm:hidden">
+        <span aria-hidden>{t("banner.chip")}</span>
+        <span className="sr-only">
+          {t("banner.prototype")} {t("banner.roles")}
+        </span>
+      </span>
+      <span className="hidden sm:inline">
         {t("banner.prototype")} · {t("banner.roles")}
       </span>
       <button
@@ -47,7 +54,7 @@ export function FirstVisitNotice() {
           }
           setOpen(false);
         }}
-        className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 font-medium text-fg hover:bg-panel"
+        className="inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 font-medium whitespace-nowrap text-fg hover:bg-panel"
       >
         <X className="h-3.5 w-3.5" aria-hidden />
         {t("banner.dismiss")}

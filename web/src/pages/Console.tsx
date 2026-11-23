@@ -63,8 +63,8 @@ function NewApplication({ open, onOpenChange, initial }: { open: boolean; onOpen
   });
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange} title="New application" description="Find a factory by name or ID. The requested amount comes from its profile.">
-      <Field label="Factory" hint="Type at least two characters, for example “Ceramics” or “UP-F0042”.">
+    <Dialog open={open} onOpenChange={onOpenChange} title="New application" description="Search for a factory by name or ID. The amount it asked for is filled in for you.">
+      <Field label="Factory" hint="Type 2 or more characters, for example “Ceramics” or “UP-F0042”.">
         <Input value={q} onChange={(e) => setQ(e.target.value)} autoFocus placeholder="Search factories" />
       </Field>
       <div className="mt-3 min-h-40">
@@ -102,7 +102,11 @@ function NewApplication({ open, onOpenChange, initial }: { open: boolean; onOpen
   );
 }
 
-/** The next step in plain words, coloured by what it asks: purple = AI work is ready for you, ochre = something got worse. */
+/**
+ * The next step in plain words, coloured by what it asks: purple = AI work is ready for you to review, ochre =
+ * something got worse. Everything else (your manual steps and waiting states) is a neutral grey pill; your own
+ * steps are bold.
+ */
 function NextStep({ a }: { a: AppSummary }) {
   if (a.score_delta != null && a.score_delta < 0 && !a.decision)
     return (
@@ -113,9 +117,27 @@ function NextStep({ a }: { a: AppSummary }) {
   if (!a.next_step) return <span className="text-13 text-fg-muted">–</span>;
   const ai = a.state === "MEMO_DRAFTED" || a.state === "SCORED";
   return (
-    <Badge tone={a.next_step.yours ? (ai ? "purple" : "primary") : "neutral"} className={cn(a.next_step.yours && "font-semibold")}>
+    <Badge tone={a.next_step.yours && ai ? "purple" : "neutral"} className={cn(a.next_step.yours && "font-semibold text-fg")}>
       {a.next_step.text}
     </Badge>
+  );
+}
+
+/** Score, band and how much it moved: since the user last looked when it was re-scored, else since last month. */
+function ScoreCell({ a }: { a: AppSummary }) {
+  if (a.score == null) return <span className="text-sm text-fg-muted">Not scored yet</span>;
+  const rescored = a.changed_since_seen && a.score_delta ? a.score_delta : null;
+  const delta = rescored ?? (a.score_trend?.delta || null);
+  return (
+    <span className="flex flex-wrap items-center gap-2.5">
+      <span className="tabular text-lg font-bold text-fg">{a.score}</span>
+      <BandPill band={a.band} />
+      {delta ? (
+        <span title={rescored ? "Change since you last looked" : `Change since ${a.score_trend?.since}`}>
+          <Delta value={delta} goodWhenUp />
+        </span>
+      ) : null}
+    </span>
   );
 }
 
@@ -241,8 +263,8 @@ export default function Console() {
                   active
                     ? "No application matches these filters."
                     : tab === "action"
-                      ? "You are up to date. New work appears here as soon as it is ready."
-                      : "Applications move here as they progress."
+                      ? "You are all caught up. New work will show here."
+                      : "Applications show here once they start moving forward."
                 }
                 action={
                   active ? (
@@ -255,79 +277,107 @@ export default function Console() {
                 }
               />
             ) : (
-              <table className="w-full text-left">
-                <caption className="sr-only">{TAB_LABEL[tab]}: loan applications</caption>
-                <thead className="bg-panel-2">
-                  <tr>
-                    <th scope="col" className="label-caps py-3.5 pr-4 pl-8 font-semibold">
-                      Factory
-                    </th>
-                    <th scope="col" className="label-caps px-4 py-3.5 font-semibold">
-                      Amount
-                    </th>
-                    <th scope="col" className="label-caps px-4 py-3.5 font-semibold">
-                      Health score
-                    </th>
-                    <th scope="col" className="label-caps hidden px-4 py-3.5 font-semibold lg:table-cell">
-                      Next step
-                    </th>
-                    <th scope="col" className="w-12">
-                      <span className="sr-only">Open</span>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-edge">
+              <>
+                {/* Phones: one card per application, so every field (including the next step) is readable. */}
+                <ul className="divide-y divide-edge md:hidden" aria-label={`${TAB_LABEL[tab]}: loan applications`}>
                   {rows.map((a) => (
-                    <tr
-                      key={a.id}
-                      tabIndex={0}
-                      aria-label={`Open application ${a.id}, ${a.name}${a.changed_since_seen ? ", changed since you last looked" : ""}`}
-                      onClick={() => nav(`/console/${a.id}`)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          nav(`/console/${a.id}`);
-                        }
-                      }}
-                      className="group relative cursor-pointer transition-colors duration-150 hover:bg-panel-2/60 focus-visible:bg-panel-2/60"
-                    >
-                      <td className="relative py-4 pr-4 pl-8">
+                    <li key={a.id} className="relative">
+                      <button
+                        type="button"
+                        onClick={() => nav(`/console/${a.id}`)}
+                        aria-label={`Open application ${a.id}, ${a.name}${a.changed_since_seen ? ", changed since you last looked" : ""}`}
+                        className="flex w-full items-start gap-3 px-5 py-4 text-left transition-colors hover:bg-panel-2/60"
+                      >
                         <ChangedBar show={a.changed_since_seen} className="inset-y-1" />
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-base font-semibold text-fg">{a.name}</span>
-                          <ChangeBadge kind={a.changed_since_seen ? a.change_kind : null} />
-                          {a.review_requested && (
-                            <Badge tone="warning" icon={<Flag className="h-3 w-3" aria-hidden />}>
-                              Review requested
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="mt-0.5 text-sm text-fg-muted">
-                          {a.cluster} · {a.sector}
-                        </p>
-                      </td>
-                      <td className="tabular px-4 py-4 text-base font-semibold text-fg">{inr(a.requested_amount)}</td>
-                      <td className="px-4 py-4">
-                        {a.score == null ? (
-                          <span className="text-sm text-fg-muted">Not scored yet</span>
-                        ) : (
-                          <span className="flex flex-wrap items-center gap-2.5">
-                            <span className="tabular text-lg font-bold text-fg">{a.score}</span>
-                            <BandPill band={a.band} />
-                            {a.changed_since_seen && a.score_delta ? <Delta value={a.score_delta} goodWhenUp /> : null}
+                        <span className="min-w-0 flex-1 space-y-2">
+                          <span className="flex flex-wrap items-center gap-2">
+                            <span className="text-base font-semibold text-fg">{a.name}</span>
+                            <ChangeBadge kind={a.changed_since_seen ? a.change_kind : null} />
                           </span>
-                        )}
-                      </td>
-                      <td className="hidden px-4 py-4 lg:table-cell">
-                        <NextStep a={a} />
-                      </td>
-                      <td className="pr-6">
-                        <ChevronRight className="h-5 w-5 text-fg-subtle transition-transform duration-150 group-hover:translate-x-0.5" aria-hidden />
-                      </td>
-                    </tr>
+                          <span className="block text-sm text-fg-muted">
+                            {a.cluster} · {a.sector} · <span className="tabular font-semibold text-fg">{inr(a.requested_amount)}</span>
+                          </span>
+                          <span className="block">
+                            <ScoreCell a={a} />
+                          </span>
+                          <span className="block">
+                            <NextStep a={a} />
+                          </span>
+                        </span>
+                        <ChevronRight className="mt-1 h-5 w-5 shrink-0 text-fg-subtle" aria-hidden />
+                      </button>
+                    </li>
                   ))}
-                </tbody>
-              </table>
+                </ul>
+                <table className="hidden w-full text-left md:table">
+                  <caption className="sr-only">{TAB_LABEL[tab]}: loan applications</caption>
+                  <thead className="bg-panel-2">
+                    <tr>
+                      <th scope="col" className="label-caps py-3.5 pr-4 pl-8 font-semibold">
+                        Factory
+                      </th>
+                      <th scope="col" className="label-caps px-4 py-3.5 font-semibold">
+                        Amount
+                      </th>
+                      <th scope="col" className="label-caps px-4 py-3.5 font-semibold">
+                        Health score
+                      </th>
+                      <th scope="col" className="label-caps hidden px-4 py-3.5 font-semibold lg:table-cell">
+                        Next step
+                      </th>
+                      <th scope="col" className="w-12">
+                        <span className="sr-only">Open</span>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-edge">
+                    {rows.map((a) => (
+                      <tr
+                        key={a.id}
+                        tabIndex={0}
+                        aria-label={`Open application ${a.id}, ${a.name}${a.changed_since_seen ? ", changed since you last looked" : ""}`}
+                        onClick={() => nav(`/console/${a.id}`)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            nav(`/console/${a.id}`);
+                          }
+                        }}
+                        className="group relative cursor-pointer transition-colors duration-150 hover:bg-panel-2/60 focus-visible:bg-panel-2/60"
+                      >
+                        <td className="relative py-4 pr-4 pl-8">
+                          <ChangedBar show={a.changed_since_seen} className="inset-y-1" />
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-base font-semibold text-fg">{a.name}</span>
+                            <ChangeBadge kind={a.changed_since_seen ? a.change_kind : null} />
+                            {a.review_requested && (
+                              <Badge tone="warning" icon={<Flag className="h-3 w-3" aria-hidden />}>
+                                Review requested
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="mt-0.5 text-sm text-fg-muted">
+                            {a.cluster} · {a.sector}
+                          </p>
+                          <div className="mt-2 lg:hidden">
+                            <NextStep a={a} />
+                          </div>
+                        </td>
+                        <td className="tabular px-4 py-4 text-base font-semibold text-fg">{inr(a.requested_amount)}</td>
+                        <td className="px-4 py-4">
+                          <ScoreCell a={a} />
+                        </td>
+                        <td className="hidden px-4 py-4 lg:table-cell">
+                          <NextStep a={a} />
+                        </td>
+                        <td className="pr-6">
+                          <ChevronRight className="h-5 w-5 text-fg-subtle transition-transform duration-150 group-hover:translate-x-0.5" aria-hidden />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </>
             )}
           </Card>
 
@@ -345,7 +395,7 @@ export default function Console() {
         </TabsContent>
       </Tabs>
 
-      <Sheet open={filtering} onOpenChange={setFiltering} title="Filter applications" description="Narrow the list. Counts on the tabs follow the filters.">
+      <Sheet open={filtering} onOpenChange={setFiltering} title="Filter applications" description="Narrow the list. The tab counts change with your filters.">
         <div className="space-y-4">
           <Field label="Factory, ID or application number">
             <Input value={filters.q} onChange={(e) => setFilters({ ...filters, q: e.target.value })} placeholder="e.g. Sharma or UP-F0001" />

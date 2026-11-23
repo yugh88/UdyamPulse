@@ -27,6 +27,7 @@ import { COMPLIANCE } from "../features/governance/compliance";
 import { DataModelsTab } from "../features/governance/DataModels";
 import { ProvenanceBadge } from "../components/provenance";
 import { api, post } from "../lib/api";
+import { useAuth } from "../lib/auth";
 import { PILLAR_COLORS, pct } from "../lib/format";
 import { dateTime } from "../lib/time";
 
@@ -205,7 +206,7 @@ function ModelTab() {
       </Card>
 
       <div className="grid gap-5 xl:grid-cols-2">
-        <Card title="Feature importance" description="Mean absolute SHAP on the test set, top 12">
+        <Card title="Feature importance" description="Which inputs move the score most (average SHAP value on the test set), top 12">
           {top.length ? (
             <ChartFrame
               height={340}
@@ -235,7 +236,7 @@ function ModelTab() {
 
         <Card
           title="Drift"
-          description="Population stability index, training months against test months"
+          description="How much the data changed since training (population stability index, PSI)"
           actions={m.drift && <PassFail ok={worstPsi <= PSI_WARN} label={worstPsi <= PSI_WARN ? `Stable · worst PSI ${worstPsi.toFixed(2)}` : `PSI above ${PSI_WARN}`} />}
         >
           {m.drift ? (
@@ -263,7 +264,7 @@ function ModelTab() {
       {m.fairness && (
         <Card
           title="Fairness"
-          description={`Pass when both ratios are at least ${FAIR_THRESHOLD} of the best group (four-fifths rule). No protected attributes are used; sector and size are monitored only.`}
+          description={`Pass when each group is at least ${FAIR_THRESHOLD} of the best group (the four-fifths rule). No protected traits are used; sector and size are only monitored.`}
         >
           <div className="space-y-6">
             <FairnessTable title="By sector" rows={m.fairness.sector} />
@@ -273,7 +274,7 @@ function ModelTab() {
       )}
 
       {m.ews_backtest && (
-        <Card title="Early-warning back-test" description="Alerts against accounts that later reached SMA-2">
+        <Card title="Early-warning back-test" description="How early our alerts came before accounts reached SMA-2 (overdue 61 to 90 days)">
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <Stat label="Median lead time" value={`${Math.round(m.ews_backtest.median_lead_days)} days`} sub="first alert before SMA-2" />
             <Stat
@@ -375,7 +376,10 @@ function AuditTab() {
   if (q.isLoading) return <Skeleton className="h-96" />;
   if (q.isError) return <ErrorState error={q.error} onRetry={() => q.refetch()} />;
   return (
-    <Card title="Audit trail" description="Every API action and agent tool call, newest first. Inputs are PII-masked; outputs are stored as a SHA-256 hash.">
+    <Card
+      title="Audit trail"
+      description="Every action and every AI-agent tool call, newest first. Personal details are masked, and outputs are stored only as a fingerprint (SHA-256 hash)."
+    >
       <ChainCheck />
       <div className="mb-4 flex flex-wrap items-end gap-3">
         <label className="text-xs font-medium text-fg-muted">
@@ -519,7 +523,7 @@ function UsageTab() {
         accessorKey: "fallback",
         header: "Fallback",
         meta: { label: "Fallback", csv: (c) => (c.fallback ? "yes" : "no") },
-        cell: ({ getValue }) => (getValue<boolean>() ? <Badge tone="warning">Template fallback</Badge> : <span className="text-fg-muted">–</span>),
+        cell: ({ getValue }) => (getValue<boolean>() ? <Badge tone="warning">Standard text used</Badge> : <span className="text-fg-muted">–</span>),
       },
       {
         accessorKey: "application_id",
@@ -535,10 +539,10 @@ function UsageTab() {
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="Writer calls" value={s?.calls.toLocaleString("en-IN") ?? "–"} sub={s ? `provider in use: ${s.provider_in_use}` : undefined} loading={q.isLoading} />
         <Stat label="Latency, p50 / p95" value={s?.p50_latency_ms != null ? `${s.p50_latency_ms.toFixed(1)} / ${s.p95_latency_ms?.toFixed(1)} ms` : "–"} loading={q.isLoading} />
-        <Stat label="Fallbacks to template" value={s?.fallbacks ?? "–"} sub="provider failed or the number guard rejected the text" loading={q.isLoading} />
+        <Stat label="Fallbacks to template" value={s?.fallbacks ?? "–"} sub="the AI service failed or the number check rejected the text" loading={q.isLoading} />
         <Stat label="Tokens (estimate)" value={s?.tokens_est.toLocaleString("en-IN") ?? "–"} sub="characters ÷ 4, not billed tokens" loading={q.isLoading} />
       </div>
-      <Card title="AI usage log" description="Each writer call by an agent. The LLM writes prose only; it never produces numbers.">
+      <Card title="AI usage log" description="Each time an agent asked the AI to write text. The AI writes words only and never makes up numbers.">
         <DataTable
           caption="AI usage log"
           data={q.data?.calls}
@@ -593,18 +597,28 @@ function ComplianceTab() {
 }
 
 const TABS = ["model", "data", "audit", "consent", "responsible"] as const;
+/** Audit trail, consent ledger and the AI usage log are the risk function's evidence (separation of duties). */
+const RISK_ONLY: readonly string[] = ["audit", "consent"];
 
 export default function Governance() {
-  const [tab, setTab] = useUrlTab(TABS, "model");
+  const { session } = useAuth();
+  const risk = session?.role === "risk";
+  const allowed = TABS.filter((t) => risk || !RISK_ONLY.includes(t));
+  const [tab, setTab] = useUrlTab(allowed, "model");
   return (
     <div className="space-y-6">
       <PageHeader title="Governance" description="Can we trust the model and prove every decision? Model card, data provenance, audit trail, consent and responsible AI." />
+      {!risk && (
+        <p role="note" className="rounded-control bg-info-tint px-3 py-2 text-13 text-info">
+          The audit trail, consent ledger and AI usage log are shown to the Risk Head only. Switch role from your name in the menu to see them.
+        </p>
+      )}
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList aria-label="Governance sections">
           <TabsTrigger value="model">Model card</TabsTrigger>
           <TabsTrigger value="data">Data &amp; models</TabsTrigger>
-          <TabsTrigger value="audit">Audit trail</TabsTrigger>
-          <TabsTrigger value="consent">Consent ledger</TabsTrigger>
+          {risk && <TabsTrigger value="audit">Audit trail</TabsTrigger>}
+          {risk && <TabsTrigger value="consent">Consent ledger</TabsTrigger>}
           <TabsTrigger value="responsible">Responsible AI</TabsTrigger>
         </TabsList>
         <TabsContent value="model">
@@ -613,19 +627,25 @@ export default function Governance() {
         <TabsContent value="data">
           <DataModelsTab />
         </TabsContent>
-        <TabsContent value="audit">
-          <AuditTab />
-        </TabsContent>
-        <TabsContent value="consent">
-          <LedgerTab />
-        </TabsContent>
+        {risk && (
+          <TabsContent value="audit">
+            <AuditTab />
+          </TabsContent>
+        )}
+        {risk && (
+          <TabsContent value="consent">
+            <LedgerTab />
+          </TabsContent>
+        )}
         <TabsContent value="responsible" className="space-y-8">
-          <section aria-labelledby="gov-ai-usage" className="space-y-4">
-            <h2 id="gov-ai-usage" className="text-base font-[650] text-fg">
-              AI usage
-            </h2>
-            <UsageTab />
-          </section>
+          {risk && (
+            <section aria-labelledby="gov-ai-usage" className="space-y-4">
+              <h2 id="gov-ai-usage" className="text-base font-[650] text-fg">
+                AI usage
+              </h2>
+              <UsageTab />
+            </section>
+          )}
           <section aria-labelledby="gov-compliance" className="space-y-4">
             <h2 id="gov-compliance" className="text-base font-[650] text-fg">
               Regulatory mapping

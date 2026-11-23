@@ -22,6 +22,7 @@ export interface AppSummary {
   /** Change tracking (from the API): set when the item changed after the user last looked at it. */
   changed_since_seen?: boolean;
   change_kind?: ChangeKind;
+  score_trend?: { prev: number; delta: number; since: string } | null;
   prev_score?: number | null;
   score_delta?: number | null;
   next_step?: { text: string; owner_role: string | null; yours: boolean } | null;
@@ -46,6 +47,8 @@ export interface ChangeEvent {
   application_id?: number | null;
   event_type: string;
   summary: string;
+  /** One short line of facts under the event (from the API), e.g. "Limit ₹40.0 L · MCLR + 2.25% · 3 policy citations". */
+  detail?: string | null;
   before: Record<string, unknown> | null;
   after: Record<string, unknown> | null;
   actor: string | null;
