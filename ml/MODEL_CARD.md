@@ -1,6 +1,6 @@
 # Model card: UdyamPulse PD model (`udyampulse-pd`)
 
-_Generated 2026-11-17 19:55 UTC by `ml/model_card.py` from the reports in `ml/reports/`._
+_Generated 2026-11-23 12:36 UTC by `ml/model_card.py` from the reports in `ml/reports/`._
 
 ## Intended use
 Estimate the probability that an MSME manufacturer defaults (90+ DPD) within 12 months from consented operating data, mapped to a Factory Health Score (300–900) with plain-language reasons. It is a **recommendation to the regulated lender's credit officer**; it never decides or executes credit.
@@ -122,6 +122,11 @@ Same pipeline (features → LightGBM → isotonic calibration → SHAP → drift
 SBA: Charged off within 60 months of approval; every disbursed loan approved at least 60 months before the data date (active and paid-off loans count as 0). Loan term was excluded after our leakage audit showed it is revised for loans that go bad. Approval-time application fields alone predict default only modestly, which is the case for operating and cash-flow signals. Details: `ml/reports/real_sba_benchmark.md`.
 
 Polish: The dataset has no company identifier, so the same firm can appear in a training year and a test year; that overlap can flatter the AUC. Details: `ml/reports/real_polish_benchmark.md`.
+
+## 4. Leakage story
+To validate the method on real data, we tested the SBA 7(a) dataset. Using the loan-term field, the model scored an AUC of 0.915. We found that SBA revises the loan term after a loan defaults: 86.7% of charged-off loans have an unusual term, versus 16.4% of repaid ones. Removing the leaking field dropped the AUC to the honest 0.687 (95% CI 0.658–0.713). We use a 60-month label window so every loan has time to go bad.
+
+On the synthetic panel, we ran a shuffled-label check (8 runs). The mean AUC was 0.4659 (runs 0.3642–0.5462), scattering around the coin-toss 0.5, confirming no structural leakage in the features. Details in `ml/reports/full/metrics.json` and `ml/reports/real_sba_benchmark.md`.
 
 ## Limitations
 - The product model is trained on synthetic data. Coefficients, thresholds and the production-signal uplift must be re-learned and re-proven on a lender's consented data, followed by independent model validation.
