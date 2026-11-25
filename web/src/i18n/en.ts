@@ -4,7 +4,7 @@ const en = {
     prototype: "This is a prototype with sample data. It is not a lending decision.",
     chip: "Prototype · synthetic data",
     dismiss: "Got it",
-    roles: "No sign-in needed. To change role, use the menu at your name.",
+    roles: "No sign-in needed. To change role, use the Switch role menu or the menu at your name.",
   },
   tabs: { home: "Home", plan: "Plan", consent: "Consent" },
   titles: { home: "My factory", plan: "My plan", consent: "My consent" },

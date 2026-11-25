@@ -85,6 +85,19 @@ test("role switcher changes persona", async ({ page }) => {
   await expect(page.getByRole("button", { name: /Account menu/ })).toContainText("Risk Head");
 });
 
+for (const width of [1440, 393]) {
+  test(`the MSME owner screen has a labelled way back to the bank roles (${width}px)`, async ({ page }) => {
+    await enterAs(page, "sharma");
+    await page.setViewportSize({ width, height: 860 });
+    const back = page.getByRole("button", { name: /^Switch role/ });
+    await expect(back).toBeVisible();
+    await expect(back).toContainText("Switch role");
+    await back.click();
+    await page.getByRole("menuitem", { name: /Relationship Manager/ }).click();
+    await expect(page).toHaveURL(/\/console$/);
+  });
+}
+
 test("a reload keeps the session through the refresh cookie, without storing a token", async ({ page }) => {
   await enterAs(page, "rm1");
   expect(await page.evaluate(() => Object.keys(localStorage).filter((k) => k.includes("token")))).toEqual([]);
