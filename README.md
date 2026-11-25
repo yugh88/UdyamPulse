@@ -198,7 +198,7 @@ independent model validation → 90-day shadow run → live with read-only LOS i
 
 ## 12. Testing, validation and results
 
-**Tests:** 165 backend (+7 PostgreSQL-only, `make test-full`) · 35 web unit · 25 browser end-to-end in both
+**Tests:** 165 backend (+7 PostgreSQL-only, `make test-full`) · 35 web unit · 26 browser end-to-end in both
 themes with axe accessibility checks. CI runs all of them plus gitleaks, pip-audit, bandit, npm audit and Trivy.
 
 | Result | Data | Value (95% CI) |

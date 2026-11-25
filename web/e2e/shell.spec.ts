@@ -85,6 +85,13 @@ test("role switcher changes persona", async ({ page }) => {
   await expect(page.getByRole("button", { name: /Account menu/ })).toContainText("Risk Head");
 });
 
+test("an owner who has not shared data yet is not told they stopped sharing", async ({ page, request }) => {
+  expect((await request.post("/api/v1/demo/reset")).ok()).toBeTruthy();
+  await enterAs(page, "sharma");
+  await expect(page.getByRole("status").filter({ hasText: "You haven’t shared your data with the bank yet" })).toBeVisible();
+  await expect(page.getByText("You stopped sharing data")).toHaveCount(0);
+});
+
 for (const width of [1440, 393]) {
   test(`the MSME owner screen has a labelled way back to the bank roles (${width}px)`, async ({ page }) => {
     await enterAs(page, "sharma");
