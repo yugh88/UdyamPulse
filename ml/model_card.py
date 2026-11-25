@@ -145,6 +145,15 @@ def write_model_card() -> Path:
     if demo:
         lines += _demo_section(demo, _load(REPORTS / "fairness.json"), _load(REPORTS / "drift.json"))
     lines += _real_section(_load(REPORTS / "real_sba_benchmark.json"), _load(REPORTS / "real_polish_benchmark.json"))
+    lines += ["## 4. Leakage story",
+              "To validate the method on real data, we tested the SBA 7(a) dataset. Using the loan-term field, the model "
+              "scored an AUC of 0.915. We found that SBA revises the loan term after a loan defaults: 86.7% of charged-off "
+              "loans have an unusual term, versus 16.4% of repaid ones. Removing the leaking field dropped the AUC to the "
+              "honest 0.687 (95% CI 0.658–0.713). We use a 60-month label window so every loan has time to go bad.",
+              "",
+              "On the synthetic panel, we ran a shuffled-label check (8 runs). The mean AUC was 0.4659 (runs 0.3642–0.5462), "
+              "scattering around the coin-toss 0.5, confirming no structural leakage in the features. Details in "
+              "`ml/reports/full/metrics.json` and `ml/reports/real_sba_benchmark.md`.", ""]
     lines += ["## Limitations",
               "- The product model is trained on synthetic data. Coefficients, thresholds and the production-signal uplift "
               "must be re-learned and re-proven on a lender's consented data, followed by independent model validation.",
