@@ -8,6 +8,7 @@ import {
   CircleDot,
   Download,
   Home,
+  Info,
   ListChecks,
   MessageCircle,
   ShieldCheck,
@@ -269,6 +270,9 @@ export default function MsmeApp() {
   const limit = app.data?.recommended_limit ?? null;
   const consentActive = !!d?.consent.active;
   const consentLabel = consentActive ? t("consent.active") : d?.consent.status === "REVOKED" ? t("consent.revoked") : t("consent.none");
+  // No active consent: never shared yet (no status), stopped by the owner (REVOKED) or ran out (EXPIRED).
+  const neverShared = !!d?.data_stale && !d.consent.status;
+  const noDataKey = neverShared ? "notShared" : d?.consent.status === "EXPIRED" ? "expired" : "stale";
   const readyText = !d?.band ? t("home.notScored") : d.band === "APPROVE" ? t("home.ready") : d.band === "WATCH" ? t("home.almost") : t("home.notReady");
   const statusLine = !d
     ? ""
@@ -334,9 +338,9 @@ export default function MsmeApp() {
         ) : tab === "home" ? (
           <>
             {d.data_stale && (
-              <p role="status" className="flex items-start gap-2 rounded-control bg-warning-tint px-4 py-3 text-warning">
-                <TriangleAlert className="mt-1 h-4 w-4 shrink-0" aria-hidden />
-                {t("home.stale")}
+              <p role="status" className={cn("flex items-start gap-2 rounded-control px-4 py-3", neverShared ? "bg-info-tint text-fg" : "bg-warning-tint text-warning")}>
+                {neverShared ? <Info className="mt-1 h-4 w-4 shrink-0" aria-hidden /> : <TriangleAlert className="mt-1 h-4 w-4 shrink-0" aria-hidden />}
+                {t(`home.${noDataKey}`)}
               </p>
             )}
             <Card>
@@ -407,7 +411,7 @@ export default function MsmeApp() {
         ) : tab === "plan" ? (
           !d.plan ? (
             <Card>
-              <EmptyState title={t("plan.title")} description={t("plan.empty")} />
+              <EmptyState title={t("plan.title")} description={t(noDataKey === "stale" ? "plan.empty" : `plan.${noDataKey}`)} />
             </Card>
           ) : (
             <>

@@ -32,7 +32,7 @@ source, not just in the text:
 | #52 | 4–6 engineers | Labelled *our planning estimate*. |
 | #53 | Memo in seconds, not hours | Memo time measured and stored: **16 ms** with the template writer (`ml/reports/perf.json`). "Hours" for a manual draft stays an *estimate*, not measured. |
 | #54 | EWS threshold | The README now shows both levels the product raises: High (≥ 3 points) recall 0.866, lead 90 days, precision 0.314; Medium and High (≥ 2 points) recall 0.938, lead 91 days, precision 0.206 (the `ews_backtest` files). |
-| #55 | Test counts | `docs/EVALUATION_MAP.md` and `docs/DEPLOYMENT.md` aligned with CI: 165 backend (+7 PostgreSQL-only), 35 web unit, 23 browser (25 after the Switch role tests in #65). |
+| #55 | Test counts | `docs/EVALUATION_MAP.md` and `docs/DEPLOYMENT.md` aligned with CI: 165 backend (+7 PostgreSQL-only), 35 web unit, 23 browser (26 after the tests added in #65 and #66). |
 | #56 | ~5 min on four processes | Replaced by the measured rate: about 2 minutes in one process for 10 lakh accounts (*estimate*). Four processes measured slower at this size. |
 | #57 | 310 MB vs 325 MB | Fixed in PR #59 (325 MB everywhere). |
 | (table) | SMA "30–90 days" | README now says 31–90 days, matching `policy/credit_policy.md`. |

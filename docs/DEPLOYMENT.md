@@ -26,8 +26,8 @@
 | Measure | Result |
 |---|---|
 | Container start to `/healthz` ready | **7 s** (the seed takes about 4 s) |
-| Memory after the full demo story and the browser suite (20 tests at the time; 25 now) | **325 MB** of 512 MB |
-| Browser suite (`E2E_BASE_URL=http://localhost:17860 npx playwright test`) | **20 / 20 passed** at the time of this run (the suite now has 25), both themes, axe checks included |
+| Memory after the full demo story and the browser suite (20 tests at the time; 26 now) | **325 MB** of 512 MB |
+| Browser suite (`E2E_BASE_URL=http://localhost:17860 npx playwright test`) | **20 / 20 passed** at the time of this run (the suite now has 26), both themes, axe checks included |
 | Image size | 1.34 GB |
 
 ### Hosts and their free-tier limits (checked 18 Nov 2026)
