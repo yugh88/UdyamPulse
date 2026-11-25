@@ -19,7 +19,6 @@ import json
 import os
 import platform
 import statistics
-import subprocess
 import tempfile
 import time
 from datetime import UTC, datetime
@@ -38,21 +37,26 @@ RUNS_BATCH, RUNS_PORTFOLIO, RUNS_MEMO, RUNS_RESET = 5, 15, 5, 5
 
 
 def _machine() -> dict:
-    cpu = platform.processor() or platform.machine()
-    try:
-        cpu = subprocess.run(["sysctl", "-n", "machdep.cpu.brand_string"], capture_output=True, text=True,
-                             check=True).stdout.strip() or cpu
-    except (OSError, subprocess.CalledProcessError):
-        pass
-    return {"cpu": cpu, "cores": os.cpu_count(), "os": f"{platform.system()} {platform.release()}",
-            "python": platform.python_version()}
+    return {"cpu": os.environ.get("UP_BENCH_CPU") or platform.processor() or platform.machine(), "cores": os.cpu_count(),
+            "os": f"{platform.system()} {platform.release()}", "python": platform.python_version()}
 
 
 def _commit() -> str | None:
+    """The checked-out commit, read from .git without running a process."""
+    git = Path(__file__).resolve().parent.parent / ".git"
     try:
-        return subprocess.run(["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True,
-                              check=True).stdout.strip()
-    except (OSError, subprocess.CalledProcessError):
+        if git.is_file():  # a worktree: .git points at the real git dir
+            git = Path(git.read_text().split(":", 1)[1].strip())
+        head = (git / "HEAD").read_text().strip()
+        if head.startswith("ref: "):
+            ref = head[5:]
+            common = Path((git / "commondir").read_text().strip()) if (git / "commondir").exists() else None
+            for base in (git, (git / common) if common else None):
+                if base and (base / ref).exists():
+                    return (base / ref).read_text().strip()[:7]
+            return None
+        return head[:7]
+    except OSError:
         return None
 
 
@@ -67,8 +71,16 @@ def bench_batch(workers: int = 1, runs: int = RUNS_BATCH) -> dict:
             "wall_seconds_median": statistics.median(r["wall_seconds"] for r in out)}
 
 
+def _ok(response, expected: int = 200):
+    if response.status_code != expected:
+        raise RuntimeError(f"{response.request.method} {response.request.url} -> {response.status_code}: {response.text}")
+    return response
+
+
 def _login(client, username: str) -> dict:
-    r = client.post("/auth/login", json={"username": username, "password": "demo123"})
+    from api.seed import DEMO_PASSWORD
+
+    r = client.post("/auth/login", json={"username": username, "password": DEMO_PASSWORD})
     r.raise_for_status()
     return {"Authorization": f"Bearer {r.json()['access_token']}"}
 
@@ -85,7 +97,7 @@ def bench_api() -> dict:
         portfolio_ms = []
         for _ in range(RUNS_PORTFOLIO):
             t0 = time.perf_counter()
-            assert c.get("/portfolio", headers=risk).status_code == 200
+            _ok(c.get("/portfolio", headers=risk))
             portfolio_ms.append((time.perf_counter() - t0) * 1000)
         body = c.get("/portfolio", headers=risk).json()
         accounts = body.get("kpis", {}).get("accounts") if isinstance(body.get("kpis"), dict) else None
@@ -95,16 +107,15 @@ def bench_api() -> dict:
             seed.main()
             rm = _login(c, "rm1")
             app_id = next(a["id"] for a in c.get("/applications", headers=rm).json() if a["factory_id"] == "UP-F0001")
-            assert c.post(f"/applications/{app_id}/consent", headers=rm).status_code == 200
-            assert c.post(f"/applications/{app_id}/score", headers=rm).status_code == 200
-            memo = c.post(f"/applications/{app_id}/memo", headers=rm)
-            assert memo.status_code == 200, memo.text
+            _ok(c.post(f"/applications/{app_id}/consent", headers=rm))
+            _ok(c.post(f"/applications/{app_id}/score", headers=rm))
+            memo = _ok(c.post(f"/applications/{app_id}/memo", headers=rm))
             memo_ms.append(memo.json()["generated_in_ms"])
 
         reset_ms = []
         for _ in range(RUNS_RESET):
             t0 = time.perf_counter()
-            assert c.post("/demo/reset").status_code == 200
+            _ok(c.post("/demo/reset"))
             reset_ms.append((time.perf_counter() - t0) * 1000)
 
     r1 = lambda xs: [round(x, 1) for x in xs]  # noqa: E731
