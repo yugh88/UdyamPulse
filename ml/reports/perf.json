@@ -1,0 +1,79 @@
+{
+  "generated_at": "2026-11-25T13:32:54+00:00",
+  "commit": "2394541",
+  "machine": {
+    "cpu": "Apple M3 Pro",
+    "cores": 11,
+    "os": "Darwin 25.6.0",
+    "python": "3.11.13"
+  },
+  "dataset": "demo",
+  "provenance": "Synthetic data (demo panel)",
+  "batch": {
+    "month": 24,
+    "accounts": 478,
+    "workers": 1,
+    "runs": 5,
+    "accounts_per_second_runs": [
+      2265.5,
+      6094.1,
+      3848.9,
+      6003.6,
+      6211.7
+    ],
+    "accounts_per_second_median": 6003.6,
+    "wall_seconds_median": 0.08
+  },
+  "api": {
+    "portfolio_read": {
+      "endpoint": "GET /v1/portfolio",
+      "role": "risk1",
+      "cache": "off",
+      "runs": 15,
+      "accounts_in_scope": 140,
+      "ms_runs": [
+        38.4,
+        20.5,
+        20.5,
+        20.3,
+        20.3,
+        75.6,
+        20.6,
+        19.9,
+        19.7,
+        19.5,
+        19.4,
+        19.4,
+        19.3,
+        19.7,
+        19.7
+      ],
+      "ms_median": 19.9
+    },
+    "credit_memo": {
+      "application": "UP-F0001 (hero)",
+      "llm_provider": "template",
+      "runs": 5,
+      "generated_in_ms_runs": [
+        124,
+        16,
+        16,
+        16,
+        17
+      ],
+      "generated_in_ms_median": 16
+    },
+    "demo_reset": {
+      "endpoint": "POST /v1/demo/reset",
+      "runs": 5,
+      "ms_runs": [
+        1830.8,
+        1832.1,
+        1701.3,
+        1621.9,
+        1707.0
+      ],
+      "ms_median": 1707.0
+    }
+  }
+}

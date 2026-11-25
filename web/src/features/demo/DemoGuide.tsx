@@ -21,7 +21,7 @@ export const STEPS: Step[] = [
     persona: { username: "rm1", role: "rm" },
     where: "hero",
     title: "Consent and data pull",
-    doThis: "Click “Request consent and pull data”. Watch “What changed” gain a consent entry.",
+    doThis: "First open Sharma Auto Components with the button below, then click “Request consent and pull data”. Watch “What changed” gain a consent entry.",
     say: "Consent comes through the Account Aggregator with a stated purpose. GST, e-way bills, bank, power and EPFO data are pulled and cross-checked.",
   },
   {

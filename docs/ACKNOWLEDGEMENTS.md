@@ -20,6 +20,7 @@ submission, and quote the exact edition.
 | About ₹30 lakh crore MSME credit gap | Small Industries Development Bank of India (SIDBI) |
 | MSMEs are 35.4% of manufacturing | Union Budget 2026-27 |
 | Account Aggregator adoption | Sahamati (AA ecosystem statistics) |
+| Informal lenders charge MSMEs about 24% or more | Omidyar Network & BCG, *Credit Disrupted: Digital MSME Lending in India* (2018), as reported by Business Standard (6 May 2019); other studies report higher rates |
 
 ## Datasets
 

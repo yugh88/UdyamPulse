@@ -61,7 +61,8 @@ def rule_inputs(silver: pd.DataFrame) -> pd.DataFrame:
     out["top_buyer_share"] = df["top_buyer_share"]
     out["dtp_increase"] = df["avg_days_to_pay"] - base("avg_days_to_pay", 3)
     out["gst_bank_mismatch"] = df["gst_bank_mismatch"]
-    late = (df["gst_filing_delay_days"] > 0).astype(int)
+    # A month with no filing data (a source outage) is not counted as late; nullable columns from DuckDB carry NA.
+    late = (df["gst_filing_delay_days"].fillna(0) > 0).astype(int)
     out["consecutive_late"] = late.groupby([df["factory_id"], (late == 0).cumsum()]).cumsum()
     for c in DELTA_COLS:
         out[f"d_{c}"] = g[c].pct_change(fill_method=None)

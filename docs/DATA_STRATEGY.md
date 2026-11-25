@@ -31,12 +31,12 @@ in every panel size.
 | Benchmark | Test design | Test AUC (95% CI) | Notes |
 |---|---|---|---|
 | SBA 7(a), manufacturing | Train FY2010–16, validate FY2017, test FY2018–21; label = charged off within 60 months | **0.687 (0.658–0.713)**; unseen states 0.681 | Approval-time application fields only |
-| UCI Polish bankruptcies | Train forecasting years 1–3, test years 4–5 | **0.958 (0.952–0.964)** | Same firm can appear in train and test years |
+| UCI Polish bankruptcies | Train forecasting years 1–3, test years 4–5 | **0.954 (0.948–0.960)** | Same firm can appear in train and test years |
 
 What the SBA benchmark taught us:
 
 - **A leak in public data.** `TermInMonths` is revised for loans that go bad: 87% of charged-off loans carry a
-  non-standard term, against 16% of paid-in-full loans. With it, the AUC was 0.915; without it, 0.687. We
+  non-standard term, against 16% of paid-in-full loans. With it, the AUC is 0.914; without it, 0.687. We
   report the second number, and the evidence is recomputed on every run.
 - **A selection bias in the obvious design.** Comparing only paid-in-full and charged-off loans flatters recent
   cohorts, whose resolved loans are early payoffs and early charge-offs. Its AUC falls cohort by cohort, so

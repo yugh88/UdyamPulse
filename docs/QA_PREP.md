@@ -34,7 +34,7 @@ statistics and validate the method on real public defaults.
 
 **6. So what is real?**
 - U.S. SBA 7(a) manufacturing loans: test AUC 0.687 (95% CI 0.658–0.713), approval-time fields only.
-- UCI Polish bankruptcies: 0.958 (0.952–0.964).
+- UCI Polish bankruptcies: 0.954 (0.948–0.960).
 - MoSPI IIP calibration data.
 
 **7. How good is the product model?**
@@ -47,8 +47,8 @@ sectors (0.81–0.86), unseen clusters (0.83–0.86) and across a macro shock (0
 - An automated audit recomputes features from truncated history and they match.
 - 8 shuffled-label runs scatter around 0.5 (mean 0.466).
 - Splits are by time and by factory.
-- In the SBA data we caught a real leak: the loan term is revised for loans that go bad. With it the AUC read
-  0.915; we report 0.687.
+- In the SBA data we caught a real leak: the loan term is revised for loans that go bad. With it the AUC reads
+  0.914; we report 0.687.
 
 **9. Why LightGBM, not deep learning?**
 The data is tabular with missing values, and explainability is mandatory. Gradient-boosted trees give the

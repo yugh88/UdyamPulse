@@ -66,6 +66,12 @@ def _out_dir(run_id: str) -> Path:
     return get_settings().gold / "batch" / run_id
 
 
+def _plain_dtypes(df: pd.DataFrame) -> pd.DataFrame:
+    nullable = [c for c in df.columns if isinstance(df[c].dtype, pd.api.extensions.ExtensionDtype)
+                and df[c].dtype.kind in "iuf"]
+    return df.astype({c: "float64" for c in nullable}) if nullable else df
+
+
 def process_chunk(run_id: str, chunk_no: int, factory_ids: list[str], month: int) -> dict:
     """Score and evaluate one chunk. Pure function of its inputs: safe to rerun after a crash."""
     from ml.scoring import get_scorer
@@ -82,6 +88,10 @@ def process_chunk(run_id: str, chunk_no: int, factory_ids: list[str], month: int
         f"SELECT g.* FROM read_parquet('{(s.gold / 'features.parquet').as_posix()}') g "  # nosec B608
         "JOIN ids USING (factory_id) WHERE g.month = ?", [month]).df()
     con.close()
+    # DuckDB returns integer columns with gaps as pandas nullable types (pd.NA); the back-test reads the same files
+    # as floats with NaN. Match it, so a source outage month behaves the same in both (comparisons are False).
+    silver = _plain_dtypes(silver)
+    features = _plain_dtypes(features)
 
     inputs = rule_inputs(silver)
     hits = evaluate(inputs[inputs.month == month].reset_index(drop=True), _anomaly_model())

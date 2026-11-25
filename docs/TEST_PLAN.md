@@ -33,7 +33,7 @@
 | 2 | RM | Run scoring. Shows Factory Health Score 742, Approve, PD 0.43%. Signal tabs show 5 reasons. | Pass | |
 | 3 | RM | Generate memo. Shows limit ₹3.00 Cr, pricing band, covenants, policy citations. What-if simulator works. | Pass | |
 | 4 | Credit officer (`co1`) | Open application, comment, review KFS, confirm, disburse via LOS. RM gets a 403 if they try. | Pass | |
-| 5 | RM or risk head | Risk cockpit → Play story. Shows e-way bills −42%, power −32% against 8-week baseline. | Pass | |
+| 5 | RM or risk head | Alerts → Play 6 weeks. Shows e-way bills −42%, power −32% against 8-week baseline. | Pass | |
 | 6 | RM | Open High alert, read briefing, log action. Score falls to 590 (Watch). | Pass | |
 | 7 | MSME owner (`sharma`) | Readiness → switch to हिन्दी → 90-day plan → My data → Revoke consent. Banner shows deletion. | Pass | |
-| 8 | Risk head (`risk1`) | Governance → Data & Models, then Audit trail → Verify chain. Shows SBA 0.687, Polish 0.958, audit chain intact. | Pass | |
+| 8 | Risk head (`risk1`) | Governance → Data & Models, then Audit trail → Verify chain. Shows SBA 0.687, Polish 0.954, audit chain intact. | Pass | |

@@ -31,10 +31,10 @@ prototype round: "don't overbuild").
 
 | Workload | Measured (prototype) | Extrapolation to 10 lakh accounts (**estimate**) |
 |---|---|---|
-| Nightly scoring + EWS batch | 915 accounts/s in one process, chunked and checkpointed (`ml/batch.py`, demo panel) | About 18 min in one process; about 5 min across 4 worker processes |
+| Nightly scoring + EWS batch | 8,752 accounts/s in one process on the 50,000-factory panel (46,120 live accounts in 5.3 s), chunked and checkpointed (`ml/batch.py`; `ml/reports/full/perf.md`). Four processes measured slower at this size (6,445/s): each chunk re-reads the panel | About 2 min in one process (linear extrapolation) |
 | Feature build (gold) | 18 lakh factory-months in 118 s on 10 processes (`data_gen/build.py`) | Incremental nightly: only the latest month per account, a few minutes on one 8-core worker |
 | EWS rules over the full panel | 17.5 lakh account-months in 23 s (vectorised back-test) | Well under a minute per nightly run |
-| Portfolio read | 18 ms (SQLite) / 22 ms (PostgreSQL), indexed and cached per bank and scope (ADR-003) | Pre-aggregated by month and band; account lists paginated by cursor |
+| Portfolio read | 19.9 ms on SQLite with the cache off, median of 15 (`ml/reports/perf.md`); indexed and cached per bank and scope (ADR-003) | Pre-aggregated by month and band; account lists paginated by cursor |
 | Synthetic data at scale | 50,000 × 36 panel in 2 min 12 s at 4.0 GB peak | The 1 lakh panel (`UP_DATASET=scale`) for benchmarks |
 | Public demo container | Ready in 7 s; 325 MB after the full story (512 MB cap) | n/a |
 
@@ -88,8 +88,8 @@ fail-closed sessions) and `tests/test_postgres.py` (RLS on raw SQL, including wr
   touching current data, and month filters prune to a single partition (checked with `EXPLAIN` in the tests).
   The portfolio screen reads this table with three set-based queries instead of scanning the lake per account.
 
-**Measured** (laptop, 140 accounts, median of 15): `/portfolio` 109 ms → 18 ms on SQLite and 22 ms on
-PostgreSQL, before caching.
+**Measured** (140 accounts, median of 15, cache off): `/portfolio` 19.9 ms on SQLite (`python -m ml.bench_perf`,
+`ml/reports/perf.md`), down from 109 ms before the serving table. PostgreSQL was not re-measured.
 
 **Verified.** `tests/test_postgres.py` checks that the migrations match the models, the partitioning and the
 pruning. CI runs the whole suite against PostgreSQL.

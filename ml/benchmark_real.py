@@ -91,7 +91,8 @@ DESIGNS = {
 }
 
 
-def load_sba(path: Path = SBA_FILE, design: str = "horizon") -> tuple[pd.DataFrame, dict]:
+def load_sba(path: Path = SBA_FILE, design: str = "horizon",
+             audit_cols: tuple[str, ...] = ()) -> tuple[pd.DataFrame, dict]:
     """Manufacturing loans approved FY2010+, labelled by `design`, plus the counts of what was excluded and why.
 
     `horizon` (headline): a fixed-horizon default label, as credit models define PD, on every disbursed loan
@@ -105,7 +106,8 @@ def load_sba(path: Path = SBA_FILE, design: str = "horizon") -> tuple[pd.DataFra
             "AND TRY_CAST(ApprovalFY AS INTEGER) >= 2010")
     status = dict(con.execute(f"SELECT replace(LoanStatus, ' ', ''), count(*) {base} GROUP BY 1").fetchall())  # nosec B608
     as_of = con.execute(f"SELECT max(TRY_CAST(AsOfDate AS DATE)) {base}").fetchone()[0]  # nosec B608
-    cols = ", ".join(sorted(ORIGINATION_COLUMNS))
+    # `audit_cols` (leakage audit only) adds named post-origination fields; they never reach build_sba_features.
+    cols = ", ".join(sorted(ORIGINATION_COLUMNS) + list(audit_cols))
     st = "replace(LoanStatus, ' ', '')"
     if design == "horizon":
         cutoff = f"DATE '{as_of}' - INTERVAL {HORIZON_MONTHS} MONTH"
@@ -222,6 +224,27 @@ def term_leakage_evidence(path: Path = SBA_FILE) -> dict:
             "conclusion": "TermInMonths is revised for loans that go bad, so it is excluded as a post-origination field."}
 
 
+def term_leak_auc(path: Path, lenders: pd.Series, n_boot: int) -> dict:
+    """What the headline AUC would read if the leaking TermInMonths were kept as a feature (audit only).
+
+    Same design, split, model and calibration as the headline; the only change is one extra column. The result is
+    stored so the "inflated" figure we quote is reproducible, and it is never used as a reported benchmark."""
+    df, _ = load_sba(path, "horizon", audit_cols=("TermInMonths",))
+    fy = df["ApprovalFY"].astype(int).to_numpy()
+    train_m, valid_m, test_m = fy <= SBA_TRAIN_FY, fy == SBA_VALID_FY, fy >= SBA_TEST_FROM_FY
+    X = build_sba_features(df.drop(columns=["TermInMonths"]), train_m, lenders)
+    X["term_months"] = pd.to_numeric(df["TermInMonths"], errors="coerce").to_numpy()
+    y = df["charged_off"].to_numpy()
+    parts = [X[train_m].copy(), X[valid_m].copy(), X[test_m].copy()]
+    _align_categories(parts)
+    model = _fit(parts[0], y[train_m], parts[1], y[valid_m])
+    p_te = Calibrator.fit(model.predict(parts[1]), y[valid_m])(model.predict(parts[2]))
+    m = metrics_with_ci(y[test_m], p_te, n_boot)
+    return {"auc": m["auc"], "auc_ci95": m["auc_ci95"], "n_test": int(test_m.sum()),
+            "note": "Audit only: the headline model with TermInMonths added. Inflated by leakage; never reported "
+                    "as a benchmark."}
+
+
 def _lender_counts(path: Path) -> pd.Series:
     """Loans per originating lender ID in the training years, across all industries (volume, no outcomes)."""
     import duckdb
@@ -284,6 +307,7 @@ def run_sba(path: Path = SBA_FILE, n_boot: int = 1000, state_holdout: int = 8) -
     lenders = _lender_counts(path)
     headline = _sba_design(path, "horizon", lenders, n_boot, state_holdout)
     resolved = _sba_design(path, "resolved", lenders, n_boot, 0)
+    leak = term_leak_auc(path, lenders, n_boot)
     report = {
         "dataset": "U.S. SBA 7(a) loans, manufacturing (NAICS 31-33), approved FY2010+",
         "provenance": "Real public data",
@@ -298,7 +322,8 @@ def run_sba(path: Path = SBA_FILE, n_boot: int = 1000, state_holdout: int = 8) -
                                              "validation and test rows use training statistics only",
                           "label_fields": "LoanStatus, ApprovalDate and ChargeOffDate build the label inside the "
                                           "query and never leave it",
-                          "term_leakage_evidence": term_leakage_evidence(path)},
+                          "term_leakage_evidence": term_leakage_evidence(path),
+                          "auc_if_term_included": leak},
         "comparison_resolved_only": {k: resolved[k] for k in ("design", "selection", "split", "test", "train_auc",
                                                                "by_year", "top_features_shap")},
         "limitations": [
@@ -310,8 +335,8 @@ def run_sba(path: Path = SBA_FILE, n_boot: int = 1000, state_holdout: int = 8) -
             "U.S. loans with SBA guarantees differ from Indian MSME credit; only the methodology transfers.",
             "Lender volume uses the originating lender ID (LocationID); current-servicer fields are excluded.",
             "Loan term, normally a strong approval-time predictor, is excluded because the published value is "
-            "revised for loans that go bad (see leakage_guard.term_leakage_evidence). With it the AUC was 0.915, "
-            "an inflated figure we do not report.",
+            "revised for loans that go bad (see leakage_guard.term_leakage_evidence). With it the test AUC would read "
+            f"{leak['auc']:.3f} (leakage_guard.auc_if_term_included), an inflated figure we do not report.",
         ],
         "generated_at": datetime.now(UTC).isoformat(timespec="seconds"),
     }
