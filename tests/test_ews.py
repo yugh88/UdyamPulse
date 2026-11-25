@@ -66,3 +66,16 @@ def test_backtest_lead_time_target():
     report = json.loads((get_settings().reports / "ews_backtest.json").read_text())
     assert report["median_lead_days"] >= 60
     assert report["recall"] >= 0.7
+
+
+def test_rule_inputs_tolerate_missing_months_from_duckdb():
+    """The nightly batch reads silver through DuckDB, whose integer columns arrive as nullable (pd.NA) when a
+    source had an outage. A missing filing month must count as not late instead of crashing the batch."""
+    from ml.ews import DELTA_COLS, rule_inputs
+
+    cols = {"eway_value": 100.0, "kwh": 50.0, "bounces": 0, "avg_balance": 10.0, "top_buyer_share": 0.3,
+            "avg_days_to_pay": 40.0, "gst_bank_mismatch": 0.0} | {c: 1.0 for c in DELTA_COLS}
+    silver = pd.DataFrame([{"factory_id": "F1", "month": m, **cols} for m in (1, 2, 3)])
+    silver["gst_filing_delay_days"] = pd.array([0, None, 5], dtype="Int64")
+    out = rule_inputs(silver)
+    assert out["consecutive_late"].tolist() == [0, 0, 1]
