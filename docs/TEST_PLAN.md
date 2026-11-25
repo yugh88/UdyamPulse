@@ -27,10 +27,13 @@
 | 8 | MSME Owner (Hindi) | App loads in Hindi | Pass | |
 
 ## 4. Demo Script Walkthrough
-*(Make one row for each step in docs/DEMO_SCRIPT.md)*
-
 | Step | Persona | Expected | Result | Notes |
 |---|---|---|---|---|
-| 1. Open Dashboard | RM | Score shows up | Pass | |
-| 2. Generate Memo | RM | Memo generates | Pass | |
-| ... | ... | ... | ... | ... |
+| 1 | RM (`rm1`) | Request consent and pull data (GST, e-way, bank, power, EPFO). All checks pass. | Pass | |
+| 2 | RM | Run scoring. Shows Factory Health Score 742, Approve, PD 0.43%. Signal tabs show 5 reasons. | Pass | |
+| 3 | RM | Generate memo. Shows limit ₹3.00 Cr, pricing band, covenants, policy citations. What-if simulator works. | Pass | |
+| 4 | Credit officer (`co1`) | Open application, comment, review KFS, confirm, disburse via LOS. RM gets a 403 if they try. | Pass | |
+| 5 | RM or risk head | Risk cockpit → Play story. Shows e-way bills −42%, power −32% against 8-week baseline. | Pass | |
+| 6 | RM | Open High alert, read briefing, log action. Score falls to 590 (Watch). | Pass | |
+| 7 | MSME owner (`sharma`) | Readiness → switch to हिन्दी → 90-day plan → My data → Revoke consent. Banner shows deletion. | Pass | |
+| 8 | Risk head (`risk1`) | Governance → Data & Models, then Audit trail → Verify chain. Shows SBA 0.687, Polish 0.958, audit chain intact. | Pass | |

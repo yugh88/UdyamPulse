@@ -3,9 +3,7 @@
 **Setup:**
 - Open the live link 10 minutes before presenting, to wake a sleeping free instance.
 - Locally, run `make demo` and open http://localhost:5173.
-- The app opens as the Relationship Manager, with no sign-in. Click **Guided demo** in the top bar. Each step switches
-  to the right persona and opens the right screen.
-  Step 1 offers **Reset demo data first**.
+- The app opens as the Relationship Manager, with no sign-in. Click **Guided demo** in the top bar. Each step switches to the right persona and opens the right screen. Step 1 offers **Reset demo data first**.
 - To change role by hand, open the name menu (bottom left). All numbers on screen come from synthetic data.
 
 | # | Time | Persona | Do | Say |
@@ -19,8 +17,7 @@
 | 7 | 3:45 | MSME owner (`sharma`) | Readiness → switch to **हिन्दी** → 90-day plan → *My data → Revoke consent* | "The owner sees the same truth in simple language, with a cash-flow forecast and a 90-day plan. Revoking consent is one tap: pulls stop immediately and the bank's copy is deleted." |
 | 8 | 4:25 | Risk head (`risk1`) | **Governance → Data & Models**, then **Audit trail → Verify chain** | "Real public benchmarks (SBA loans AUC 0.687, Polish bankruptcies 0.958) are kept apart from synthetic results (product model 0.848, CI 0.842–0.854). Every action is on a tamper-evident audit chain: Verify shows it intact." |
 
-**Close (5:00):** "Credit backed by your production, not your property. The bank decides; we make the decision
-faster, explainable and continuously informed. Next: a pilot with one lender on consented data."
+**Close (5:00):** "Credit backed by your production, not your property. The bank decides; we make the decision faster, explainable and continuously informed. Next: a pilot with one lender on consented data."
 
 ## Backup: API only
 
@@ -35,7 +32,7 @@ Interactive docs: http://localhost:8000/docs
 
 ## Recording checklist
 
-- [ ] Reset the demo (Guided demo → step 1 → *Reset demo data first*, or `make seed`)
+- [ ] Reset the demo (Guided demo → step 1 → Reset demo data first, or `make seed`)
 - [ ] Browser at 1440×900 or 1920×1080, zoom 100%, bookmarks bar hidden, light theme
 - [ ] Steps 1–8 in one take; pause 1 s on the score, the memo, the High alert, the revoke banner and Verify chain
 - [ ] Say once: synthetic data only, no real entity; no API keys (the template writer is used)
