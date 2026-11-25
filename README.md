@@ -53,7 +53,7 @@ Visionet Techthon 2026 · Round 2 · BFSI: Data & Decision Intelligence · **Tea
   Jul 2026). Credit gap about **₹30 lakh crore** (SIDBI). MSMEs are **35.4% of manufacturing** (Budget 2026-27).
 - **Stale-paper underwriting:** banks judge last year's audited statements and collateral, which many healthy
   small units don't have.
-- **Late detection:** lenders learn of trouble at SMA-1/SMA-2 (30–90 days overdue), though falling e-way bills,
+- **Late detection:** lenders learn of trouble at SMA-1/SMA-2 (31–90 days overdue), though falling e-way bills,
   power use and bank inflows showed it months earlier.
 
 ## 3. Users and beneficiaries
@@ -76,7 +76,7 @@ Visionet Techthon 2026 · Round 2 · BFSI: Data & Decision Intelligence · **Tea
 | GST / bank-statement fintech scoring | One or two sources (easy to inflate), little monitoring after disbursal, often a black box |
 | TReDS invoice discounting | Only receivables from registered large buyers |
 | Quarterly stock statements | Self-reported, lagging, rarely verified |
-| Informal lenders | 24–36%+ interest, no credit history built |
+| Informal lenders | About 24%+ interest (Omidyar Network & BCG, 2018), no credit history built |
 | **UdyamPulse** | **Reconciles GST, e-way bills, bank inflows, power and EPFO under consent; explains every score; keeps monitoring after disbursal. The bank still decides.** |
 
 ## 5. How it works
@@ -190,7 +190,7 @@ Full design and ADRs: [docs/SYSTEM_DESIGN.md](docs/SYSTEM_DESIGN.md) · [docs/SE
 
 | | Prototype | Pilot (one bank) | Production (10 lakh accounts) |
 |---|---|---|---|
-| Team | 3 students | 4–6 engineers + bank SMEs | Bank IT + vendor |
+| Team | 3 students | 4–6 engineers + bank SMEs (*our planning estimate*) | Bank IT + vendor |
 | Monthly cost | **₹0** | **~₹42,000** (*estimate*) | **~₹1–1.7 lakh** (*estimate*) |
 
 **Roadmap:** bank partner registers as AA FIU → score its consented back-book and re-learn thresholds →
@@ -198,21 +198,25 @@ independent model validation → 90-day shadow run → live with read-only LOS i
 
 ## 12. Testing, validation and results
 
-**Tests:** 164 backend (+7 PostgreSQL-only, `make test-full`) · 35 web unit · 23 browser end-to-end in both
+**Tests:** 165 backend (+7 PostgreSQL-only, `make test-full`) · 35 web unit · 23 browser end-to-end in both
 themes with axe accessibility checks. CI runs all of them plus gitleaks, pip-audit, bandit, npm audit and Trivy.
 
 | Result | Data | Value (95% CI) |
 |---|---|---|
 | Product model, out of time and out of group | **synthetic** (50,000 factories) | AUC **0.848** (0.842–0.854); ECE 0.012 |
-| Early warning (alert at ≥ 3 points) | synthetic | recall 0.866, median lead **90 days**, precision 0.314 |
+| Early warning, High alerts (≥ 3 points) | synthetic | recall 0.866, median lead **90 days**, precision 0.314 |
+| Early warning, Medium and High (≥ 2 points) | synthetic | recall 0.938, median lead 91 days, precision 0.206 |
 | Leakage audit / 8 shuffled-label runs | synthetic | passed / mean AUC 0.466 (≈ 0.5, as it should be) |
 | U.S. SBA 7(a) manufacturing loans | **real** (public domain) | AUC **0.687** (0.658–0.713) |
-| UCI Polish bankruptcies | **real** (CC BY 4.0) | AUC **0.958** (0.952–0.964) |
+| UCI Polish bankruptcies | **real** (CC BY 4.0) | AUC **0.954** (0.948–0.960) |
 
-- **Not inflated:** an SBA field revised after loans go bad pushed AUC to 0.915; we removed it and report 0.687.
+- **Not inflated:** an SBA field revised after loans go bad pushes AUC to 0.914 (stored in the report as
+  `leakage_guard.auc_if_term_included`); we removed it and report 0.687.
 - **Not oversold:** the +0.015 AUC from production signals comes from how the generator was built and must be
   re-proven in a pilot.
-- **Performance (measured):** 915 accounts/s per process in the nightly batch; portfolio read 18–22 ms.
+- **Performance (measured, [ml/reports/full/perf.md](ml/reports/full/perf.md) and [ml/reports/perf.md](ml/reports/perf.md)):**
+  nightly batch 8,752 accounts/s in one process on the 50,000-factory panel; portfolio read 19.9 ms (SQLite,
+  cache off); credit memo drafted in 16 ms with the template writer.
 - **User validation:** sessions are recorded in [docs/VALIDATION.md](docs/VALIDATION.md) (in progress).
 
 Details: [model card](ml/MODEL_CARD.md) · [data strategy](docs/DATA_STRATEGY.md) · [SBA](ml/reports/real_sba_benchmark.md) · [Polish](ml/reports/real_polish_benchmark.md).
@@ -220,8 +224,8 @@ Details: [model card](ml/MODEL_CARD.md) · [data strategy](docs/DATA_STRATEGY.md
 ## 13. Scalability and sustainability
 
 - **Scaling path:** stateless API pods, queue + workers, month-partitioned PostgreSQL, Redis cache; Databricks
-  and Kubernetes autoscaling (🔭). 10 lakh accounts: ~18 min nightly in one process, ~5 min on four (*estimate*
-  from the measured rate).
+  and Kubernetes autoscaling (🔭). 10 lakh accounts: about 2 min nightly in one process (*estimate*, a linear
+  extrapolation of the measured rate).
 - **Business model:** ~₹500 per credit memo + ₹50 per monitored account per month, paid by the lender (*estimate*).
 - **Operations:** model card per run, drift and fairness checks, dashboards and alert rules; green by design
   (nightly batch, no GPU, 325 MB container).
@@ -246,9 +250,9 @@ All 20 risks: [docs/LIMITATIONS_AND_RISKS.md](docs/LIMITATIONS_AND_RISKS.md).
 
 | Outcome | Number | Basis |
 |---|---|---|
-| Credit-memo drafting | Seconds instead of hours | *measured* in the prototype; "hours" is an *estimate* |
+| Credit-memo drafting | Seconds instead of hours | *measured*: 16 ms with the template writer (`ml/reports/perf.md`); "hours" for a manual draft is an *estimate*, not measured |
 | Stress lead time | Median **90 days** before SMA-2 | *synthetic* back-test, 50,000 factories |
-| Approval uplift for thin-file manufacturers | Target +10–15% at the same risk | *estimate*, to prove in a pilot |
+| Approval uplift for thin-file manufacturers | Target +10–15% at the same risk | *target*: a hypothesis with no evidence yet, to test in a pilot |
 | Credit unlocked | 1% of the ₹30 lakh crore gap = ₹30,000 crore | *scenario, not a forecast* |
 
 ## 16. Who built what
@@ -292,7 +296,7 @@ Also: `make up` (full Docker stack) · `make test` / `make test-full` / `make te
 ## FAQ for reviewers
 
 - **Is the data real?** The product model and demo use synthetic data calibrated to MoSPI statistics; the method
-  is validated on real public data (SBA 0.687, Polish 0.958), reported separately.
+  is validated on real public data (SBA 0.687, Polish 0.954), reported separately.
 - **Why synthetic?** No public Indian dataset links firm-level GST, AA or power data to loan outcomes; that data
   is protected. A lender pilot on consented data is how accuracy gets proven.
 - **Without an LLM key?** Everything works: the default writer is a deterministic template.

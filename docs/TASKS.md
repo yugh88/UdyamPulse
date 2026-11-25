@@ -61,7 +61,7 @@ only when its acceptance check passes. Use conventional commit messages, with no
   (BLS), lender volume.
   - **Acceptance:** leakage checks re-run; CIs reported whatever the result.
   - **Files:** `ml/benchmark_real.py`
-- [ ] **Y14 · Leakage chart**: SBA AUC 0.915 with the leaky loan-term field vs 0.687 honest, plus the
+- [ ] **Y14 · Leakage chart**: SBA AUC 0.914 with the leaky loan-term field vs 0.687 honest, plus the
   shuffled-label check.
   - **Acceptance:** one slide-ready PNG; the write-up itself is A6.
 
@@ -112,7 +112,7 @@ only when its acceptance check passes. Use conventional commit messages, with no
   - **Acceptance:** `docs/METRICS_SOURCE_OF_TRUTH.md` lists each number → file → measured or estimated →
     synthetic or real; mismatches fixed or raised as issues.
 - [ ] **A6 · Model card, leakage write-up and risk review**.
-  - **Acceptance:** `ml/MODEL_CARD.md` matches the current reports; the leakage story (0.915 → 0.687, 60-month
+  - **Acceptance:** `ml/MODEL_CARD.md` matches the current reports; the leakage story (0.914 → 0.687, 60-month
     design note, shuffled-label check) written up; `docs/LIMITATIONS_AND_RISKS.md` reviewed: top risks with
     mitigation and status.
 

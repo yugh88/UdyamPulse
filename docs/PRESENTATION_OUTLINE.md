@@ -83,19 +83,19 @@
   - results table with CIs:
     - product model 0.848 (0.842–0.854), *synthetic*;
     - SBA 0.687 (0.658–0.713), *real*;
-    - Polish 0.958, *real*;
-  - leakage chart 0.915 → 0.687 (*pending Y14*);
+    - Polish 0.954, *real*;
+  - leakage chart 0.914 → 0.687 (*pending Y14*);
   - EWS precision@k before/after (*pending Y10*);
   - test counts and CI badge;
   - validation highlights (*pending K5*: only real sessions).
 - **Speaker (Aditya, 1:00):** results → the leak story → EWS → "tested in CI on every change".
 
 ### 8 · Feasible today, scales tomorrow · footer: *Checklist 11 · 13*
-- **Body:** ₹0 today. Pilot about ₹42k/month (estimate). Ten lakh accounts: batch in about 5 minutes on four
-  workers (estimate).
+- **Body:** ₹0 today. Pilot about ₹42k/month (estimate). Ten lakh accounts: batch in about 2 minutes in one
+  process (estimate).
 - **Visual:**
   - path: free container → Azure pilot → production;
-  - capacity numbers: measured 915 accounts/s; k6 p95 (*pending Y4*);
+  - capacity numbers: measured 8,752 accounts/s; k6 p95 (*pending Y4*);
   - resources and cost (*estimates*);
   - next steps with dates.
 - **Speaker (Yugh, 0:50):** measured vs estimate, said out loud; the `/system` page (*pending Y3*).

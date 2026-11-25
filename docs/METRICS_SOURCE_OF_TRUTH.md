@@ -16,6 +16,27 @@ this repository that produced it. Task A5 in [`docs/TASKS.md`](TASKS.md).
 - Not covered on purpose: team roll numbers, GitHub PR and task identifiers (K1, Y14 and similar), section numbers, and
   licence names. They are identifiers, not metrics, and the roll numbers are personal.
 
+## Follow-up: how each ⚠ was resolved (25 Nov 2026)
+
+The table below still records what was found at commit `e9ae561`. Each flagged number was then fixed at its
+source, not just in the text:
+
+| Issue | Number | Resolution |
+|---|---|---|
+| #46 | Polish AUC 0.958 | Corrected everywhere to the report's **0.954 (0.948–0.960)**. |
+| #47 | SBA 0.915 with the leaky field | Now measured and stored: `ml/benchmark_real.py` re-runs the headline model with `TermInMonths` added and writes `leakage_guard.auc_if_term_included` = **0.914 (0.895–0.930)** to `ml/reports/real_sba_benchmark.json`. The headline 0.687 is unchanged. |
+| #48 | 915 accounts/s | Re-measured with `python -m ml.bench_perf` and stored in `ml/reports/full/perf.json`: **8,752 accounts/s** in one process on the 50,000-factory panel. (Measuring it found and fixed a batch crash on months with missing GST data.) |
+| #49 | Portfolio read 18–22 ms | Re-measured and stored in `ml/reports/perf.json`: **19.9 ms** on SQLite, cache off, median of 15. PostgreSQL not re-measured, so its figure was dropped. |
+| #50 | Informal lenders 24–36%+ | Now "about 24%+", sourced to Omidyar Network & BCG (2018) in `docs/ACKNOWLEDGEMENTS.md`. No single source supports 36%. |
+| #51 | +10–15% approval uplift | Relabelled a *target*: a hypothesis with no evidence yet, to test in a pilot. |
+| #52 | 4–6 engineers | Labelled *our planning estimate*. |
+| #53 | Memo in seconds, not hours | Memo time measured and stored: **16 ms** with the template writer (`ml/reports/perf.json`). "Hours" for a manual draft stays an *estimate*, not measured. |
+| #54 | EWS threshold | The README now shows both levels the product raises: High (≥ 3 points) recall 0.866, lead 90 days, precision 0.314; Medium and High (≥ 2 points) recall 0.938, lead 91 days, precision 0.206 (the `ews_backtest` files). |
+| #55 | Test counts | `docs/EVALUATION_MAP.md` and `docs/DEPLOYMENT.md` aligned with CI: 165 backend (+7 PostgreSQL-only), 35 web unit, 23 browser. |
+| #56 | ~5 min on four processes | Replaced by the measured rate: about 2 minutes in one process for 10 lakh accounts (*estimate*). Four processes measured slower at this size. |
+| #57 | 310 MB vs 325 MB | Fixed in PR #59 (325 MB everywhere). |
+| (table) | SMA "30–90 days" | README now says 31–90 days, matching `policy/credit_policy.md`. |
+
 ## 1. Market and problem
 
 | Number | Where it appears | Source file | Measured or estimated | Synthetic or real data |

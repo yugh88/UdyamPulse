@@ -58,7 +58,7 @@ sections below list only what each person's own commits show; they are updated a
 1. *How does it scale to 10 lakh accounts?*
    - Stateless API pods, queue + workers, a month-partitioned serving table and a chunked, resumable nightly
      batch.
-   - Measured 915 accounts/s per process, so about 5 minutes on four processes (*estimate*).
+   - Measured 8,752 accounts/s in one process on 50,000 factories, so about 2 minutes for 10 lakh (*estimate*).
 2. *What if the LLM fails?* A timeout, circuit breaker and per-bank cap all fall back to a deterministic
    template. Numbers never come from the LLM, and a guard rejects any that do.
 3. *How is one bank's data kept from another's?* The bank is bound from the token on every request, the ORM
@@ -124,7 +124,7 @@ sections below list only what each person's own commits show; they are updated a
    - Features use data up to the scoring month only, checked by an automated audit.
    - 8 shuffled-label runs scatter around 0.5.
    - Splits are by time and by factory.
-   - We found and removed the SBA loan-term leak (0.915 → 0.687).
+   - We found and removed the SBA loan-term leak (0.914 → 0.687, both stored in the report).
 3. *How do you know the numbers are right?* Each one is traced to the report that produced it and labelled
    measured or estimated, synthetic or real: product model AUC 0.848 (0.842–0.854) on synthetic data; SBA 0.687
-   (0.658–0.713) and Polish 0.958 on real data.
+   (0.658–0.713) and Polish 0.954 on real data.
