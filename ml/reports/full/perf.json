@@ -1,0 +1,40 @@
+{
+  "generated_at": "2026-11-25T13:27:48+00:00",
+  "commit": "2394541",
+  "machine": {
+    "cpu": "Apple M3 Pro",
+    "cores": 11,
+    "os": "Darwin 25.6.0",
+    "python": "3.11.13"
+  },
+  "dataset": "full",
+  "provenance": "Synthetic data (full panel)",
+  "batch": [
+    {
+      "month": 36,
+      "accounts": 46120,
+      "workers": 1,
+      "runs": 3,
+      "accounts_per_second_runs": [
+        8089.5,
+        8797.6,
+        8751.5
+      ],
+      "accounts_per_second_median": 8751.5,
+      "wall_seconds_median": 5.27
+    },
+    {
+      "month": 36,
+      "accounts": 46120,
+      "workers": 4,
+      "runs": 3,
+      "accounts_per_second_runs": [
+        4461.7,
+        6444.6,
+        8078.6
+      ],
+      "accounts_per_second_median": 6444.6,
+      "wall_seconds_median": 7.156
+    }
+  ]
+}

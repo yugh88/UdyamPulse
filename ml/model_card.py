@@ -104,6 +104,28 @@ def _demo_section(m: dict, fairness: dict | None, drift: dict | None) -> list[st
     return lines
 
 
+def _leakage_section(sba: dict | None, full: dict | None) -> list[str]:
+    """The leakage story, with every number read from the stored reports (none typed in)."""
+    lines = ["## 4. Leakage story", ""]
+    guard = (sba or {}).get("leakage_guard", {})
+    ev, leak = guard.get("term_leakage_evidence"), guard.get("auc_if_term_included")
+    if sba and ev and leak:
+        t = sba["test"]
+        lines += [f"On the real SBA 7(a) data, keeping the loan-term field gives a test AUC of {leak['auc']:.3f} "
+                  f"({leak['auc_ci95'][0]:.3f}–{leak['auc_ci95'][1]:.3f}). SBA revises the term after a loan goes bad: "
+                  f"{ev['non_standard_term_share_charged_off']:.1%} of charged-off loans have a non-standard term, against "
+                  f"{ev['non_standard_term_share_paid_in_full']:.1%} of loans paid in full. Without the field the honest AUC is "
+                  f"{t['auc']:.3f} ({t['auc_ci95'][0]:.3f}–{t['auc_ci95'][1]:.3f}), on a 60-month label window so every "
+                  "loan has time to go bad. Source: `ml/reports/real_sba_benchmark.json` (`leakage_guard`).", ""]
+    audit = (full or {}).get("leakage_audit", {})
+    runs = audit.get("shuffled_label_runs")
+    if runs:
+        lines += [f"On the synthetic panel, {len(runs)} shuffled-label runs give a mean AUC of "
+                  f"{audit['shuffled_label_auc']:.3f} (runs {min(runs):.3f}–{max(runs):.3f}), scattering around the "
+                  "coin-toss 0.5: no structural leakage in the features. Source: `ml/reports/full/metrics.json`.", ""]
+    return lines if len(lines) > 2 else []
+
+
 def _real_section(sba: dict | None, polish: dict | None) -> list[str]:
     lines = ["## 3. Real public benchmarks (methodology validation, not the Indian MSME score)", "",
              "Same pipeline (features → LightGBM → isotonic calibration → SHAP → drift monitoring) on real outcomes. "
@@ -145,15 +167,7 @@ def write_model_card() -> Path:
     if demo:
         lines += _demo_section(demo, _load(REPORTS / "fairness.json"), _load(REPORTS / "drift.json"))
     lines += _real_section(_load(REPORTS / "real_sba_benchmark.json"), _load(REPORTS / "real_polish_benchmark.json"))
-    lines += ["## 4. Leakage story",
-              "To validate the method on real data, we tested the SBA 7(a) dataset. Using the loan-term field, the model "
-              "scored an AUC of 0.915. We found that SBA revises the loan term after a loan defaults: 86.7% of charged-off "
-              "loans have an unusual term, versus 16.4% of repaid ones. Removing the leaking field dropped the AUC to the "
-              "honest 0.687 (95% CI 0.658–0.713). We use a 60-month label window so every loan has time to go bad.",
-              "",
-              "On the synthetic panel, we ran a shuffled-label check (8 runs). The mean AUC was 0.4659 (runs 0.3642–0.5462), "
-              "scattering around the coin-toss 0.5, confirming no structural leakage in the features. Details in "
-              "`ml/reports/full/metrics.json` and `ml/reports/real_sba_benchmark.md`.", ""]
+    lines += _leakage_section(_load(REPORTS / "real_sba_benchmark.json"), full)
     lines += ["## Limitations",
               "- The product model is trained on synthetic data. Coefficients, thresholds and the production-signal uplift "
               "must be re-learned and re-proven on a lender's consented data, followed by independent model validation.",

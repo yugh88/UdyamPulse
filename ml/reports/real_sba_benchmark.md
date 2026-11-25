@@ -82,7 +82,7 @@ Never-seen states CT, MI, NC, OH, OR, TX, UT, WA, test years: AUC 0.681 (0.616â€
 - The resolved-only design (paid in full vs charged off) scores higher on recent cohorts because their resolved loans are early payoffs and early charge-offs; its AUC falls cohort by cohort, which is why it is not the headline.
 - U.S. loans with SBA guarantees differ from Indian MSME credit; only the methodology transfers.
 - Lender volume uses the originating lender ID (LocationID); current-servicer fields are excluded.
-- Loan term, normally a strong approval-time predictor, is excluded because the published value is revised for loans that go bad (see leakage_guard.term_leakage_evidence). With it the AUC was 0.915, an inflated figure we do not report.
+- Loan term, normally a strong approval-time predictor, is excluded because the published value is revised for loans that go bad (see leakage_guard.term_leakage_evidence). With it the test AUC would read 0.914 (leakage_guard.auc_if_term_included), an inflated figure we do not report.
 
 ## Source
 
