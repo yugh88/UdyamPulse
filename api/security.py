@@ -15,7 +15,7 @@ from api.webapp import is_api_path
 API_CSP = "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
 # The web app's policy (same as web/nginx.conf), used when FastAPI serves the React build itself.
 SPA_CSP = ("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; "
-           "font-src 'self' data:; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; "
+           "font-src 'self' data:; connect-src 'self'; worker-src 'self'; frame-src 'self' blob:; manifest-src 'self'; object-src 'none'; "
            "base-uri 'self'; form-action 'self'; frame-ancestors {ancestors}")
 
 

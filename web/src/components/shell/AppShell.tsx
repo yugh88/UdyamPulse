@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarDays, ChevronsUpDown, Keyboard, Moon, PanelLeft, Search, Sun } from "lucide-react";
+import { CalendarDays, ChevronDown, ChevronsUpDown, Keyboard, Moon, PanelLeft, Search, Sun } from "lucide-react";
 import { Suspense, useEffect, useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -140,12 +140,27 @@ function AccountMenu({ compact, onShortcuts }: { compact?: boolean; onShortcuts:
       trigger={
         <button
           type="button"
-          aria-label={`Account menu for ${session.display_name}, ${ROLE_LABEL[session.role]}`}
-          className={cn("flex items-center gap-3 rounded-[10px] text-left transition-colors hover:bg-panel-2", compact ? "h-9 px-1.5" : "w-full px-2.5 py-2")}
+          aria-label={`${compact ? "Switch role. " : ""}Account menu for ${session.display_name}, ${ROLE_LABEL[session.role]}`}
+          className={cn(
+            "flex items-center text-left transition-colors hover:bg-panel-2",
+            compact
+              ? "h-9 gap-2 rounded-full border border-edge-2 bg-panel pr-3 pl-1 text-13 font-semibold text-fg hover:border-edge-strong"
+              : "w-full gap-3 rounded-[10px] px-2.5 py-2",
+          )}
         >
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-purple-tint text-13 font-bold text-purple" aria-hidden>
+          <span
+            className={cn("flex shrink-0 items-center justify-center rounded-full bg-purple-tint font-bold text-purple", compact ? "h-7 w-7 text-xs" : "h-9 w-9 text-13")}
+            aria-hidden
+          >
             {initials(session.display_name)}
           </span>
+          {/* On the owner's screen this is the only way back to the bank roles, so it says so. */}
+          {compact && (
+            <>
+              <span className="whitespace-nowrap">Switch role</span>
+              <ChevronDown className="h-4 w-4 shrink-0 text-fg-muted" aria-hidden />
+            </>
+          )}
           {!compact && (
             <span className="min-w-0 flex-1">
               <span className="block truncate text-sm leading-snug font-semibold text-fg">{session.display_name}</span>

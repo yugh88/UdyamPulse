@@ -52,6 +52,7 @@ def test_framing_is_denied_unless_configured(tmp_path, monkeypatch):
     c = _app(tmp_path)
     page, api = c.get("/"), c.get("/api/v1/ping")
     assert "frame-ancestors 'none'" in page.headers["content-security-policy"]
+    assert "frame-src 'self' blob:" in page.headers["content-security-policy"]  # the memo PDF preview frames a blob: URL
     assert page.headers["x-frame-options"] == "DENY"
     assert api.headers["content-security-policy"].startswith("default-src 'none'")
     s = replace(get_settings(), frame_ancestors="https://huggingface.co")
